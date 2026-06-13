@@ -61,11 +61,11 @@
       tr.append(tdTeam, tdGroup, tdElo);
 
       const stageCols = [
-        ['pGroupWinner', '--elo'],
-        ['pRunnerUp', '--elo'],
-        ['pRoundOf32', '--odds'],
-        ['pRoundOf16', '--odds'],
-        ['pQuarterFinal', '--odds'],
+        ['pGroupWinner', '--trace'],
+        ['pRunnerUp', '--trace'],
+        ['pRoundOf32', '--host'],
+        ['pRoundOf16', '--host'],
+        ['pQuarterFinal', '--host'],
         ['pSemiFinal', '--pos'],
         ['pFinal', '--pos'],
         ['pChampion', '--pos'],

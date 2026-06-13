@@ -21,7 +21,12 @@
     </header>
 
     <section class="instructions">
-      <p>Click any team name to trace its predicted path through the tournament. Each group table shows the modal (most likely) finishing order; the percentage is how often that exact order occurred across simulations — lower numbers mean a tighter, less predictable group.</p>
+      <p>
+        <span class="hint-pill">Tap any team</span> to trace its predicted route through the
+        whole tournament — group table, every knockout match, and (if applicable) the final.
+        Each group table shows the modal finishing order; the percentage is how often that
+        exact order occurred across simulations, so lower numbers mean a tighter group.
+      </p>
     </section>
 
     <section class="groups-grid" id="groups-grid">
@@ -29,12 +34,17 @@
     </section>
 
     <section class="bracket-section">
-      <h2>Knockout bracket</h2>
-      <div class="bracket-wrap">
+      <div class="bracket-section-head">
+        <h2>Knockout bracket</h2>
+        <button id="clear-selection" class="clear-btn" hidden>Clear selection</button>
+      </div>
+      <div class="bracket-wrap" id="bracket-wrap">
+        <svg class="bracket-lines" id="bracket-lines" aria-hidden="true"></svg>
         <div class="bracket" id="bracket">
           <!-- Bracket columns injected here -->
         </div>
       </div>
+      <p class="bracket-scroll-hint" id="scroll-hint">Scroll to see the full bracket →</p>
     </section>
 
     <footer class="footnote">

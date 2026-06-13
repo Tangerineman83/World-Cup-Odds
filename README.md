@@ -4,9 +4,12 @@ A static site with two views of an Elo-based prediction model for the 2026 FIFA
 World Cup:
 
 - **`index.html`** — the "most likely scenario": predicted group standings (1st-4th
-  for all 12 groups) and a knockout bracket tree from the Round of 32 to the final,
-  built by taking the modal group outcome and then a "chalk" (favourite-wins) bracket.
-  Click any team to highlight its path through the whole tournament.
+  for all 12 groups, with relative-strength Elo bars) and a full knockout bracket
+  tree (Round of 32 → Final → Champion) with drawn connector lines, built by taking
+  the modal group outcome and then a "chalk" (favourite-wins) bracket. **Click any
+  team name** to trace its predicted route: the team's group row, every bracket match
+  it plays, and the connector lines along its path all highlight together, and the
+  bracket scrolls to its first knockout match.
 - **`predictions.html`** — the full probability table: for all 48 teams, the
   probability of finishing 1st/2nd in their group and of reaching the R32, R16, QF,
   SF, Final, and winning the tournament, from a 20,000-run Monte Carlo simulation.
