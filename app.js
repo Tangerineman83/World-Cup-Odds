@@ -84,8 +84,23 @@
     `;
   }
 
+  // Computes each team's world ranking (1 = strongest) from their Elo-style
+  // rating, across all 48 teams in data.groups. Cached per data load.
+  let cachedRankByName = null;
+  function rankByName() {
+    if (cachedRankByName) return cachedRankByName;
+    const all = [];
+    for (const g of Object.values(data.groups)) {
+      for (const t of g.order) all.push(t);
+    }
+    all.sort((a, b) => b.elo - a.elo);
+    cachedRankByName = new Map(all.map((t, i) => [t.name, i + 1]));
+    return cachedRankByName;
+  }
+
   function renderGroups() {
     groupsGrid.innerHTML = '';
+    const ranks = rankByName();
     for (const letter of GROUP_ORDER) {
       const g = data.groups[letter];
       const card = document.createElement('div');
@@ -103,6 +118,7 @@
 
         const posProbs = team.positionProbabilities || [0, 0, 0, 0];
         const posBarHtml = positionProbBar(posProbs);
+        const rank = ranks.get(team.name);
 
         rows += `<tr class="${rowClass}" data-team="${team.name}">
           <td class="pos-col">${posLabel}</td>
@@ -110,7 +126,7 @@
             ${teamButton(team)}
             ${posBarHtml}
           </td>
-          <td class="elo-col"><span class="elo-num">${team.elo}</span></td>
+          <td class="elo-col"><span class="elo-num" title="Rating: ${Math.round(team.elo)}">#${rank}</span></td>
         </tr>`;
       });
 
@@ -511,6 +527,7 @@
       if (!res.ok) throw new Error('scenario.json not found (HTTP ' + res.status + ')');
       data = await res.json();
       cachedRounds = null;
+      cachedRankByName = null;
       renderMeta();
       renderGroups();
       renderBracket();
