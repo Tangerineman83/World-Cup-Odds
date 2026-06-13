@@ -32,6 +32,23 @@ jobs:
       - name: Run simulation (full probability table)
         run: node scripts/sim/runSimulation.js 20000
 
+      - name: Sanity-check output
+        run: |
+          node -e "
+            const data = require('./predictions.json');
+            const ratings = data.teams.map(t => t.eloRating);
+            const min = Math.min(...ratings), max = Math.max(...ratings);
+            console.log('Elo range:', min, '-', max, '(spread', (max-min).toFixed(0) + ')');
+            // Real Elo ratings for the 2026 field span roughly 1400-2200 - a
+            // spread under 100 points means every team got near-identical
+            // ratings, which almost certainly means the Elo fetch failed and
+            // silently fell through to a default value for all teams.
+            if (max - min < 100) {
+              console.error('ERROR: Elo spread is suspiciously narrow (<100). This usually means the Elo fetch failed for all teams. Refusing to commit.');
+              process.exit(1);
+            }
+          "
+
       - name: Commit updated predictions if changed
         run: |
           git config user.name "github-actions[bot]"
@@ -43,4 +60,3 @@ jobs:
             git commit -m "Refresh predictions ($(date -u +'%Y-%m-%d %H:%M UTC'))"
             git push
           fi
-
