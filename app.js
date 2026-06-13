@@ -13,15 +13,57 @@
   const GROUP_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
   // ----------------------------------------------------------------------
+  // Flags (flagcdn.com) - maps team codes to flag image codes. Most match
+  // ISO 3166-1 alpha-2 lowercased; UK home nations need their gb-xxx codes.
+  // ----------------------------------------------------------------------
+  const FLAG_CODE_OVERRIDES = {
+    EN: 'gb-eng', // England
+    SQ: 'gb-sct', // Scotland
+    WL: 'gb-wls', // Wales
+    NI: 'gb-nir', // Northern Ireland
+  };
+
+  function flagUrl(teamCode, height = 24) {
+    if (!teamCode) return null;
+    const code = FLAG_CODE_OVERRIDES[teamCode] || teamCode.toLowerCase();
+    return `https://flagcdn.com/h${height}/${code}.png`;
+  }
+
+  // ----------------------------------------------------------------------
   // Group tables
   // ----------------------------------------------------------------------
 
   function teamButton(team) {
     if (!team) {
-      return `<span class="team-cell team-tbd">TBD</span>`;
+      return `<span class="team-cell team-tbd"><span class="flag-icon" style="background:var(--border)"></span>To be confirmed</span>`;
     }
     const safeName = team.name.replace(/"/g, '&quot;');
-    return `<button class="team-cell" data-team="${safeName}">${team.name}<span class="code">${team.code || ''}</span></button>`;
+    const flag = flagUrl(team.code);
+    const flagHtml = flag
+      ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="lazy">`
+      : `<span class="flag-icon"></span>`;
+    return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}<span class="code">${team.code || ''}</span></button>`;
+  }
+
+  // Renders a small circular "how sure are we" ring. pct is 0-1.
+  // Colour reflects confidence tier (mirrors group-row advance colours).
+  function confidenceRing(pct) {
+    const pctLabel = Math.round(pct * 100);
+    const tier = pct >= 0.3 ? 'conf-high' : pct >= 0.15 ? 'conf-mid' : 'conf-low';
+    const r = 16;
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference * (1 - pct);
+    return `
+      <div class="confidence-ring" title="How sure we are about this exact order: ${pctLabel}%">
+        <svg width="38" height="38" viewBox="0 0 38 38">
+          <circle class="ring-track" cx="19" cy="19" r="${r}"></circle>
+          <circle class="ring-progress ${tier}" cx="19" cy="19" r="${r}"
+            stroke-dasharray="${circumference.toFixed(2)}"
+            stroke-dashoffset="${offset.toFixed(2)}"></circle>
+        </svg>
+        <span class="ring-label">${pctLabel}%</span>
+      </div>
+    `;
   }
 
   // Renders a compact 4-segment stacked bar showing P(1st)/P(2nd)/P(3rd)/P(4th)
@@ -42,15 +84,12 @@
     `;
   }
 
-  function renderGroups(maxElo) {
+  function renderGroups() {
     groupsGrid.innerHTML = '';
     for (const letter of GROUP_ORDER) {
       const g = data.groups[letter];
       const card = document.createElement('div');
       card.className = 'group-card';
-
-      const pct = (g.probability * 100).toFixed(1);
-      const confidenceClass = g.probability >= 0.3 ? 'conf-high' : g.probability >= 0.15 ? 'conf-mid' : 'conf-low';
 
       let rows = '';
       g.order.forEach((team, i) => {
@@ -62,7 +101,6 @@
         else if (isBestThird) rowClass = 'maybe-advances';
         else rowClass = 'eliminated';
 
-        const barPct = Math.max(4, Math.round((team.elo / maxElo) * 100));
         const posProbs = team.positionProbabilities || [0, 0, 0, 0];
         const posBarHtml = positionProbBar(posProbs);
 
@@ -72,17 +110,14 @@
             ${teamButton(team)}
             ${posBarHtml}
           </td>
-          <td class="elo-col">
-            <span class="elo-bar-wrap"><span class="elo-bar" style="width:${barPct}%"></span></span>
-            <span class="elo-num">${team.elo}</span>
-          </td>
+          <td class="elo-col"><span class="elo-num">${team.elo}</span></td>
         </tr>`;
       });
 
       card.innerHTML = `
         <div class="group-card-header">
           <h3>Group ${letter}</h3>
-          <span class="confidence ${confidenceClass}" title="Probability of this exact 1st-4th order occurring">${pct}%</span>
+          ${confidenceRing(g.probability)}
         </div>
         <table class="group-table">
           <tbody>${rows}</tbody>
@@ -450,26 +485,18 @@
 
   function renderMeta() {
     const d = new Date(data.generatedAt);
-    metaUpdated.textContent = 'Scenario generated ' + d.toLocaleString(undefined, {
+    metaUpdated.textContent = 'Updated ' + d.toLocaleString(undefined, {
       dateStyle: 'medium', timeStyle: 'short',
     });
 
     const metaResults = document.getElementById('meta-results');
     const n = data.resultsApplied || 0;
     if (n > 0) {
-      metaResults.textContent = `${n} live result${n === 1 ? '' : 's'} applied`;
-      metaResults.title = 'Completed group-stage matches are used directly (not simulated) and have updated the involved teams\' Elo ratings.';
+      metaResults.textContent = `${n} result${n === 1 ? '' : 's'} played so far`;
+      metaResults.title = 'Matches already played are used as-is, and have updated each team\'s rating.';
     } else {
-      metaResults.textContent = 'Pre-tournament baseline (no live results yet)';
+      metaResults.textContent = 'No matches played yet';
     }
-  }
-
-  function maxEloAcrossAllTeams() {
-    let max = 0;
-    for (const g of Object.values(data.groups)) {
-      for (const t of g.order) max = Math.max(max, t.elo);
-    }
-    return max;
   }
 
   let resizeTimer = null;
@@ -485,7 +512,7 @@
       data = await res.json();
       cachedRounds = null;
       renderMeta();
-      renderGroups(maxEloAcrossAllTeams());
+      renderGroups();
       renderBracket();
 
       // Initial connector draw after layout settles

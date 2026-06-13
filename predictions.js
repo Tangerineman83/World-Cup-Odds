@@ -46,9 +46,20 @@
     for (const row of rows) {
       const tr = document.createElement('tr');
 
+      const FLAG_CODE_OVERRIDES = { EN: 'gb-eng', SQ: 'gb-sct', WL: 'gb-wls', NI: 'gb-nir' };
+      function flagUrl(code, height) {
+        if (!code) return null;
+        const c = FLAG_CODE_OVERRIDES[code] || code.toLowerCase();
+        return `https://flagcdn.com/h${height}/${c}.png`;
+      }
+
       const tdTeam = document.createElement('td');
       tdTeam.className = 'col-team';
-      tdTeam.innerHTML = `${row.name}<span class="code">${row.code || ''}</span>`;
+      const flag = flagUrl(row.code, 24);
+      const flagHtml = flag
+        ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(row.code, 48)} 2x" alt="" loading="lazy">`
+        : '';
+      tdTeam.innerHTML = `${flagHtml}${row.name}<span class="code">${row.code || ''}</span>`;
 
       const tdGroup = document.createElement('td');
       tdGroup.className = 'col-num';
@@ -61,8 +72,8 @@
       tr.append(tdTeam, tdGroup, tdElo);
 
       const stageCols = [
-        ['pGroupWinner', '--trace'],
-        ['pRunnerUp', '--trace'],
+        ['pGroupWinner', '--accent'],
+        ['pRunnerUp', '--accent'],
         ['pRoundOf32', '--host'],
         ['pRoundOf16', '--host'],
         ['pQuarterFinal', '--host'],
@@ -94,10 +105,10 @@
   function renderMeta() {
     if (!currentData) return;
     const d = new Date(currentData.generatedAt);
-    metaUpdated.textContent = 'Simulated ' + d.toLocaleString(undefined, {
+    metaUpdated.textContent = 'Updated ' + d.toLocaleString(undefined, {
       dateStyle: 'medium', timeStyle: 'short',
     });
-    metaSims.textContent = currentData.numSimulations.toLocaleString() + ' simulations';
+    metaSims.textContent = 'Based on ' + currentData.numSimulations.toLocaleString() + ' tournaments';
   }
 
   async function load() {

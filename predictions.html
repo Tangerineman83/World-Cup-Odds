@@ -3,45 +3,45 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Predictions — World Cup 2026</title>
+<title>Every team's odds — World Cup 2026</title>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="page">
     <header class="masthead">
       <div class="masthead-top">
-        <h1>Tournament <span class="vs">predictions</span></h1>
-        <p class="subtitle">Elo-based Monte Carlo simulation of the 2026 FIFA World Cup — probability of reaching each stage, for all 48 teams.</p>
+        <h1>Every team's <span class="vs">odds</span></h1>
+        <p class="subtitle">How far we think each of the 48 teams will go, worked out by simulating the whole tournament thousands of times.</p>
       </div>
       <div class="meta-bar" id="meta-bar">
         <span id="meta-updated">Loading…</span>
         <span class="meta-sep">·</span>
         <span id="meta-sims"></span>
         <span class="meta-sep">·</span>
-        <a href="index.html">← Bracket & group tables</a>
+        <a href="index.html">← Groups & knockout rounds</a>
       </div>
     </header>
 
     <section class="legend">
       <div class="legend-item">
-        <span class="swatch swatch-trace"></span>
+        <span class="swatch swatch-accent"></span>
         <div>
           <strong>How it works</strong>
-          <p>Each team's current <a href="https://www.eloratings.net" target="_blank" rel="noopener">Elo rating</a> is converted to win/draw/loss probabilities for every possible match (home advantage +100 Elo for co-hosts USA, Canada, Mexico). The full 104-match tournament is simulated 20,000 times; the table shows how often each team reaches each stage.</p>
+          <p>Every team has a rating based on how well they've been playing. We use these ratings to work out the chance of either team winning any match, with a boost for the three host nations (USA, Canada, Mexico) when they play. Then we play out the whole tournament 20,000 times on a computer and count how often each team reaches each stage.</p>
         </div>
       </div>
       <div class="legend-item">
         <span class="swatch swatch-host"></span>
         <div>
-          <strong>What's simplified</strong>
-          <p>The Round of 32 follows FIFA's official Match 73-88 structure, but the assignment of the 8 best third-placed teams to the eight "3rd-placed" slots uses a constraint-respecting approximation (every matchup is one the rules permit, but it won't always match FIFA's exact 495-scenario "Annex C" table for a given combination). Results already played are not yet factored in — this is a pre-tournament-style baseline.</p>
+          <strong>What to know</strong>
+          <p>The route from the group stage into the last-32 follows the real World Cup rules. A few details of exactly which third-placed teams meet which group winners are simplified — close, but not pinpoint-exact for every combination. Results already played are built in and update each team's rating.</p>
         </div>
       </div>
       <div class="legend-item">
         <span class="swatch swatch-pos"></span>
         <div>
-          <strong>Reading the columns</strong>
-          <p>R32 / R16 / QF / SF / F / Champion are cumulative probabilities of <em>reaching</em> that stage (Champion = winning the final). 1st / 2nd are probabilities of finishing top or second in the group.</p>
+          <strong>Reading the table</strong>
+          <p>1st/2nd are the chance of finishing top or second in the group. Last 32, Last 16, Quarters, Semis, Final and Champions are the chance of <em>reaching</em> that stage — Champions means winning the whole thing.</p>
         </div>
       </div>
     </section>
@@ -51,45 +51,42 @@
         <thead>
           <tr>
             <th data-key="name" class="col-team sortable">Team</th>
-            <th data-key="group" class="col-num sortable">Grp</th>
-            <th data-key="eloRating" class="col-num sortable">Elo</th>
+            <th data-key="group" class="col-num sortable">Group</th>
+            <th data-key="eloRating" class="col-num sortable" title="A rating based on recent results - higher means a stronger team">Rating</th>
             <th data-key="pGroupWinner" class="col-num sortable">1st</th>
             <th data-key="pRunnerUp" class="col-num sortable">2nd</th>
-            <th data-key="pRoundOf32" class="col-num sortable">R32</th>
-            <th data-key="pRoundOf16" class="col-num sortable">R16</th>
-            <th data-key="pQuarterFinal" class="col-num sortable">QF</th>
-            <th data-key="pSemiFinal" class="col-num sortable">SF</th>
+            <th data-key="pRoundOf32" class="col-num sortable">Last 32</th>
+            <th data-key="pRoundOf16" class="col-num sortable">Last 16</th>
+            <th data-key="pQuarterFinal" class="col-num sortable">Quarters</th>
+            <th data-key="pSemiFinal" class="col-num sortable">Semis</th>
             <th data-key="pFinal" class="col-num sortable">Final</th>
-            <th data-key="pChampion" class="col-num sortable sorted-desc">Champion</th>
+            <th data-key="pChampion" class="col-num sortable sorted-desc">Champions</th>
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr><td colspan="11" class="loading-row">Loading predictions.json…</td></tr>
+          <tr><td colspan="11" class="loading-row">Loading…</td></tr>
         </tbody>
       </table>
     </section>
 
     <footer class="footnote">
       <p>
-        <strong>Methodology.</strong> Match outcomes are drawn from the
-        <a href="https://en.wikipedia.org/wiki/World_Football_Elo_Ratings" target="_blank" rel="noopener">eloratings.net expected-result formula</a>
-        (dr = rating difference, +100 for the home/host side; We = 1 / (10^(−dr/400) + 1)), split into
-        win/draw/loss probabilities via an empirical draw model (≈26% draw probability for evenly matched
-        teams, falling to a floor of ≈12% for lopsided ones). Knockout draws are resolved via extra
-        time/penalties, modelled as roughly a coin flip with a small tilt toward the higher-rated side.
-        Group-stage goal differences (used for tiebreaks) are sampled from Poisson distributions calibrated
-        to each match's win probability.
+        <strong>How the numbers are made.</strong> Each team has a rating that goes
+        up after good results and down after bad ones. When two teams meet, the
+        bigger the gap between their ratings, the more likely the stronger team
+        is to win — but upsets and draws can still happen, and the model allows
+        for that. The three host nations get a small boost in every match they
+        play, including in the knockout rounds, because playing at home usually
+        helps.
       </p>
       <p>
-        Co-host nations (USA, Canada, Mexico) receive the +100 home-advantage adjustment in every match they
-        play, including knockout rounds — this is a deliberate modelling choice (consistent with the
-        eloratings.net convention) and is one reason host-nation tournament-win probabilities here may sit
-        higher than you'd see in betting/prediction markets.
+        For knockout games that end level, we treat it as roughly a coin toss for
+        who goes through on penalties, with a small lean towards the
+        higher-rated team.
       </p>
       <p>
-        This is an independent, simplified simulation for illustrative purposes — not an official forecast.
-        Regenerate via <code>node scripts/sim/runSimulation.js</code> and commit the updated
-        <code>predictions.json</code>.
+        This is our own model, run for fun — not an official FIFA forecast, and
+        not betting advice.
       </p>
     </footer>
   </div>

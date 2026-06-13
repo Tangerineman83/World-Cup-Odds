@@ -1,31 +1,30 @@
 /* ---------------------------------------------------------------
-   Token system
-   Color: research-note palette - paper white, ink, a teal "trace"
-   accent used consistently for the selected team's route through
-   the bracket, and an ochre "host nation" marker. Confidence colors
-   (green/amber/red) remain for group-table certainty.
-   Type: serif display (editorial/analytical), Inter body, IBM Plex
-   Mono for all numeric/data text so columns and bracket labels
-   align like a ledger.
+   Design tokens - dark, iOS-native, football-fan styling.
+   Replaces the earlier "research note" paper/serif palette.
+   Inter for body text, system sans (-apple-system / SF Pro on iOS)
+   for bold headings, IBM Plex Mono for stats/percentages.
    ----------------------------------------------------------------*/
 
 :root {
-  --paper: #f7f5f1;
-  --paper-raised: #fffdfa;
-  --ink: #1c1b19;
-  --ink-soft: #5b5750;
-  --line: #d8d3c8;
+  --bg: #0c1320;
+  --surface: #161f33;
+  --surface-raised: #1d2a47;
+  --border: #2a3a5c;
 
-  --trace: #2f6f6a;       /* selected team's route through the bracket */
-  --trace-soft: #cfe3e1;  /* light tint of trace, for fills */
-  --host: #b5742a;        /* host-nation marker (USA/CAN/MEX) */
+  --text: #f3f5fa;
+  --text-muted: #93a0c2;
+  --text-faint: #5b6890;
 
-  --pos: #2f6f4f;         /* high confidence */
-  --mid: #b5742a;         /* mid confidence */
-  --neg: #a8432f;         /* low confidence */
+  --accent: #5eead4;       /* selected team's route, primary highlight */
+  --accent-soft: #1c3d3a;  /* tint of accent for fills on dark bg */
+  --host: #fbbf6d;         /* host-nation marker, mid-confidence ring */
 
-  --font-display: "Source Serif Pro", "Iowan Old Style", "Georgia", serif;
-  --font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --pos: #4ade80;          /* high confidence / advancing */
+  --mid: #fbbf24;          /* mid confidence */
+  --neg: #f87171;          /* low confidence / eliminated */
+
+  --font-display: -apple-system, "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-body: -apple-system, "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
 }
 
@@ -34,8 +33,8 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
@@ -43,7 +42,7 @@ html, body {
 .page {
   max-width: 880px;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
+  padding: 1.5rem 1rem 4rem;
 }
 
 .page-wide {
@@ -53,59 +52,58 @@ html, body {
 /* ---------------- Masthead ---------------- */
 
 .masthead {
-  border-bottom: 3px solid var(--ink);
-  padding-bottom: 1.1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .masthead-top h1 {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(2.1rem, 6vw, 3.1rem);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
   margin: 0;
   letter-spacing: -0.01em;
-  line-height: 1.05;
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 .masthead-top h1 .vs {
-  font-style: italic;
-  font-weight: 400;
-  color: var(--ink-soft);
-  font-size: 0.7em;
+  font-weight: 800;
+  color: var(--accent);
 }
 
 .subtitle {
-  margin: 0.4rem 0 0;
-  font-size: 0.95rem;
-  color: var(--ink-soft);
+  margin: 0.5rem 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
   max-width: 42em;
+  line-height: 1.5;
 }
 
-.subtitle a { color: var(--ink-soft); text-decoration: underline; }
+.subtitle a { color: var(--accent); text-decoration: none; }
+.subtitle a:hover { text-decoration: underline; }
 
 .meta-bar {
-  margin-top: 1rem;
+  margin-top: 0.9rem;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--ink-soft);
+  font-size: 0.72rem;
+  color: var(--text-faint);
   flex-wrap: wrap;
 }
 
-.meta-sep { color: var(--line); }
+.meta-sep { color: var(--border); }
 
-.meta-bar a { color: var(--ink-soft); text-decoration: underline; }
-.meta-bar a:hover { color: var(--ink); }
+.meta-bar a { color: var(--accent); text-decoration: none; }
+.meta-bar a:hover { text-decoration: underline; }
 
 /* ---------------- Instructions ---------------- */
 
 .instructions {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   font-size: 0.88rem;
-  color: var(--ink-soft);
-  line-height: 1.55;
+  color: var(--text-muted);
+  line-height: 1.6;
   max-width: 56em;
 }
 
@@ -113,15 +111,15 @@ html, body {
 
 .hint-pill {
   display: inline-block;
-  background: var(--trace);
-  color: var(--paper-raised);
+  background: var(--accent);
+  color: #06281f;
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 0.2rem 0.55rem;
-  border-radius: 2px;
+  border-radius: 6px;
   margin-right: 0.3em;
 }
 
@@ -130,53 +128,87 @@ html, body {
 .groups-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.9rem;
-  margin-bottom: 2.5rem;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
 }
 
 .group-card {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--paper-raised);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
   overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .group-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.7rem;
-  border-bottom: 2px solid var(--ink);
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .group-card-header h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
 }
 
-.confidence {
+/* ---------------- Confidence ring ---------------- */
+/* SVG ring, generated in JS: a circle stroke-dasharray showing the group's
+   "how sure are we" percentage. Color reflects confidence tier. */
+
+.confidence-ring {
+  flex: 0 0 auto;
+  position: relative;
+  width: 38px;
+  height: 38px;
+}
+
+.confidence-ring svg {
+  transform: rotate(-90deg);
+}
+
+.confidence-ring .ring-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 3.5;
+}
+
+.confidence-ring .ring-progress {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.confidence-ring .ring-progress.conf-high { stroke: var(--pos); }
+.confidence-ring .ring-progress.conf-mid { stroke: var(--host); }
+.confidence-ring .ring-progress.conf-low { stroke: var(--neg); }
+
+.confidence-ring .ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 2px;
-  font-weight: 600;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text);
 }
-
-.conf-high { background: color-mix(in srgb, var(--pos) 18%, transparent); color: var(--pos); }
-.conf-mid  { background: color-mix(in srgb, var(--mid) 18%, transparent); color: var(--mid); }
-.conf-low  { background: color-mix(in srgb, var(--neg) 18%, transparent); color: var(--neg); }
 
 .group-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
 }
 
 .group-table td {
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 
@@ -187,28 +219,29 @@ html, body {
 }
 
 .group-table tr.row-highlight {
-  background: var(--trace-soft);
+  background: var(--accent-soft);
 }
 
 .pos-col {
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: var(--ink-soft);
-  width: 2.6em;
+  color: var(--text-faint);
+  width: 2.4em;
 }
 
 .team-col {
   min-width: 0;
 }
 
+/* Per-team finishing-position breakdown bar (1st/2nd/3rd/4th) */
 .pp-bar {
   display: flex;
   width: 100%;
-  height: 5px;
+  height: 4px;
   border-radius: 2px;
   overflow: hidden;
-  margin-top: 0.25rem;
-  background: var(--line);
+  margin-top: 0.3rem;
+  background: var(--border);
 }
 
 .pp-seg {
@@ -216,16 +249,15 @@ html, body {
   height: 100%;
 }
 
-/* 1st = strongest (pos green), 2nd = host/mid tone, 3rd = muted, 4th = faint */
 .pp-seg-0 { background: var(--pos); }
 .pp-seg-1 { background: var(--host); }
-.pp-seg-2 { background: var(--ink-soft); opacity: 0.55; }
-.pp-seg-3 { background: var(--line); }
+.pp-seg-2 { background: var(--text-faint); opacity: 0.7; }
+.pp-seg-3 { background: var(--border); }
 
 .pp-summary {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  color: var(--ink-soft);
+  font-size: 0.6rem;
+  color: var(--text-faint);
   margin-top: 0.2rem;
   white-space: nowrap;
   overflow: hidden;
@@ -237,36 +269,21 @@ html, body {
 }
 
 .elo-col {
-  width: 6em;
-}
-
-.elo-bar-wrap {
-  display: block;
-  height: 4px;
-  background: var(--line);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 0.2rem;
-}
-
-.elo-bar {
-  display: block;
-  height: 100%;
-  background: var(--ink-soft);
-  border-radius: 2px;
+  width: 3.4em;
+  text-align: right;
 }
 
 .elo-num {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--ink-soft);
+  font-size: 0.72rem;
+  color: var(--text-faint);
 }
 
-.group-table tr.advances .pos-col { color: var(--pos); font-weight: 700; }
-.group-table tr.maybe-advances .pos-col { color: var(--mid); font-weight: 700; }
-.group-table tr.eliminated { opacity: 0.5; }
+.group-table tr.advances .pos-col { color: var(--pos); font-weight: 800; }
+.group-table tr.maybe-advances .pos-col { color: var(--host); font-weight: 800; }
+.group-table tr.eliminated { opacity: 0.45; }
 
-/* ---------------- Team cell (shared button style) ---------------- */
+/* ---------------- Team cell (shared button style, with flag) ---------------- */
 
 .team-cell {
   font: inherit;
@@ -275,47 +292,60 @@ html, body {
   padding: 0.05rem 0.15rem;
   margin: -0.05rem -0.15rem;
   cursor: pointer;
-  color: var(--ink);
+  color: var(--text);
   text-align: left;
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.35em;
-  border-radius: 2px;
+  align-items: center;
+  gap: 0.45em;
+  border-radius: 6px;
   transition: background 0.12s ease, color 0.12s ease;
 }
 
-.team-cell:hover { color: var(--trace); }
+.team-cell:hover { color: var(--accent); }
 .team-cell:focus-visible { outline: 2px solid var(--host); outline-offset: 2px; }
+
+.flag-icon {
+  flex: 0 0 auto;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: var(--border);
+}
 
 .team-cell .code {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--ink-soft);
+  font-size: 0.66rem;
+  color: var(--text-faint);
 }
 
 .team-tbd {
-  color: var(--line);
+  color: var(--text-faint);
   font-style: italic;
   font-size: 0.85em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
 }
 
 /* Highlight / dim states applied to any [data-team] element */
 .highlight .team-cell,
 .team-cell.highlight {
-  background: var(--trace);
-  color: var(--paper-raised);
-  font-weight: 700;
+  background: var(--accent);
+  color: #06281f;
+  font-weight: 800;
 }
 
-.highlight .code { color: var(--paper-raised); opacity: 0.8; }
+.highlight .code { color: #06281f; opacity: 0.75; }
 
 .dim {
-  opacity: 0.32;
+  opacity: 0.3;
 }
 
-/* ---------------- Bracket section ---------------- */
+/* ---------------- Knockout rounds section ---------------- */
 
-.bracket-section { margin-top: 1rem; }
+.bracket-section { margin-top: 0.5rem; }
 
 .bracket-section-head {
   display: flex;
@@ -327,8 +357,10 @@ html, body {
 
 .bracket-section-head h2 {
   font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   margin: 0;
 }
 
@@ -337,32 +369,33 @@ html, body {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--ink);
-  color: var(--paper-raised);
-  border: none;
-  padding: 0.35rem 0.7rem;
-  border-radius: 2px;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
   cursor: pointer;
 }
 
-.clear-btn:hover { background: var(--trace); }
+.clear-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .bracket-wrap {
   position: relative;
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--paper-raised);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
   padding: 1rem 0.5rem;
   scroll-behavior: smooth;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .bracket-scroll-hint {
   margin: 0.4rem 0 0;
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: var(--ink-soft);
+  color: var(--text-faint);
   text-align: right;
 }
 
@@ -378,12 +411,12 @@ html, body {
 
 .connector {
   fill: none;
-  stroke: var(--line);
+  stroke: var(--border);
   stroke-width: 1.5;
 }
 
 .connector-highlight {
-  stroke: var(--trace);
+  stroke: var(--accent);
   stroke-width: 2.5;
 }
 
@@ -405,10 +438,10 @@ html, body {
 
 .bracket-col-heading {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
   text-align: center;
   padding-bottom: 0.6rem;
 }
@@ -420,9 +453,9 @@ html, body {
 
 .match {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-raised);
   font-size: 0.78rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
@@ -432,13 +465,13 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 0.4rem;
-  padding: 0.34rem 0.55rem;
+  padding: 0.36rem 0.6rem;
 }
 
-.match-team:first-child { border-bottom: 1px solid var(--line); }
+.match-team:first-child { border-bottom: 1px solid var(--border); }
 
-.match-winner { font-weight: 600; }
-.match-loser { color: var(--ink-soft); }
+.match-winner { font-weight: 700; }
+.match-loser { color: var(--text-muted); }
 .match-loser .team-cell { color: inherit; }
 
 .win-pct {
@@ -446,18 +479,14 @@ html, body {
   font-size: 0.68rem;
   color: var(--pos);
   flex: 0 0 auto;
+  font-weight: 700;
 }
 
 .match-highlight {
-  border-color: var(--trace);
-  box-shadow: 0 0 0 1px var(--trace);
-  background: color-mix(in srgb, var(--trace-soft) 55%, var(--paper));
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
 }
-
-/* Host-nation marker: small dot before the code, added via data attr in JS
-   would be more flexible, but we key off known host codes via :has() with
-   a fallback - simplicity favoured here, so this is applied by a class
-   added in JS if needed. Left as a hook for future refinement. */
 
 .bracket-champion-col {
   grid-auto-columns: 150px;
@@ -476,20 +505,20 @@ html, body {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  border: 2px solid var(--ink);
-  border-radius: 4px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
   padding: 1.1rem 0.6rem;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 0.95rem;
   text-align: center;
-  background: var(--paper);
+  background: var(--surface-raised);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .champion-card.match-highlight {
-  border-color: var(--trace);
-  background: var(--trace-soft);
-  box-shadow: 0 0 0 1px var(--trace);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .trophy { font-size: 1.6rem; }
@@ -498,21 +527,22 @@ html, body {
 
 .footnote {
   margin-top: 1.75rem;
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-  line-height: 1.55;
-  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  border-top: 1px solid var(--border);
   padding-top: 1.25rem;
 }
 
 .footnote p { margin: 0 0 0.6rem; }
-.footnote a { color: var(--ink-soft); text-decoration: underline; }
+.footnote a { color: var(--accent); text-decoration: none; }
+.footnote a:hover { text-decoration: underline; }
 .footnote code {
   font-family: var(--font-mono);
   font-size: 0.85em;
-  background: var(--line);
+  background: var(--surface-raised);
   padding: 0.05rem 0.3rem;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 /* ---------------- Loading / errors ---------------- */
@@ -520,7 +550,7 @@ html, body {
 .loading-row, .error-row {
   text-align: center;
   padding: 2rem 1rem;
-  color: var(--ink-soft);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 0.85rem;
 }
@@ -534,10 +564,12 @@ html, body {
     grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
     gap: 0.6rem;
   }
-  .group-card-header h3 { font-size: 0.95rem; }
-  .group-table { font-size: 0.74rem; }
-  .elo-col { width: 4.5em; }
-  .masthead-top h1 { font-size: 2rem; }
+  .group-card-header h3 { font-size: 0.9rem; }
+  .group-table { font-size: 0.78rem; }
+  .group-table td { padding: 0.45rem 0.55rem; }
+  .elo-col { width: 2.8em; }
+  .masthead-top h1 { font-size: 1.5rem; }
+  .confidence-ring { width: 32px; height: 32px; }
 }
 
 /* ---------------- Reduced motion ---------------- */
@@ -555,7 +587,7 @@ html, body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 .legend-item {
@@ -570,16 +602,19 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.15rem;
+  font-family: var(--font-display);
+  font-weight: 800;
 }
 
 .legend-item p {
   margin: 0;
-  font-size: 0.82rem;
-  color: var(--ink-soft);
-  line-height: 1.4;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
-.legend-item a { color: var(--ink); text-decoration: underline; }
+.legend-item a { color: var(--accent); text-decoration: none; }
+.legend-item a:hover { text-decoration: underline; }
 
 .swatch {
   flex: 0 0 auto;
@@ -589,15 +624,16 @@ html, body {
   margin-top: 0.25rem;
 }
 
-.swatch-trace { background: var(--trace); }
+.swatch-trace, .swatch-accent { background: var(--accent); }
 .swatch-host { background: var(--host); }
 .swatch-pos { background: var(--pos); }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--paper-raised);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 table {
@@ -608,17 +644,17 @@ table {
 
 thead th {
   text-align: left;
-  font-weight: 600;
-  font-size: 0.72rem;
+  font-weight: 700;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
   padding: 0.7rem 0.8rem;
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
   position: sticky;
   top: 0;
-  background: var(--paper-raised);
+  background: var(--surface);
 }
 
 th.col-num, td.col-num {
@@ -631,7 +667,7 @@ th.sortable {
   user-select: none;
 }
 
-th.sortable:hover { color: var(--ink); }
+th.sortable:hover { color: var(--text); }
 
 th.sortable::after {
   content: '';
@@ -644,20 +680,26 @@ th.sorted-asc::after { content: '▲'; font-size: 0.6em; vertical-align: middle;
 th.sorted-desc::after { content: '▼'; font-size: 0.6em; vertical-align: middle; }
 
 tbody td {
-  padding: 0.55rem 0.8rem;
-  border-bottom: 1px solid var(--line);
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
 }
 
-tbody tr:hover { background: var(--trace-soft); }
+tbody tr:hover { background: var(--surface-raised); }
 
 td.col-team {
-  font-weight: 500;
+  font-weight: 600;
+}
+
+td.col-team .flag-icon {
+  margin-right: 0.4em;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 td.col-team .code {
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  color: var(--ink-soft);
+  color: var(--text-faint);
   margin-left: 0.4rem;
 }
 
@@ -665,14 +707,14 @@ td.col-team .code {
   display: inline-block;
   min-width: 1.8em;
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.rank-trace { color: var(--trace); }
+.rank-trace, .rank-accent { color: var(--accent); }
 .rank-host { color: var(--host); }
 
 .no-data {
-  color: var(--line);
+  color: var(--text-faint);
   font-style: italic;
 }
 
@@ -681,6 +723,6 @@ td.col-team .code {
 }
 
 .champion-cell {
-  font-weight: 700;
-  border-left: 2px solid var(--line);
+  font-weight: 800;
+  border-left: 2px solid var(--border);
 }
