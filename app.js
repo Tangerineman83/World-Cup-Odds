@@ -226,12 +226,22 @@
     bracket.innerHTML = '';
     const rounds = getRounds();
     const totalSlots = 16;
+    // Minimum height for one "slot unit" (= one R32 match's worth of vertical
+    // space). Without this, `repeat(16, 1fr)` forces every row track to the
+    // same height regardless of content, so a 2-row match box (.match has two
+    // .match-team rows, each ~1.6rem incl. padding -> ~54px total) overflows
+    // a 1fr R32 track and visually overlaps neighbouring matches/connectors.
+    // minmax(SLOT_MIN_HEIGHT, 1fr) guarantees every track is tall enough for
+    // an R32 box; larger-span rounds (R16=2 tracks, QF=4, ...) then get
+    // proportionally more room and center their single box within it.
+    const SLOT_MIN_HEIGHT = '68px';
+    const rowTemplate = `auto repeat(${totalSlots}, minmax(${SLOT_MIN_HEIGHT}, 1fr))`;
 
     rounds.forEach((round) => {
       const col = document.createElement('div');
       col.className = 'bracket-col';
       col.dataset.round = round.key;
-      col.style.gridTemplateRows = `auto repeat(${totalSlots}, 1fr)`;
+      col.style.gridTemplateRows = rowTemplate;
 
       const heading = document.createElement('div');
       heading.className = 'bracket-col-heading';
@@ -255,7 +265,7 @@
     // Champion column
     const champCol = document.createElement('div');
     champCol.className = 'bracket-col bracket-champion-col';
-    champCol.style.gridTemplateRows = `auto repeat(${totalSlots}, 1fr)`;
+    champCol.style.gridTemplateRows = rowTemplate;
     champCol.innerHTML = `
       <div class="bracket-col-heading" style="grid-row:1;grid-column:1;">Champion</div>
       <div class="bracket-slot champion-slot" style="grid-row: 2 / span ${totalSlots};">
