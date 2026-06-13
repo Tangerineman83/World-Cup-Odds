@@ -167,10 +167,6 @@ html, body {
   height: 38px;
 }
 
-.confidence-ring svg {
-  transform: rotate(-90deg);
-}
-
 .confidence-ring .ring-track {
   fill: none;
   stroke: var(--border);
@@ -189,17 +185,10 @@ html, body {
 .confidence-ring .ring-progress.conf-low { stroke: var(--neg); }
 
 .confidence-ring .ring-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  padding-top: 0.1em; /* optical correction: mono digits + % sit slightly high otherwise */
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text);
+  fill: var(--text);
 }
 
 .group-table {

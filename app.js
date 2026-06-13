@@ -39,8 +39,12 @@
     }
     const safeName = team.name.replace(/"/g, '&quot;');
     const flag = flagUrl(team.code);
+    // onerror: flagcdn occasionally fails a handful of concurrent requests on
+    // first load. Retry once via the non-retina (1x) URL; if that also fails,
+    // hide the broken-image icon and fall back to the placeholder background
+    // (this.outerHTML swap to a plain span keeps layout/spacing identical).
     const flagHtml = flag
-      ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="lazy">`
+      ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="lazy" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
       : `<span class="flag-icon"></span>`;
     return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}<span class="code">${team.code || ''}</span></button>`;
   }
@@ -56,12 +60,13 @@
     return `
       <div class="confidence-ring" title="How sure we are about this exact order: ${pctLabel}%">
         <svg width="38" height="38" viewBox="0 0 38 38">
-          <circle class="ring-track" cx="19" cy="19" r="${r}"></circle>
+          <circle class="ring-track" cx="19" cy="19" r="${r}" transform="rotate(-90 19 19)"></circle>
           <circle class="ring-progress ${tier}" cx="19" cy="19" r="${r}"
             stroke-dasharray="${circumference.toFixed(2)}"
-            stroke-dashoffset="${offset.toFixed(2)}"></circle>
+            stroke-dashoffset="${offset.toFixed(2)}"
+            transform="rotate(-90 19 19)"></circle>
+          <text class="ring-label" x="19" y="19" text-anchor="middle" dominant-baseline="central">${pctLabel}%</text>
         </svg>
-        <span class="ring-label">${pctLabel}%</span>
       </div>
     `;
   }
@@ -84,8 +89,10 @@
     `;
   }
 
-  // Computes each team's world ranking (1 = strongest) from their Elo-style
-  // rating, across all 48 teams in data.groups. Cached per data load.
+  // Each team's world ranking (1 = most likely to win the tournament),
+  // precomputed in scenario.json from predictions.json's pChampion - so this
+  // matches the ranking shown on the odds page, not raw rating. Falls back
+  // to an Elo-based rank only if worldRank is missing (e.g. older scenario.json).
   let cachedRankByName = null;
   function rankByName() {
     if (cachedRankByName) return cachedRankByName;
@@ -93,8 +100,12 @@
     for (const g of Object.values(data.groups)) {
       for (const t of g.order) all.push(t);
     }
-    all.sort((a, b) => b.elo - a.elo);
-    cachedRankByName = new Map(all.map((t, i) => [t.name, i + 1]));
+    if (all.every((t) => t.worldRank != null)) {
+      cachedRankByName = new Map(all.map((t) => [t.name, t.worldRank]));
+    } else {
+      all.sort((a, b) => b.elo - a.elo);
+      cachedRankByName = new Map(all.map((t, i) => [t.name, i + 1]));
+    }
     return cachedRankByName;
   }
 
@@ -126,7 +137,7 @@
             ${teamButton(team)}
             ${posBarHtml}
           </td>
-          <td class="elo-col"><span class="elo-num" title="Rating: ${Math.round(team.elo)}">#${rank}</span></td>
+          <td class="elo-col"><span class="elo-num" title="Ranked by chance of winning the tournament (rating: ${Math.round(team.elo)})">#${rank}</span></td>
         </tr>`;
       });
 

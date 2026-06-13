@@ -62,7 +62,7 @@
       tdTeam.className = 'col-team';
       const flag = flagUrl(row.code, 24);
       const flagHtml = flag
-        ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(row.code, 48)} 2x" alt="" loading="lazy">`
+        ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(row.code, 48)} 2x" alt="" loading="lazy" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
         : '';
       tdTeam.innerHTML = `<span class="team-name-wrap">${flagHtml}<span class="team-name">${row.name}</span><span class="code">${row.code || ''}</span></span>`;
 
