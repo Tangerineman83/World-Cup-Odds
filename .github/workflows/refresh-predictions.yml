@@ -1,1 +1,46 @@
+name: Refresh predictions
+
+# Re-fetches current Elo ratings from eloratings.net, re-runs the group/
+# bracket scenario and the Monte Carlo simulation, and commits the updated
+# scenario.json / predictions.json if anything changed.
+#
+# results.json (completed match results, used to lock in group standings)
+# is NOT touched by this workflow - update it manually as matches are played.
+
+on:
+  schedule:
+    # Every 6 hours during the tournament window (adjust as needed).
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run scenario (group tables + bracket)
+        run: node scripts/sim/runScenario.js
+
+      - name: Run simulation (full probability table)
+        run: node scripts/sim/runSimulation.js 20000
+
+      - name: Commit updated predictions if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scenario.json predictions.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Refresh predictions ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
 
