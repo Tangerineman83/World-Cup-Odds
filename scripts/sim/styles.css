@@ -194,6 +194,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 1;
+  padding-top: 0.1em; /* optical correction: mono digits + % sit slightly high otherwise */
   font-family: var(--font-mono);
   font-size: 0.62rem;
   font-weight: 700;
@@ -249,9 +251,13 @@ html, body {
   height: 100%;
 }
 
-.pp-seg-0 { background: var(--pos); }
-.pp-seg-1 { background: var(--host); }
-.pp-seg-2 { background: var(--text-faint); opacity: 0.7; }
+/* Distinct palette from the advance-status colours (green/amber/grey on
+   .pos-col) - this bar shows each team's OWN chance of finishing in each
+   position, a different concept, so uses shades of the accent teal instead
+   to avoid implying "green = advancing" for what might be their P(3rd). */
+.pp-seg-0 { background: var(--accent); }
+.pp-seg-1 { background: color-mix(in srgb, var(--accent) 65%, var(--text-faint)); }
+.pp-seg-2 { background: color-mix(in srgb, var(--accent) 35%, var(--text-faint)); }
 .pp-seg-3 { background: var(--border); }
 
 .pp-summary {
@@ -660,6 +666,8 @@ thead th {
 th.col-num, td.col-num {
   text-align: right;
   font-family: var(--font-mono);
+  width: 4.5em;
+  white-space: nowrap;
 }
 
 th.sortable {
@@ -688,10 +696,24 @@ tbody tr:hover { background: var(--surface-raised); }
 
 td.col-team {
   font-weight: 600;
+  min-width: 11em;
+}
+
+.team-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  white-space: nowrap;
+}
+
+.team-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 td.col-team .flag-icon {
-  margin-right: 0.4em;
+  margin-right: 0;
+  flex: 0 0 auto;
   display: inline-block;
   vertical-align: middle;
 }
@@ -700,7 +722,8 @@ td.col-team .code {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--text-faint);
-  margin-left: 0.4rem;
+  margin-left: 0.2rem;
+  flex: 0 0 auto;
 }
 
 .rank-pill {

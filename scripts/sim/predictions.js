@@ -31,6 +31,11 @@
     if (!currentData) return;
     const rows = [...currentData.teams];
 
+    // World ranking (1 = strongest) based on rating, computed once across
+    // the full unsorted list so it doesn't change as the table is re-sorted.
+    const byRating = [...currentData.teams].sort((a, b) => b.eloRating - a.eloRating);
+    const rankByName = new Map(byRating.map((t, i) => [t.name, i + 1]));
+
     rows.sort((a, b) => {
       let av = a[sortKey];
       let bv = b[sortKey];
@@ -59,17 +64,18 @@
       const flagHtml = flag
         ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(row.code, 48)} 2x" alt="" loading="lazy">`
         : '';
-      tdTeam.innerHTML = `${flagHtml}${row.name}<span class="code">${row.code || ''}</span>`;
+      tdTeam.innerHTML = `<span class="team-name-wrap">${flagHtml}<span class="team-name">${row.name}</span><span class="code">${row.code || ''}</span></span>`;
 
       const tdGroup = document.createElement('td');
       tdGroup.className = 'col-num';
       tdGroup.textContent = row.group;
 
-      const tdElo = document.createElement('td');
-      tdElo.className = 'col-num';
-      tdElo.textContent = row.eloRating;
+      const tdRank = document.createElement('td');
+      tdRank.className = 'col-num';
+      tdRank.textContent = '#' + rankByName.get(row.name);
+      tdRank.title = `Rating: ${Math.round(row.eloRating)}`;
 
-      tr.append(tdTeam, tdGroup, tdElo);
+      tr.append(tdTeam, tdGroup, tdRank);
 
       const stageCols = [
         ['pGroupWinner', '--accent'],
