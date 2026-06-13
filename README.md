@@ -60,6 +60,27 @@ git push
 `node scripts/sim/runSimulation.js 50000`. Both pages cache-bust their JSON fetch
 with a timestamp query string, so refreshed files are picked up on next load.
 
+**Updating with live tournament results.** Edit `results.json` and add an entry for
+each completed group-stage match:
+
+```json
+{
+  "group": "A",
+  "home": "Mexico",
+  "away": "South Africa",
+  "homeGoals": 2,
+  "awayGoals": 0,
+  "date": "2026-06-11"
+}
+```
+
+Team names must exactly match the names used in `scripts/sim/tournament.js`'s
+`GROUPS`. On the next run of either script, each result is (a) applied directly to
+that group's standings - the fixture is excluded from simulation entirely - and (b)
+used to update both teams' Elo ratings via the standard World Cup Elo formula (see
+Methodology below), which then feeds into every subsequent match probability
+(remaining group fixtures and the whole knockout bracket).
+
 ## Methodology
 
 **Match probabilities.** Derived from each team's current
@@ -106,8 +127,38 @@ result landing on the modal outcome is small). `predictions.json` is the underly
 distribution and is the more statistically meaningful output for "what's the chance
 Brazil reaches the semis."
 
-**v1 limitation.** This is a pre-tournament-style baseline - results already played
-in the live tournament are not yet incorporated.
+**Live results & Elo updates.** Completed group-stage matches (tracked in
+`results.json`) are applied directly to group standings rather than simulated, and
+update both teams' Elo ratings using eloratings.net's own formula:
+
+```
+Elo_new = Elo_old + K * G * (W - We)
+```
+
+where K=60 (World Cup matches), G is a goal-difference weight (1 for a draw/1-goal
+margin, 1.5 for 2 goals, (11+N)/8 for N≥3 goals), W is the actual result (1/0.5/0 for
+win/draw/loss), and We is the pre-match expected result (including home advantage
+where applicable). Updated ratings then feed into every remaining fixture - both
+the rest of that team's group and the entire knockout bracket. See
+`scripts/sim/eloUpdate.js`.
+
+**Climate/altitude adjustment.** Group-stage matches include a small (±25 Elo-point)
+adjustment based on whether each team is "accustomed" (by federation/confederation)
+to the altitude or heat/humidity of that group's representative host venue - e.g.
+Andean CONMEBOL nations get a boost at Mexico City's altitude; CONCACAF
+Caribbean/Central American, West African, and Gulf/Asian teams get a boost at hot,
+humid venues, while less-acclimatised teams take a smaller penalty. Each group is
+assigned one representative venue (its most climatically distinctive host city,
+since groups actually play across 2-3 cities) - see `scripts/sim/venues.js` for the
+full venue table, team classifications, and an explicit caveat: **the adjustment
+size is a clearly-labelled judgement call, not a fitted parameter**, unlike Elo
+itself. Not applied to knockout matches, since venues there depend on the bracket
+outcome.
+
+**v1→v2 status.** Live results integration and the climate/altitude adjustment were
+added after the initial release (see above). Both are intentionally conservative -
+small Elo-equivalent effects layered on top of the core Elo model, clearly
+documented here and in each JSON output's `methodology` block.
 
 ## Disclaimer
 

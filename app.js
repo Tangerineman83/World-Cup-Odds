@@ -453,6 +453,15 @@
     metaUpdated.textContent = 'Scenario generated ' + d.toLocaleString(undefined, {
       dateStyle: 'medium', timeStyle: 'short',
     });
+
+    const metaResults = document.getElementById('meta-results');
+    const n = data.resultsApplied || 0;
+    if (n > 0) {
+      metaResults.textContent = `${n} live result${n === 1 ? '' : 's'} applied`;
+      metaResults.title = 'Completed group-stage matches are used directly (not simulated) and have updated the involved teams\' Elo ratings.';
+    } else {
+      metaResults.textContent = 'Pre-tournament baseline (no live results yet)';
+    }
   }
 
   function maxEloAcrossAllTeams() {

@@ -1,10 +1,13 @@
 {
-  "generatedAt": "2026-06-13T13:19:04.691Z",
+  "generatedAt": "2026-06-13T16:10:52.823Z",
+  "resultsApplied": 4,
   "methodology": {
     "groupOrdering": "modal (most frequent) full 1st-4th ordering across 5,000 group simulations per group",
     "thirdPlaceRanking": "approximate - thirds ranked by Elo as a proxy for points/GD/GF (not the official Annex C ranking process)",
     "bracketStructure": "official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 \"3rd-placed\" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup",
     "knockouts": "chalk bracket - at each match, the team with the higher combined win+penalty probability advances",
+    "liveResults": "4 completed group-stage result(s) as of 2026-06-13 are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).",
+    "climateAdjustment": "group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team's acclimatisation to that group's representative host-city altitude/heat profile. This is a clearly-labelled methodological judgement, not a fitted parameter - treat it as directional, not precise. Not applied to knockout matches (venue depends on bracket outcome).",
     "note": "This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations."
   },
   "groups": {
@@ -13,49 +16,49 @@
         {
           "name": "Mexico",
           "code": "MX",
-          "elo": 1881,
+          "elo": 1886.6382652308498,
           "positionProbabilities": [
-            0.7384,
-            0.209,
-            0.0482,
-            0.0044
+            0.8028,
+            0.1836,
+            0.0136,
+            0
           ]
         },
         {
           "name": "South Korea",
           "code": "KR",
-          "elo": 1786,
+          "elo": 1809.7052258795227,
           "positionProbabilities": [
-            0.179,
-            0.4476,
-            0.3006,
-            0.0728
+            0.1914,
+            0.7504,
+            0.0532,
+            0.005
           ]
         },
         {
           "name": "Czechia",
           "code": "CZ",
-          "elo": 1712,
+          "elo": 1688.2947741204773,
           "positionProbabilities": [
-            0.079,
-            0.2968,
-            0.4672,
-            0.157
+            0.005,
+            0.0476,
+            0.7266,
+            0.2208
           ]
         },
         {
           "name": "South Africa",
           "code": "ZA",
-          "elo": 1511,
+          "elo": 1505.3617347691502,
           "positionProbabilities": [
-            0.0036,
-            0.0466,
-            0.184,
-            0.7658
+            0.0008,
+            0.0184,
+            0.2066,
+            0.7742
           ]
         }
       ],
-      "probability": 0.3344
+      "probability": 0.5844
     },
     "B": {
       "order": [
@@ -64,32 +67,32 @@
           "code": "CH",
           "elo": 1891,
           "positionProbabilities": [
-            0.5166,
-            0.3818,
-            0.0958,
-            0.0058
+            0.6166,
+            0.2516,
+            0.1242,
+            0.0076
           ]
         },
         {
           "name": "Canada",
           "code": "CA",
-          "elo": 1767,
+          "elo": 1748.4475201508496,
           "positionProbabilities": [
-            0.4372,
-            0.4408,
-            0.1162,
-            0.0058
+            0.3002,
+            0.4416,
+            0.249,
+            0.0092
           ]
         },
         {
           "name": "Bosnia-Herzegovina",
           "code": "BA",
-          "elo": 1616,
+          "elo": 1634.5524798491504,
           "positionProbabilities": [
-            0.045,
-            0.1616,
-            0.604,
-            0.1894
+            0.0816,
+            0.2784,
+            0.5036,
+            0.1364
           ]
         },
         {
@@ -97,14 +100,14 @@
           "code": "QA",
           "elo": 1421,
           "positionProbabilities": [
-            0.0012,
-            0.0158,
-            0.184,
-            0.799
+            0.0016,
+            0.0284,
+            0.1232,
+            0.8468
           ]
         }
       ],
-      "probability": 0.3248
+      "probability": 0.3224
     },
     "C": {
       "order": [
@@ -113,10 +116,10 @@
           "code": "BR",
           "elo": 1991,
           "positionProbabilities": [
-            0.685,
-            0.2232,
-            0.0852,
-            0.0066
+            0.6832,
+            0.2246,
+            0.084,
+            0.0082
           ]
         },
         {
@@ -124,10 +127,10 @@
           "code": "MA",
           "elo": 1827,
           "positionProbabilities": [
-            0.1954,
-            0.4026,
-            0.322,
-            0.08
+            0.1958,
+            0.4062,
+            0.328,
+            0.07
           ]
         },
         {
@@ -135,10 +138,10 @@
           "code": "SQ",
           "elo": 1782,
           "positionProbabilities": [
-            0.1164,
-            0.3324,
-            0.4328,
-            0.1184
+            0.1184,
+            0.3282,
+            0.4244,
+            0.129
           ]
         },
         {
@@ -146,48 +149,37 @@
           "code": "HT",
           "elo": 1548,
           "positionProbabilities": [
-            0.0032,
-            0.0418,
-            0.16,
-            0.795
+            0.0026,
+            0.041,
+            0.1636,
+            0.7928
           ]
         }
       ],
-      "probability": 0.3024
+      "probability": 0.2924
     },
     "D": {
       "order": [
+        {
+          "name": "USA",
+          "code": "US",
+          "elo": 1817.7931750206972,
+          "positionProbabilities": [
+            0.6022,
+            0.3014,
+            0.0892,
+            0.0072
+          ]
+        },
         {
           "name": "Turkiye",
           "code": "TR",
           "elo": 1911,
           "positionProbabilities": [
-            0.4294,
-            0.2862,
-            0.181,
-            0.1034
-          ]
-        },
-        {
-          "name": "USA",
-          "code": "US",
-          "elo": 1780,
-          "positionProbabilities": [
-            0.3236,
-            0.3096,
-            0.2274,
-            0.1394
-          ]
-        },
-        {
-          "name": "Paraguay",
-          "code": "PY",
-          "elo": 1780,
-          "positionProbabilities": [
-            0.123,
-            0.2024,
-            0.3002,
-            0.3744
+            0.3138,
+            0.423,
+            0.192,
+            0.0712
           ]
         },
         {
@@ -195,14 +187,25 @@
           "code": "AU",
           "elo": 1777,
           "positionProbabilities": [
-            0.124,
-            0.2018,
-            0.2914,
-            0.3828
+            0.0758,
+            0.2048,
+            0.438,
+            0.2814
+          ]
+        },
+        {
+          "name": "Paraguay",
+          "code": "PY",
+          "elo": 1742.2068249793028,
+          "positionProbabilities": [
+            0.0082,
+            0.0708,
+            0.2808,
+            0.6402
           ]
         }
       ],
-      "probability": 0.108
+      "probability": 0.2538
     },
     "E": {
       "order": [
@@ -211,10 +214,10 @@
           "code": "EC",
           "elo": 1938,
           "positionProbabilities": [
-            0.4866,
-            0.3936,
-            0.1136,
-            0.0062
+            0.4644,
+            0.3874,
+            0.1406,
+            0.0076
           ]
         },
         {
@@ -222,10 +225,10 @@
           "code": "DE",
           "elo": 1932,
           "positionProbabilities": [
-            0.4568,
-            0.4202,
-            0.1176,
-            0.0054
+            0.4598,
+            0.3864,
+            0.1438,
+            0.01
           ]
         },
         {
@@ -233,10 +236,10 @@
           "code": "CI",
           "elo": 1695,
           "positionProbabilities": [
-            0.0564,
-            0.1742,
-            0.6258,
-            0.1436
+            0.0752,
+            0.2152,
+            0.592,
+            0.1176
           ]
         },
         {
@@ -244,14 +247,14 @@
           "code": "CW",
           "elo": 1434,
           "positionProbabilities": [
-            0.0002,
-            0.012,
-            0.143,
-            0.8448
+            0.0006,
+            0.011,
+            0.1236,
+            0.8648
           ]
         }
       ],
-      "probability": 0.3178
+      "probability": 0.297
     },
     "F": {
       "order": [
@@ -260,10 +263,10 @@
           "code": "NL",
           "elo": 1948,
           "positionProbabilities": [
-            0.5352,
-            0.331,
-            0.1092,
-            0.0246
+            0.4812,
+            0.3588,
+            0.1296,
+            0.0304
           ]
         },
         {
@@ -271,10 +274,10 @@
           "code": "JP",
           "elo": 1906,
           "positionProbabilities": [
-            0.3906,
-            0.4184,
-            0.1478,
-            0.0432
+            0.4564,
+            0.3898,
+            0.1186,
+            0.0352
           ]
         },
         {
@@ -282,10 +285,10 @@
           "code": "SE",
           "elo": 1712,
           "positionProbabilities": [
-            0.0536,
-            0.1714,
-            0.453,
-            0.322
+            0.0418,
+            0.1588,
+            0.418,
+            0.3814
           ]
         },
         {
@@ -294,13 +297,13 @@
           "elo": 1628,
           "positionProbabilities": [
             0.0206,
-            0.0792,
-            0.29,
-            0.6102
+            0.0926,
+            0.3338,
+            0.553
           ]
         }
       ],
-      "probability": 0.2422
+      "probability": 0.2024
     },
     "G": {
       "order": [
@@ -309,10 +312,10 @@
           "code": "BE",
           "elo": 1894,
           "positionProbabilities": [
-            0.624,
-            0.2538,
-            0.0996,
-            0.0226
+            0.6198,
+            0.2654,
+            0.0956,
+            0.0192
           ]
         },
         {
@@ -320,10 +323,10 @@
           "code": "IR",
           "elo": 1772,
           "positionProbabilities": [
-            0.2412,
-            0.3794,
-            0.2732,
-            0.1062
+            0.25,
+            0.3756,
+            0.2672,
+            0.1072
           ]
         },
         {
@@ -331,10 +334,10 @@
           "code": "EG",
           "elo": 1696,
           "positionProbabilities": [
-            0.1112,
-            0.2716,
-            0.3898,
-            0.2274
+            0.115,
+            0.2658,
+            0.3932,
+            0.226
           ]
         },
         {
@@ -342,14 +345,14 @@
           "code": "NZ",
           "elo": 1562,
           "positionProbabilities": [
-            0.0236,
-            0.0952,
-            0.2374,
-            0.6438
+            0.0152,
+            0.0932,
+            0.244,
+            0.6476
           ]
         }
       ],
-      "probability": 0.2264
+      "probability": 0.2272
     },
     "H": {
       "order": [
@@ -358,9 +361,9 @@
           "code": "ES",
           "elo": 2157,
           "positionProbabilities": [
-            0.8376,
-            0.1532,
-            0.0092,
+            0.8334,
+            0.1594,
+            0.0072,
             0
           ]
         },
@@ -369,10 +372,10 @@
           "code": "UY",
           "elo": 1892,
           "positionProbabilities": [
-            0.1522,
-            0.7016,
-            0.1212,
-            0.025
+            0.1578,
+            0.6964,
+            0.1174,
+            0.0284
           ]
         },
         {
@@ -380,10 +383,10 @@
           "code": "CV",
           "elo": 1578,
           "positionProbabilities": [
-            0.0036,
-            0.073,
-            0.4414,
-            0.482
+            0.0034,
+            0.0726,
+            0.4448,
+            0.4792
           ]
         },
         {
@@ -391,14 +394,14 @@
           "code": "SA",
           "elo": 1576,
           "positionProbabilities": [
-            0.0066,
-            0.0722,
-            0.4282,
-            0.493
+            0.0054,
+            0.0716,
+            0.4306,
+            0.4924
           ]
         }
       ],
-      "probability": 0.3578
+      "probability": 0.3548
     },
     "I": {
       "order": [
@@ -407,10 +410,10 @@
           "code": "FR",
           "elo": 2063,
           "positionProbabilities": [
-            0.6444,
-            0.2662,
-            0.0836,
-            0.0058
+            0.6632,
+            0.2498,
+            0.081,
+            0.006
           ]
         },
         {
@@ -418,10 +421,10 @@
           "code": "NO",
           "elo": 1914,
           "positionProbabilities": [
-            0.2258,
-            0.3846,
-            0.332,
-            0.0576
+            0.2078,
+            0.413,
+            0.3176,
+            0.0616
           ]
         },
         {
@@ -429,10 +432,10 @@
           "code": "SN",
           "elo": 1860,
           "positionProbabilities": [
-            0.1266,
-            0.3196,
-            0.4366,
-            0.1172
+            0.1262,
+            0.3082,
+            0.4544,
+            0.1112
           ]
         },
         {
@@ -440,14 +443,14 @@
           "code": "IQ",
           "elo": 1607,
           "positionProbabilities": [
-            0.0032,
-            0.0296,
-            0.1478,
-            0.8194
+            0.0028,
+            0.029,
+            0.147,
+            0.8212
           ]
         }
       ],
-      "probability": 0.2834
+      "probability": 0.307
     },
     "J": {
       "order": [
@@ -456,10 +459,10 @@
           "code": "AR",
           "elo": 2115,
           "positionProbabilities": [
-            0.8574,
-            0.1172,
-            0.0238,
-            0.0016
+            0.8306,
+            0.136,
+            0.0298,
+            0.0036
           ]
         },
         {
@@ -467,10 +470,10 @@
           "code": "AT",
           "elo": 1830,
           "positionProbabilities": [
-            0.088,
-            0.4352,
-            0.3162,
-            0.1606
+            0.0894,
+            0.3778,
+            0.327,
+            0.2058
           ]
         },
         {
@@ -478,10 +481,10 @@
           "code": "DZ",
           "elo": 1772,
           "positionProbabilities": [
-            0.0436,
-            0.302,
-            0.3786,
-            0.2758
+            0.0642,
+            0.335,
+            0.3566,
+            0.2442
           ]
         },
         {
@@ -489,14 +492,14 @@
           "code": "JO",
           "elo": 1680,
           "positionProbabilities": [
-            0.011,
-            0.1456,
-            0.2814,
-            0.562
+            0.0158,
+            0.1512,
+            0.2866,
+            0.5464
           ]
         }
       ],
-      "probability": 0.2664
+      "probability": 0.2334
     },
     "K": {
       "order": [
@@ -505,10 +508,10 @@
           "code": "PT",
           "elo": 1989,
           "positionProbabilities": [
-            0.4944,
-            0.4034,
-            0.0866,
-            0.0156
+            0.5,
+            0.391,
+            0.0916,
+            0.0174
           ]
         },
         {
@@ -516,10 +519,10 @@
           "code": "CO",
           "elo": 1982,
           "positionProbabilities": [
-            0.4648,
-            0.4162,
-            0.101,
-            0.018
+            0.4612,
+            0.4284,
+            0.093,
+            0.0174
           ]
         },
         {
@@ -527,10 +530,10 @@
           "code": "UZ",
           "elo": 1714,
           "positionProbabilities": [
-            0.0316,
-            0.1164,
-            0.47,
-            0.382
+            0.0282,
+            0.1192,
+            0.4668,
+            0.3858
           ]
         },
         {
@@ -538,14 +541,14 @@
           "code": "CD",
           "elo": 1652,
           "positionProbabilities": [
-            0.0092,
-            0.064,
-            0.3424,
-            0.5844
+            0.0106,
+            0.0614,
+            0.3486,
+            0.5794
           ]
         }
       ],
-      "probability": 0.2288
+      "probability": 0.2374
     },
     "L": {
       "order": [
@@ -554,10 +557,10 @@
           "code": "EN",
           "elo": 2024,
           "positionProbabilities": [
-            0.6454,
-            0.2892,
-            0.0612,
-            0.0042
+            0.6286,
+            0.301,
+            0.0672,
+            0.0032
           ]
         },
         {
@@ -565,10 +568,10 @@
           "code": "HR",
           "elo": 1912,
           "positionProbabilities": [
-            0.3104,
-            0.5038,
-            0.1696,
-            0.0162
+            0.315,
+            0.4922,
+            0.179,
+            0.0138
           ]
         },
         {
@@ -576,10 +579,10 @@
           "code": "PA",
           "elo": 1730,
           "positionProbabilities": [
-            0.0434,
-            0.1908,
-            0.592,
-            0.1738
+            0.0562,
+            0.1898,
+            0.5934,
+            0.1606
           ]
         },
         {
@@ -587,14 +590,14 @@
           "code": "GH",
           "elo": 1510,
           "positionProbabilities": [
-            0.0008,
-            0.0162,
-            0.1772,
-            0.8058
+            0.0002,
+            0.017,
+            0.1604,
+            0.8224
           ]
         }
       ],
-      "probability": 0.3816
+      "probability": 0.3738
     }
   },
   "bestThirds": [
@@ -611,9 +614,9 @@
       "group": "C"
     },
     {
-      "name": "Paraguay",
-      "code": "PY",
-      "elo": 1780,
+      "name": "Australia",
+      "code": "AU",
+      "elo": 1777,
       "group": "D"
     },
     {
@@ -641,10 +644,10 @@
       "group": "F"
     },
     {
-      "name": "Czechia",
-      "code": "CZ",
-      "elo": 1712,
-      "group": "A"
+      "name": "Egypt",
+      "code": "EG",
+      "elo": 1696,
+      "group": "G"
     }
   ],
   "r32": [
@@ -653,19 +656,19 @@
       "home": {
         "name": "South Korea",
         "code": "KR",
-        "elo": 1786
+        "elo": 1809.7052258795227
       },
       "away": {
         "name": "Canada",
         "code": "CA",
-        "elo": 1767
+        "elo": 1748.4475201508496
       },
       "winner": {
         "name": "Canada",
         "code": "CA",
-        "elo": 1767
+        "elo": 1748.4475201508496
       },
-      "pWin": 0.6133882644976301
+      "pWin": 0.5517408666731647
     },
     {
       "id": "M74",
@@ -732,16 +735,16 @@
         "elo": 2063
       },
       "away": {
-        "name": "Paraguay",
-        "code": "PY",
-        "elo": 1780
+        "name": "Australia",
+        "code": "AU",
+        "elo": 1777
       },
       "winner": {
         "name": "France",
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.845493549461414
+      "pWin": 0.8478212521695175
     },
     {
       "id": "M78",
@@ -767,7 +770,7 @@
       "home": {
         "name": "Mexico",
         "code": "MX",
-        "elo": 1881
+        "elo": 1886.6382652308498
       },
       "away": {
         "name": "Senegal",
@@ -777,9 +780,9 @@
       "winner": {
         "name": "Mexico",
         "code": "MX",
-        "elo": 1881
+        "elo": 1886.6382652308498
       },
-      "pWin": 0.6685915637120934
+      "pWin": 0.6760617305563364
     },
     {
       "id": "M80",
@@ -803,21 +806,21 @@
     {
       "id": "M81",
       "home": {
-        "name": "Turkiye",
-        "code": "TR",
-        "elo": 1911
+        "name": "USA",
+        "code": "US",
+        "elo": 1817.7931750206972
       },
       "away": {
-        "name": "Algeria",
-        "code": "DZ",
-        "elo": 1772
+        "name": "Sweden",
+        "code": "SE",
+        "elo": 1712
       },
       "winner": {
-        "name": "Turkiye",
-        "code": "TR",
-        "elo": 1911
+        "name": "USA",
+        "code": "US",
+        "elo": 1817.7931750206972
       },
-      "pWin": 0.6976130963280812
+      "pWin": 0.7711685369092406
     },
     {
       "id": "M82",
@@ -827,16 +830,16 @@
         "elo": 1894
       },
       "away": {
-        "name": "Czechia",
-        "code": "CZ",
-        "elo": 1712
+        "name": "Algeria",
+        "code": "DZ",
+        "elo": 1772
       },
       "winner": {
         "name": "Belgium",
         "code": "BE",
         "elo": 1894
       },
-      "pWin": 0.7498298530706606
+      "pWin": 0.6755024731159839
     },
     {
       "id": "M83",
@@ -884,16 +887,16 @@
         "elo": 1891
       },
       "away": {
-        "name": "Sweden",
-        "code": "SE",
-        "elo": 1712
+        "name": "Egypt",
+        "code": "EG",
+        "elo": 1696
       },
       "winner": {
         "name": "Switzerland",
         "code": "CH",
         "elo": 1891
       },
-      "pWin": 0.7463695002554976
+      "pWin": 0.7644956830974137
     },
     {
       "id": "M86",
@@ -936,9 +939,9 @@
     {
       "id": "M88",
       "home": {
-        "name": "USA",
-        "code": "US",
-        "elo": 1780
+        "name": "Turkiye",
+        "code": "TR",
+        "elo": 1911
       },
       "away": {
         "name": "Iran",
@@ -946,11 +949,11 @@
         "elo": 1772
       },
       "winner": {
-        "name": "USA",
-        "code": "US",
-        "elo": 1780
+        "name": "Turkiye",
+        "code": "TR",
+        "elo": 1911
       },
-      "pWin": 0.6510583741922868
+      "pWin": 0.6976130963280812
     }
   ],
   "r16": [
@@ -978,7 +981,7 @@
       "home": {
         "name": "Canada",
         "code": "CA",
-        "elo": 1767
+        "elo": 1748.4475201508496
       },
       "away": {
         "name": "Netherlands",
@@ -990,7 +993,7 @@
         "code": "NL",
         "elo": 1948
       },
-      "pWin": 0.6251050698758168
+      "pWin": 0.6509033621193833
     },
     {
       "id": "M91",
@@ -1016,7 +1019,7 @@
       "home": {
         "name": "Mexico",
         "code": "MX",
-        "elo": 1881
+        "elo": 1886.6382652308498
       },
       "away": {
         "name": "England",
@@ -1028,7 +1031,7 @@
         "code": "EN",
         "elo": 2024
       },
-      "pWin": 0.5703528119685123
+      "pWin": 0.562061347056866
     },
     {
       "id": "M93",
@@ -1052,9 +1055,9 @@
     {
       "id": "M94",
       "home": {
-        "name": "Turkiye",
-        "code": "TR",
-        "elo": 1911
+        "name": "USA",
+        "code": "US",
+        "elo": 1817.7931750206972
       },
       "away": {
         "name": "Belgium",
@@ -1062,11 +1065,11 @@
         "elo": 1894
       },
       "winner": {
-        "name": "Turkiye",
-        "code": "TR",
-        "elo": 1911
+        "name": "USA",
+        "code": "US",
+        "elo": 1817.7931750206972
       },
-      "pWin": 0.5255257034476464
+      "pWin": 0.5293882884230898
     },
     {
       "id": "M95",
@@ -1076,16 +1079,16 @@
         "elo": 2115
       },
       "away": {
-        "name": "USA",
-        "code": "US",
-        "elo": 1780
+        "name": "Turkiye",
+        "code": "TR",
+        "elo": 1911
       },
       "winner": {
         "name": "Argentina",
         "code": "AR",
         "elo": 2115
       },
-      "pWin": 0.8044719188928745
+      "pWin": 0.7741281681965244
     },
     {
       "id": "M96",
@@ -1135,16 +1138,16 @@
         "elo": 2157
       },
       "away": {
-        "name": "Turkiye",
-        "code": "TR",
-        "elo": 1911
+        "name": "USA",
+        "code": "US",
+        "elo": 1817.7931750206972
       },
       "winner": {
         "name": "Spain",
         "code": "ES",
         "elo": 2157
       },
-      "pWin": 0.8145091797664247
+      "pWin": 0.8083556762219068
     },
     {
       "id": "M99",
