@@ -24,6 +24,24 @@
     return `<button class="team-cell" data-team="${safeName}">${team.name}<span class="code">${team.code || ''}</span></button>`;
   }
 
+  // Renders a compact 4-segment stacked bar showing P(1st)/P(2nd)/P(3rd)/P(4th)
+  // for a team within its group, plus a text summary for screen readers /
+  // hover tooltips.
+  function positionProbBar(probs) {
+    const labels = ['1st', '2nd', '3rd', '4th'];
+    const segments = probs.map((p, i) => {
+      const pct = Math.max(0, p * 100);
+      return `<span class="pp-seg pp-seg-${i}" style="width:${pct.toFixed(1)}%" title="${labels[i]}: ${pct.toFixed(0)}%"></span>`;
+    }).join('');
+
+    const summary = probs.map((p, i) => `${labels[i]} ${(p * 100).toFixed(0)}%`).join(' · ');
+
+    return `
+      <div class="pp-bar" role="img" aria-label="Finishing position probabilities: ${summary}">${segments}</div>
+      <div class="pp-summary">${summary}</div>
+    `;
+  }
+
   function renderGroups(maxElo) {
     groupsGrid.innerHTML = '';
     for (const letter of GROUP_ORDER) {
@@ -45,10 +63,15 @@
         else rowClass = 'eliminated';
 
         const barPct = Math.max(4, Math.round((team.elo / maxElo) * 100));
+        const posProbs = team.positionProbabilities || [0, 0, 0, 0];
+        const posBarHtml = positionProbBar(posProbs);
 
         rows += `<tr class="${rowClass}" data-team="${team.name}">
           <td class="pos-col">${posLabel}</td>
-          <td class="team-col">${teamButton(team)}</td>
+          <td class="team-col">
+            ${teamButton(team)}
+            ${posBarHtml}
+          </td>
           <td class="elo-col">
             <span class="elo-bar-wrap"><span class="elo-bar" style="width:${barPct}%"></span></span>
             <span class="elo-num">${team.elo}</span>

@@ -24,8 +24,11 @@
       <p>
         <span class="hint-pill">Tap any team</span> to trace its predicted route through the
         whole tournament — group table, every knockout match, and (if applicable) the final.
-        Each group table shows the modal finishing order; the percentage is how often that
-        exact order occurred across simulations, so lower numbers mean a tighter group.
+        Each group table shows the modal finishing order; the badge percentage is how often
+        that exact 1st-4th order occurred across simulations, so lower numbers mean a tighter,
+        less predictable group. The small bar under each team's name breaks down their own
+        chances of finishing 1st/2nd/3rd/4th (green → host-tone → grey → light grey) —
+        hover or tap a segment for the exact percentage.
       </p>
     </section>
 
@@ -52,11 +55,16 @@
         <strong>How this scenario is built.</strong> For each group, 5,000 simulations are run
         (using the Elo-based win/draw/loss model with the +100 home-advantage convention for
         co-hosts USA, Canada, and Mexico); the most frequently occurring full 1st-4th order is
-        used as that group's "predicted" result. The eight best third-placed teams are then
-        ranked (using Elo as a proxy for points/goal difference - an approximation of the
-        official process) and placed into the Round of 32 using a simplified bracket mapping.
-        From the Round of 32 onward, the higher-rated team (including penalty-shootout odds for
-        drawn knockout matches) is taken as the winner at each stage.
+        used as that group's "predicted" result, and shown as the badge percentage. Each team's
+        individual probability of finishing 1st/2nd/3rd/4th (the small bar under their name) is
+        drawn from the same 5,000 runs - in tight groups these can be much more informative
+        than the single headline percentage, since a low overall-order probability often hides
+        two or three teams with genuinely similar individual chances. The eight best
+        third-placed teams are then ranked (using Elo as a proxy for points/goal difference - an
+        approximation of the official process) and placed into the Round of 32 using a
+        simplified bracket mapping. From the Round of 32 onward, the higher-rated team
+        (including penalty-shootout odds for drawn knockout matches) is taken as the winner at
+        each stage.
       </p>
       <p>
         This is <strong>one representative scenario</strong>, not a forecast with a stated
