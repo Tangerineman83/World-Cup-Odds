@@ -1,13 +1,10 @@
 {
-  "name": "elo-odds-compare",
+  "name": "elo-odds-compare-static",
   "version": "1.0.0",
-  "description": "Live comparison of World Football Elo Ratings vs. prediction-market implied rankings for the 2026 FIFA World Cup",
-  "main": "server/index.js",
+  "description": "Static GitHub Pages site comparing World Football Elo Ratings vs. prediction-market implied rankings for the 2026 FIFA World Cup",
+  "private": true,
   "scripts": {
-    "start": "node server/index.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
+    "build-data": "node scripts/build-data.js"
   },
   "engines": {
     "node": ">=18"

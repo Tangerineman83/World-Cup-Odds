@@ -1,0 +1,258 @@
+/* ---------------------------------------------------------------
+   Token system
+   Color: research-note palette — paper white, ink, two muted
+   data-series colors (teal for Elo, amber for market), and a
+   restrained signal red/green only for the diff column.
+   Type: a slab/serif display for the masthead (analytical,
+   editorial), a clean grotesque for body/UI, and a monospace
+   for all numeric data so columns align like a ledger.
+   ----------------------------------------------------------------*/
+
+:root {
+  --paper: #f7f5f1;
+  --ink: #1c1b19;
+  --ink-soft: #5b5750;
+  --line: #d8d3c8;
+  --elo: #2f6f6a;       /* muted teal */
+  --odds: #b5742a;      /* muted amber/ochre */
+  --pos: #2f6f4f;       /* diff positive (market more bullish) */
+  --neg: #a8432f;       /* diff negative (elo more bullish) */
+  --row-hover: #eee9e0;
+
+  --font-display: "Source Serif Pro", "Iowan Old Style", "Georgia", serif;
+  --font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+/* ---------------- Masthead ---------------- */
+
+.masthead {
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.masthead-top h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.1rem, 6vw, 3.1rem);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+
+.masthead-top h1 .vs {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-soft);
+  font-size: 0.7em;
+}
+
+.subtitle {
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  max-width: 38em;
+}
+
+.meta-bar {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+}
+
+.meta-sep { color: var(--line); }
+
+/* ---------------- Legend ---------------- */
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.legend-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.legend-item strong {
+  display: block;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+
+.legend-item p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.legend-item a { color: var(--ink); text-decoration: underline; }
+
+.swatch {
+  flex: 0 0 auto;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  margin-top: 0.25rem;
+}
+
+.swatch-elo { background: var(--elo); }
+.swatch-odds { background: var(--odds); }
+.swatch-diff {
+  background: linear-gradient(135deg, var(--neg) 50%, var(--pos) 50%);
+}
+
+/* ---------------- Table ---------------- */
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fffdfa;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  padding: 0.7rem 0.8rem;
+  border-bottom: 2px solid var(--ink);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #fffdfa;
+}
+
+th.col-num, td.col-num {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover { color: var(--ink); }
+
+th.sortable::after {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  margin-left: 0.2em;
+}
+
+th.sorted-asc::after { content: '▲'; font-size: 0.6em; vertical-align: middle; }
+th.sorted-desc::after { content: '▼'; font-size: 0.6em; vertical-align: middle; }
+
+tbody td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+tbody tr:hover { background: var(--row-hover); }
+
+td.col-team {
+  font-weight: 500;
+}
+
+td.col-team .code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-left: 0.4rem;
+}
+
+.rank-pill {
+  display: inline-block;
+  min-width: 1.8em;
+  text-align: center;
+  font-weight: 600;
+}
+
+.rank-elo { color: var(--elo); }
+.rank-odds { color: var(--odds); }
+
+.diff-pos { color: var(--pos); font-weight: 600; }
+.diff-neg { color: var(--neg); font-weight: 600; }
+.diff-zero { color: var(--ink-soft); }
+
+.no-data {
+  color: var(--line);
+  font-style: italic;
+}
+
+.loading-row, .error-row {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.error-row { color: var(--neg); }
+
+/* ---------------- Footnote ---------------- */
+
+.footnote {
+  margin-top: 1.75rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
+.footnote p { margin: 0 0 0.6rem; }
+.footnote a { color: var(--ink-soft); text-decoration: underline; }
+
+/* ---------------- Responsive ---------------- */
+
+@media (max-width: 600px) {
+  thead th, tbody td { padding: 0.45rem 0.5rem; font-size: 0.78rem; }
+  .masthead-top h1 { font-size: 2rem; }
+}
+
+/* ---------------- Reduced motion ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
