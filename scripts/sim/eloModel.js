@@ -32,10 +32,14 @@ function drawProbability(dr) {
 }
 
 // Returns { pWin, pDraw, pLoss } for the team on the "home" side of dr.
-// dr = (homeElo + homeAdvantage) - awayElo, i.e. already adjusted.
+// dr = (homeElo + homeAdvantage + climateAdj) - awayElo, i.e. already adjusted.
+// climateAdj: optional Elo-equivalent adjustment (home team's climate
+// adjustment minus away team's, both from venues.js::climateAdjustment) -
+// captures altitude/heat acclimatisation effects. Small relative to
+// HOME_ADVANTAGE; see venues.js for details and caveats.
 // Constraints: pWin + 0.5*pDraw = We(dr), and pWin + pDraw + pLoss = 1.
-function matchProbabilities(homeElo, awayElo, { neutralVenue = false } = {}) {
-  const dr = (homeElo + (neutralVenue ? 0 : HOME_ADVANTAGE)) - awayElo;
+function matchProbabilities(homeElo, awayElo, { neutralVenue = false, climateAdj = 0 } = {}) {
+  const dr = (homeElo + (neutralVenue ? 0 : HOME_ADVANTAGE) + climateAdj) - awayElo;
   const we = expectedResult(dr);
   const pDraw = drawProbability(dr);
   let pWin = we - pDraw / 2;

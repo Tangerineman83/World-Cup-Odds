@@ -81,16 +81,21 @@ function resolveRoundOf32(groupStandings) {
 }
 
 // Runs one full tournament simulation. teamsByName: Map of team name -> { elo }.
-// rand: PRNG returning [0,1).
+// rand: PRNG returning [0,1). knownByGroup: optional Map of group letter ->
+// completed fixtures (see resultsSource.js), passed through to simulateGroup
+// so completed group-stage results are used directly rather than simulated.
 //
 // Returns a structure keyed by official FIFA match ids (M73-M104), plus
 // convenience round arrays (r32, r16, qf, sf) and `final`/`thirdPlacePlayoff`.
-function simulateTournament(teamsByName, rand) {
+function simulateTournament(teamsByName, rand, knownByGroup = new Map()) {
   const groupStandings = {};
 
   for (const [letter, names] of Object.entries(GROUPS)) {
     const teams = names.map((name) => ({ name, elo: teamsByName.get(name).elo }));
-    groupStandings[letter] = simulateGroup(teams, null, rand);
+    groupStandings[letter] = simulateGroup(teams, null, rand, {
+      knownResults: knownByGroup.get(letter) || [],
+      groupLetter: letter,
+    });
   }
 
   const r32Matches = resolveRoundOf32(groupStandings);

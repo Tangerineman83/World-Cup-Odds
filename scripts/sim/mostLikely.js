@@ -34,7 +34,13 @@ function mulberry32(seed) {
 // Runs N group simulations and returns:
 //  - the modal 1st-4th ordering (by team name) and its probability
 //  - for each team, the probability of finishing in each position (1st-4th)
-function modalGroupOrdering(teams, N = 5000) {
+//
+// options:
+//   - knownResults: array of completed fixtures for this group (see
+//     groupStage.js::simulateGroup), applied directly rather than simulated.
+//   - groupLetter: this group's letter, used for the climate adjustment
+//     (see venues.js). Optional - omit to skip climate adjustment.
+function modalGroupOrdering(teams, N = 5000, options = {}) {
   const orderingCounts = new Map(); // key = "team1|team2|team3|team4" -> count
   const positionCounts = new Map(); // team name -> [count1st, count2nd, count3rd, count4th]
 
@@ -42,7 +48,7 @@ function modalGroupOrdering(teams, N = 5000) {
 
   for (let i = 0; i < N; i++) {
     const rand = mulberry32((Math.random() * 2 ** 31) | 0);
-    const standings = simulateGroup(teams, null, rand);
+    const standings = simulateGroup(teams, null, rand, options);
     const key = standings.map((s) => s.name).join('|');
     orderingCounts.set(key, (orderingCounts.get(key) || 0) + 1);
 
@@ -95,12 +101,18 @@ function chalkWinner(teamA, teamB) {
 }
 
 // Main entry point. teamsByName: Map of team name -> { name, elo }.
-function computeMostLikelyScenario(teamsByName) {
+// knownByGroup: optional Map of group letter -> array of completed fixtures
+// (see resultsSource.js), passed through to modalGroupOrdering/simulateGroup
+// so completed group-stage results are used directly rather than simulated.
+function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
   const groupResults = {}; // letter -> { order, probability, positionProbabilities, fourth }
 
   for (const [letter, names] of Object.entries(GROUPS)) {
     const teams = names.map((name) => ({ name, elo: teamsByName.get(name).elo }));
-    groupResults[letter] = modalGroupOrdering(teams);
+    groupResults[letter] = modalGroupOrdering(teams, 5000, {
+      knownResults: knownByGroup.get(letter) || [],
+      groupLetter: letter,
+    });
   }
 
   const winners = {};

@@ -1,5 +1,6 @@
 const { matchProbabilities } = require('./eloModel');
 const { HOST_NATIONS } = require('./tournament');
+const { climateAdjustment, GROUP_VENUE } = require('./venues');
 
 // Plays a single match probabilistically given win/draw/loss probabilities
 // and a random number in [0,1). Returns 'home' | 'draw' | 'away'.
@@ -28,24 +29,64 @@ function poissonSample(lambda, rand) {
   return k - 1;
 }
 
+// Builds a lookup key for a fixture, order-independent (so a known result
+// for "A vs B" matches a simulated pairing generated as either A-v-B or
+// B-v-A).
+function fixtureKey(nameA, nameB) {
+  return [nameA, nameB].sort().join('|');
+}
+
 // Simulates a group of 4 teams (round-robin, 6 matches).
 // teams: array of { name, elo }
 // hostTeam: name of the host nation in this group, or null
 // rand: function returning a fresh random number in [0,1) each call
+// options:
+//   - knownResults: array of { home, away, homeGoals, awayGoals } for
+//     fixtures already played. These are applied directly (not simulated);
+//     only the remaining fixtures are simulated. Team names must match
+//     `teams[].name`.
+//   - groupLetter: used to look up this group's representative venue for the
+//     climate adjustment (see venues.js). If omitted, no climate adjustment
+//     is applied.
 //
 // Returns array of standings rows sorted 1st-4th:
 // { name, elo, points, gf, ga, gd, wins, draws, losses }
-function simulateGroup(teams, hostTeam, rand) {
+function simulateGroup(teams, hostTeam, rand, options = {}) {
+  const { knownResults = [], groupLetter = null } = options;
+
   const stats = {};
   for (const t of teams) {
     stats[t.name] = { name: t.name, elo: t.elo, points: 0, gf: 0, ga: 0, gd: 0, wins: 0, draws: 0, losses: 0 };
   }
+
+  const knownByFixture = new Map();
+  for (const r of knownResults) {
+    knownByFixture.set(fixtureKey(r.home, r.away), r);
+  }
+
+  const venueName = groupLetter ? GROUP_VENUE[groupLetter] : null;
 
   // All 6 round-robin pairings
   for (let i = 0; i < teams.length; i++) {
     for (let j = i + 1; j < teams.length; j++) {
       const home = teams[i];
       const away = teams[j];
+
+      const known = knownByFixture.get(fixtureKey(home.name, away.name));
+      if (known) {
+        // Apply the actual result directly - no simulation for this fixture.
+        // known.home/away may be in either order relative to home/away here;
+        // normalise so scoreA/scoreB line up with home/away.
+        let scoreA, scoreB;
+        if (known.home === home.name) {
+          scoreA = known.homeGoals; scoreB = known.awayGoals;
+        } else {
+          scoreA = known.awayGoals; scoreB = known.homeGoals;
+        }
+        const resultForA = scoreA > scoreB ? 'home' : scoreA < scoreB ? 'away' : 'draw';
+        applyResult(stats[home.name], stats[away.name], scoreA, scoreB, resultForA);
+        continue;
+      }
 
       // Neutral venue unless one side is the group's host nation
       const neutralVenue = !(HOST_NATIONS.has(home.name) || HOST_NATIONS.has(away.name));
@@ -55,7 +96,15 @@ function simulateGroup(teams, hostTeam, rand) {
         effHome = away; effAway = home; swapped = true;
       }
 
-      const { pWin, pDraw } = matchProbabilities(effHome.elo, effAway.elo, { neutralVenue });
+      // Climate adjustment (group-stage only): difference between the two
+      // teams' acclimatisation profiles at this group's representative venue.
+      // See venues.js for methodology and caveats.
+      let climateAdj = 0;
+      if (venueName) {
+        climateAdj = climateAdjustment(effHome.name, venueName) - climateAdjustment(effAway.name, venueName);
+      }
+
+      const { pWin, pDraw } = matchProbabilities(effHome.elo, effAway.elo, { neutralVenue, climateAdj });
       const outcome = playMatch(pWin, pDraw, rand());
 
       // Goal simulation: base expected goals scaled by win probability

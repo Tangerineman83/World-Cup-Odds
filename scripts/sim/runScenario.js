@@ -9,6 +9,7 @@ const path = require('path');
 const { getEloRatings } = require('../eloSource');
 const { GROUPS } = require('./tournament');
 const { computeMostLikelyScenario } = require('./mostLikely');
+const { applyKnownResults } = require('./resultsSource');
 
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario.json');
 
@@ -50,8 +51,19 @@ function cleanMatch(m, codeOf) {
     allTeams.map((name) => [name, { name, elo: eloByName.get(name) ?? 1400 }])
   );
 
+  console.log('Applying completed match results...');
+  const { eloChanges, knownByGroup, resultsCount, lastUpdated } = applyKnownResults(teamsByName);
+  if (resultsCount > 0) {
+    console.log(`  Applied ${resultsCount} result(s) (results.json last updated ${lastUpdated}):`);
+    for (const c of eloChanges) {
+      console.log(`    ${c.home} ${c.homeGoals}-${c.awayGoals} ${c.away}: ${c.home} ${c.homeEloChange >= 0 ? '+' : ''}${c.homeEloChange.toFixed(1)}, ${c.away} ${c.awayEloChange >= 0 ? '+' : ''}${c.awayEloChange.toFixed(1)}`);
+    }
+  } else {
+    console.log('  No completed results found (results.json empty or missing).');
+  }
+
   console.log('Computing most-likely scenario...');
-  const scenario = computeMostLikelyScenario(teamsByName);
+  const scenario = computeMostLikelyScenario(teamsByName, knownByGroup);
 
   const groups = {};
   for (const [letter, g] of Object.entries(scenario.groups)) {
@@ -68,11 +80,16 @@ function cleanMatch(m, codeOf) {
 
   const output = {
     generatedAt: new Date().toISOString(),
+    resultsApplied: resultsCount,
     methodology: {
       groupOrdering: 'modal (most frequent) full 1st-4th ordering across 5,000 group simulations per group',
       thirdPlaceRanking: 'approximate - thirds ranked by Elo as a proxy for points/GD/GF (not the official Annex C ranking process)',
       bracketStructure: 'official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 "3rd-placed" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup',
       knockouts: 'chalk bracket - at each match, the team with the higher combined win+penalty probability advances',
+      liveResults: resultsCount > 0
+        ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).`
+        : 'No completed results applied yet - all ratings are the pre-tournament Elo snapshot.',
+      climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. This is a clearly-labelled methodological judgement, not a fitted parameter - treat it as directional, not precise. Not applied to knockout matches (venue depends on bracket outcome).',
       note: 'This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations.',
     },
     groups,

@@ -9,6 +9,7 @@ const path = require('path');
 const { getEloRatings } = require('../eloSource');
 const { GROUPS } = require('./tournament');
 const { simulateTournament } = require('./simulateTournament');
+const { applyKnownResults } = require('./resultsSource');
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
@@ -41,6 +42,14 @@ function mulberry32(seed) {
     allTeams.map((name) => [name, { name, elo: eloByName.get(name) ?? 1400 }])
   );
 
+  console.log('Applying completed match results...');
+  const { eloChanges, knownByGroup, resultsCount, lastUpdated } = applyKnownResults(teamsByName);
+  if (resultsCount > 0) {
+    console.log(`  Applied ${resultsCount} result(s), updating Elo ratings (results.json last updated ${lastUpdated}).`);
+  } else {
+    console.log('  No completed results found (results.json empty or missing).');
+  }
+
   // Aggregation counters
   const stageCounts = new Map(); // team -> { groupWin, r16, qf, sf, final, champion }
   for (const name of allTeams) {
@@ -52,7 +61,7 @@ function mulberry32(seed) {
 
   for (let i = 0; i < N_SIMULATIONS; i++) {
     const rand = mulberry32((Math.random() * 2 ** 31) | 0);
-    const result = simulateTournament(teamsByName, rand);
+    const result = simulateTournament(teamsByName, rand, knownByGroup);
 
     // Group-stage outcomes
     for (const standings of Object.values(result.groupStandings)) {
@@ -123,6 +132,10 @@ function mulberry32(seed) {
       drawModel: 'empirical (base 26% at parity, floor 12% for large gaps)',
       thirdPlaceAndBracket: 'simplified approximation of FIFA Annex C; not the official 495-scenario mapping',
       knockoutTies: 'extra time/penalties treated as draw-probability mass resolved ~50/50 with a small Elo-based tilt',
+      liveResults: resultsCount > 0
+        ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated) in every simulation run, and have updated each involved team's Elo rating (eloRating below) using the standard World Cup Elo formula (K=60, goal-difference weighted).`
+        : 'No completed results applied yet - eloRating values are the pre-tournament Elo snapshot.',
+      climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
     },
     teams,
   };
