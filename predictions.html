@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Predictions — World Cup 2026</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="masthead-top">
+        <h1>Tournament <span class="vs">predictions</span></h1>
+        <p class="subtitle">Elo-based Monte Carlo simulation of the 2026 FIFA World Cup — probability of reaching each stage, for all 48 teams.</p>
+      </div>
+      <div class="meta-bar" id="meta-bar">
+        <span id="meta-updated">Loading…</span>
+        <span class="meta-sep">·</span>
+        <span id="meta-sims"></span>
+        <span class="meta-sep">·</span>
+        <a href="index.html">← Elo vs. Market</a>
+      </div>
+    </header>
+
+    <section class="legend">
+      <div class="legend-item">
+        <span class="swatch swatch-elo"></span>
+        <div>
+          <strong>How it works</strong>
+          <p>Each team's current <a href="https://www.eloratings.net" target="_blank" rel="noopener">Elo rating</a> is converted to win/draw/loss probabilities for every possible match (home advantage +100 Elo for co-hosts USA, Canada, Mexico). The full 104-match tournament is simulated 20,000 times; the table shows how often each team reaches each stage.</p>
+        </div>
+      </div>
+      <div class="legend-item">
+        <span class="swatch swatch-odds"></span>
+        <div>
+          <strong>What's simplified</strong>
+          <p>The Round-of-32 placement of the 8 best third-placed teams uses an approximate mapping, not FIFA's official 495-scenario "Annex C" table. Results already played are not yet factored in — this is a pre-tournament-style baseline.</p>
+        </div>
+      </div>
+      <div class="legend-item">
+        <span class="swatch swatch-diff"></span>
+        <div>
+          <strong>Reading the columns</strong>
+          <p>R32 / R16 / QF / SF / F / Champion are cumulative probabilities of <em>reaching</em> that stage (Champion = winning the final). 1st / 2nd are probabilities of finishing top or second in the group.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-wrap">
+      <table id="predictions-table">
+        <thead>
+          <tr>
+            <th data-key="name" class="col-team sortable">Team</th>
+            <th data-key="group" class="col-num sortable">Grp</th>
+            <th data-key="eloRating" class="col-num sortable">Elo</th>
+            <th data-key="pGroupWinner" class="col-num sortable">1st</th>
+            <th data-key="pRunnerUp" class="col-num sortable">2nd</th>
+            <th data-key="pRoundOf32" class="col-num sortable">R32</th>
+            <th data-key="pRoundOf16" class="col-num sortable">R16</th>
+            <th data-key="pQuarterFinal" class="col-num sortable">QF</th>
+            <th data-key="pSemiFinal" class="col-num sortable">SF</th>
+            <th data-key="pFinal" class="col-num sortable">Final</th>
+            <th data-key="pChampion" class="col-num sortable sorted-desc">Champion</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="11" class="loading-row">Loading predictions.json…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="footnote">
+      <p>
+        <strong>Methodology.</strong> Match outcomes are drawn from the
+        <a href="https://en.wikipedia.org/wiki/World_Football_Elo_Ratings" target="_blank" rel="noopener">eloratings.net expected-result formula</a>
+        (dr = rating difference, +100 for the home/host side; We = 1 / (10^(−dr/400) + 1)), split into
+        win/draw/loss probabilities via an empirical draw model (≈26% draw probability for evenly matched
+        teams, falling to a floor of ≈12% for lopsided ones). Knockout draws are resolved via extra
+        time/penalties, modelled as roughly a coin flip with a small tilt toward the higher-rated side.
+        Group-stage goal differences (used for tiebreaks) are sampled from Poisson distributions calibrated
+        to each match's win probability.
+      </p>
+      <p>
+        Co-host nations (USA, Canada, Mexico) receive the +100 home-advantage adjustment in every match they
+        play, including knockout rounds — this is a deliberate modelling choice (consistent with the
+        eloratings.net convention) and is one reason host-nation probabilities here may sit above
+        prediction-market implied probabilities; see the <a href="index.html">Elo vs. Market</a> comparison.
+      </p>
+      <p>
+        This is an independent, simplified simulation for illustrative purposes — not an official forecast.
+        Regenerate via <code>node scripts/sim/runSimulation.js</code> and commit the updated
+        <code>predictions.json</code>.
+      </p>
+    </footer>
+  </div>
+
+<script src="predictions.js"></script>
+</body>
+</html>
