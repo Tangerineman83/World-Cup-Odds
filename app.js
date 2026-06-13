@@ -247,7 +247,7 @@
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', pathBetween(matchEls.final[0], championCardEl));
       path.setAttribute('class', 'connector');
-      path.dataset.from = 'F';
+      path.dataset.from = data.final.id;
       path.dataset.to = 'champion';
       path.dataset.fromRound = 'final';
       svg.appendChild(path);

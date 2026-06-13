@@ -80,8 +80,16 @@ difference, then goals scored; goal differences are sampled from Poisson
 distributions calibrated to each match's win probability (for tiebreak purposes only).
 
 **Round of 32.** Top 2 from each group plus the 8 best third-placed teams advance.
-The bracket placement of the 8 thirds uses a **simplified approximation** of FIFA's
-official 495-scenario "Annex C" table.
+The bracket uses the **official FIFA Round of 32 structure** (Matches 73-88, per the
+2026 tournament regulations / [Wikipedia: 2026 FIFA World Cup knockout
+stage](https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage)). The 8
+"3rd-placed" slots are filled by a backtracking search that assigns each qualifying
+third-place team to a slot whose eligible-groups set includes that team's group -
+guaranteed to find a structurally valid assignment, so a matchup like "England vs a
+3rd-place team from Group F" (which Match 80's rules don't permit) can never occur.
+This is still an approximation of FIFA's exact 495-scenario Annex C table (which
+specifies one fixed assignment per combination of qualifying groups), but it always
+produces a matchup the regulations would consider possible.
 
 **Knockouts.** No draws — tied matches go to penalties, modelled as roughly a coin
 flip with a small Elo-based tilt toward the favourite.
