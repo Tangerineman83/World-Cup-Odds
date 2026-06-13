@@ -29,27 +29,41 @@ function mulberry32(seed) {
   };
 }
 
-// Runs N group simulations and returns the modal 1st-4th ordering (by team name)
-// for a single group.
+// Runs N group simulations and returns:
+//  - the modal 1st-4th ordering (by team name) and its probability
+//  - for each team, the probability of finishing in each position (1st-4th)
 function modalGroupOrdering(teams, N = 5000) {
-  const counts = new Map(); // key = "team1|team2|team3|team4" -> count
+  const orderingCounts = new Map(); // key = "team1|team2|team3|team4" -> count
+  const positionCounts = new Map(); // team name -> [count1st, count2nd, count3rd, count4th]
+
+  for (const t of teams) positionCounts.set(t.name, [0, 0, 0, 0]);
 
   for (let i = 0; i < N; i++) {
     const rand = mulberry32((Math.random() * 2 ** 31) | 0);
     const standings = simulateGroup(teams, null, rand);
     const key = standings.map((s) => s.name).join('|');
-    counts.set(key, (counts.get(key) || 0) + 1);
+    orderingCounts.set(key, (orderingCounts.get(key) || 0) + 1);
+
+    standings.forEach((s, pos) => {
+      positionCounts.get(s.name)[pos] += 1;
+    });
   }
 
   let bestKey = null, bestCount = -1;
-  for (const [key, count] of counts.entries()) {
+  for (const [key, count] of orderingCounts.entries()) {
     if (count > bestCount) { bestCount = count; bestKey = key; }
   }
 
   const names = bestKey.split('|');
+  const positionProbabilities = {};
+  for (const [name, counts] of positionCounts.entries()) {
+    positionProbabilities[name] = counts.map((c) => c / N);
+  }
+
   return {
     order: names,
     probability: bestCount / N,
+    positionProbabilities, // { teamName: [p1st, p2nd, p3rd, p4th] }
   };
 }
 

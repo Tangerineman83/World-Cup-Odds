@@ -52,7 +52,12 @@ function cleanMatch(m, codeOf) {
   const groups = {};
   for (const [letter, g] of Object.entries(scenario.groups)) {
     groups[letter] = {
-      order: g.order.map((name) => ({ name, code: codeOf[name] || null, elo: teamsByName.get(name).elo })),
+      order: g.order.map((name) => ({
+        name,
+        code: codeOf[name] || null,
+        elo: teamsByName.get(name).elo,
+        positionProbabilities: g.positionProbabilities[name], // [p1st, p2nd, p3rd, p4th]
+      })),
       probability: g.probability,
     };
   }
