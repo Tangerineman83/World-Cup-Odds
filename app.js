@@ -96,17 +96,109 @@
   // Bracket
   // ----------------------------------------------------------------------
 
-  // Each round definition: key into `data`, display label, and how many
-  // R32 "slots" (out of 16) each match in this round spans vertically.
-  // R32: 16 matches x 1 slot. R16: 8 x 2. QF: 4 x 4. SF: 2 x 8. Final: 1 x 16.
+  // Bracket topology (mirrors scripts/sim/tournament.js pairing tables).
+  // Each entry: [matchId, [fromIdA, fromIdB]] - the two matches whose winners
+  // feed into this match. Used to compute a left-to-right visual order for
+  // each round so a match's column position sits directly between its two
+  // "parent" matches from the previous round - regardless of FIFA's official
+  // numbering order (M89-M96 etc.), which is not bracket-tree order.
+  const R16_PAIRS = [
+    ['M89', ['M74', 'M77']],
+    ['M90', ['M73', 'M75']],
+    ['M91', ['M76', 'M78']],
+    ['M92', ['M79', 'M80']],
+    ['M93', ['M83', 'M84']],
+    ['M94', ['M81', 'M82']],
+    ['M95', ['M86', 'M88']],
+    ['M96', ['M85', 'M87']],
+  ];
+  const QF_PAIRS = [
+    ['M97', ['M89', 'M90']],
+    ['M98', ['M93', 'M94']],
+    ['M99', ['M91', 'M92']],
+    ['M100', ['M95', 'M96']],
+  ];
+  const SF_PAIRS = [
+    ['M101', ['M97', 'M98']],
+    ['M102', ['M99', 'M100']],
+  ];
+  const FINAL_PAIR_KEY = ['M104', ['M101', 'M102']];
+
+  // Recursively computes a left-to-right visual order for every round by
+  // working DOWN the tree from the Final: the Final's two children occupy
+  // the left and right halves of the SF row; each SF match's two children
+  // occupy halves of its half of the QF row; and so on down to R32. This
+  // guarantees every match sits exactly centered between (i.e. "nests
+  // between") its two parent matches in the previous round, which is what
+  // the CSS grid span math in renderBracket() assumes.
+  //
+  // pairsByRound: { r16: R16_PAIRS, qf: QF_PAIRS, sf: SF_PAIRS } - lookup
+  // tables from matchId -> [childIdA, childIdB] in the round below.
+  function computeVisualOrders(finalMatchId, pairsByRound) {
+    const childrenOf = new Map(); // matchId -> [childIdA, childIdB]
+    for (const pairs of Object.values(pairsByRound)) {
+      for (const [matchId, children] of pairs) childrenOf.set(matchId, children);
+    }
+
+    // visualOrders[roundIndex] = array of matchIds in left-to-right order,
+    // roundIndex 0 = final, 1 = SF, 2 = QF, 3 = R16, 4 = R32
+    const visualOrders = [[finalMatchId]];
+    let current = [finalMatchId];
+    while (childrenOf.has(current[0])) {
+      const next = [];
+      for (const id of current) {
+        const children = childrenOf.get(id);
+        if (children) next.push(...children);
+        else next.push(id); // shouldn't happen given well-formed pairsByRound
+      }
+      visualOrders.push(next);
+      current = next;
+    }
+
+    // visualOrders is [final, sf, qf, r16, r32] (deepest last)
+    return visualOrders.reverse(); // -> [r32, r16, qf, sf, final]
+  }
+
+  // Each round definition: key into `data`, display label, visually-ordered
+  // matches, and how many R32 "slots" (out of 16) each match in this round
+  // spans vertically. R32: 16 matches x 1 slot. R16: 8 x 2. QF: 4 x 4.
+  // SF: 2 x 8. Final: 1 x 16.
+  //
+  // R32's order (data.r32, i.e. M73-M88) is already left-to-right
+  // bracket-tree order by construction (see tournament.js). Every
+  // subsequent round is reordered so each match sits between its two
+  // parent matches from the previous round.
+  let cachedRounds = null;
   function getRounds() {
-    return [
-      { key: 'r32', label: 'Round of 32', matches: data.r32, span: 1 },
-      { key: 'r16', label: 'Round of 16', matches: data.r16, span: 2 },
-      { key: 'qf', label: 'Quarter-finals', matches: data.qf, span: 4 },
-      { key: 'sf', label: 'Semi-finals', matches: data.sf, span: 8 },
-      { key: 'final', label: 'Final', matches: [data.final], span: 16 },
+    if (cachedRounds) return cachedRounds;
+
+    const pairsByRound = { sf: SF_PAIRS, qf: QF_PAIRS, r16: R16_PAIRS };
+    // FINAL_PAIR_KEY = ['M104', ['M101','M102']] - treat as the SF->Final link
+    pairsByRound.final = [FINAL_PAIR_KEY];
+
+    const [r32Order, r16Order, qfOrder, sfOrder, finalOrder] =
+      computeVisualOrders(FINAL_PAIR_KEY[0], pairsByRound);
+
+    const byId = (matches) => new Map(matches.map((m) => [m.id, m]));
+    const r32ById = byId(data.r32);
+    const r16ById = byId(data.r16);
+    const qfById = byId(data.qf);
+    const sfById = byId(data.sf);
+
+    const r32 = r32Order.map((id) => r32ById.get(id)).filter(Boolean);
+    const r16 = r16Order.map((id) => r16ById.get(id)).filter(Boolean);
+    const qf = qfOrder.map((id) => qfById.get(id)).filter(Boolean);
+    const sf = sfOrder.map((id) => sfById.get(id)).filter(Boolean);
+    const final = [data.final];
+
+    cachedRounds = [
+      { key: 'r32', label: 'Round of 32', matches: r32, span: 1 },
+      { key: 'r16', label: 'Round of 16', matches: r16, span: 2 },
+      { key: 'qf', label: 'Quarter-finals', matches: qf, span: 4 },
+      { key: 'sf', label: 'Semi-finals', matches: sf, span: 8 },
+      { key: 'final', label: 'Final', matches: final, span: 16 },
     ];
+    return cachedRounds;
   }
 
   function matchHtml(m, roundKey) {
@@ -372,6 +464,7 @@
       const res = await fetch('scenario.json?_=' + Date.now());
       if (!res.ok) throw new Error('scenario.json not found (HTTP ' + res.status + ')');
       data = await res.json();
+      cachedRounds = null;
       renderMeta();
       renderGroups(maxEloAcrossAllTeams());
       renderBracket();
