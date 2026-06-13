@@ -1,1 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Elo vs. Market — World Cup 2026</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="masthead-top">
+        <h1>Elo <span class="vs">vs.</span> Market</h1>
+        <p class="subtitle">World Football Elo Ratings against prediction-market implied rankings — 2026 FIFA World Cup</p>
+      </div>
+      <div class="meta-bar" id="meta-bar">
+        <span id="meta-updated">Loading…</span>
+        <span class="meta-sep">·</span>
+        <span id="meta-volume"></span>
+        <button id="refresh-btn" title="Re-fetch live data">Refresh</button>
+      </div>
+    </header>
 
+    <section class="legend">
+      <div class="legend-item">
+        <span class="swatch swatch-elo"></span>
+        <div>
+          <strong>Elo rank</strong>
+          <p>Results-based, from <a href="https://www.eloratings.net" target="_blank" rel="noopener">eloratings.net</a>. Reflects recent match outcomes, weighted by competition importance.</p>
+        </div>
+      </div>
+      <div class="legend-item">
+        <span class="swatch swatch-odds"></span>
+        <div>
+          <strong>Market rank</strong>
+          <p>Implied probability from Polymarket's "World Cup Winner" market. Forward-looking, incorporates squads, draw, injuries, sentiment.</p>
+        </div>
+      </div>
+      <div class="legend-item">
+        <span class="swatch swatch-diff"></span>
+        <div>
+          <strong>Δ rank</strong>
+          <p>Elo rank minus market rank. Positive = market more bullish than Elo. Negative = Elo more bullish than market.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-wrap">
+      <table id="comparison-table">
+        <thead>
+          <tr>
+            <th data-key="team" class="col-team sortable">Team</th>
+            <th data-key="eloRating" class="col-num sortable">Elo rating</th>
+            <th data-key="eloRank" class="col-num sortable sorted-asc">Elo rank</th>
+            <th data-key="impliedProbability" class="col-num sortable">Market prob.</th>
+            <th data-key="oddsRank" class="col-num sortable">Market rank</th>
+            <th data-key="rankDiff" class="col-num sortable">Δ rank</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="6" class="loading-row">Fetching live data…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="footnote">
+      <p>
+        Δ rank = Elo rank − market rank. A large positive value means the betting/prediction market
+        is considerably more confident in that team than the Elo model is (the market ranks them
+        higher). A large negative value means Elo rates the team's recent results more highly than
+        the market is currently pricing.
+      </p>
+      <p>
+        Data sources: <a href="https://www.eloratings.net/World.tsv" target="_blank" rel="noopener">eloratings.net (World.tsv)</a>
+        and <a href="https://polymarket.com/event/world-cup-winner" target="_blank" rel="noopener">Polymarket — World Cup Winner</a>.
+        Only the 48 teams qualified for the 2026 FIFA World Cup are shown. Refreshed automatically every hour.
+        This is an independent comparison tool, not affiliated with either source.
+      </p>
+    </footer>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
