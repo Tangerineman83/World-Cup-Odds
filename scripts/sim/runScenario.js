@@ -14,9 +14,13 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario.json');
 
 // Strips a team object down to plain { name, code, elo } for JSON output,
 // dropping any internal proxy fields (points/gd/gf used for third-place ranking).
-function cleanTeam(t, codeOf) {
+// Optionally preserves `.group` (used for bestThirds, to show which group
+// each qualifying third-place team came from).
+function cleanTeam(t, codeOf, { includeGroup = false } = {}) {
   if (!t) return null;
-  return { name: t.name, code: codeOf[t.name] || null, elo: t.elo };
+  const out = { name: t.name, code: codeOf[t.name] || null, elo: t.elo };
+  if (includeGroup && t.group) out.group = t.group;
+  return out;
 }
 
 function cleanMatch(m, codeOf) {
@@ -66,17 +70,19 @@ function cleanMatch(m, codeOf) {
     generatedAt: new Date().toISOString(),
     methodology: {
       groupOrdering: 'modal (most frequent) full 1st-4th ordering across 5,000 group simulations per group',
-      thirdPlaceRanking: 'approximate - thirds ranked by Elo as a proxy for points/GD/GF (not the official Annex C process)',
+      thirdPlaceRanking: 'approximate - thirds ranked by Elo as a proxy for points/GD/GF (not the official Annex C ranking process)',
+      bracketStructure: 'official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 "3rd-placed" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup',
       knockouts: 'chalk bracket - at each match, the team with the higher combined win+penalty probability advances',
       note: 'This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations.',
     },
     groups,
-    bestThirds: scenario.bestThirds.map((t) => cleanTeam(t, codeOf)),
+    bestThirds: scenario.bestThirds.map((t) => cleanTeam(t, codeOf, { includeGroup: true })),
     r32: scenario.r32.map((m) => cleanMatch(m, codeOf)),
     r16: scenario.r16.map((m) => cleanMatch(m, codeOf)),
     qf: scenario.qf.map((m) => cleanMatch(m, codeOf)),
     sf: scenario.sf.map((m) => cleanMatch(m, codeOf)),
     final: cleanMatch(scenario.final, codeOf),
+    thirdPlacePlayoff: cleanMatch(scenario.thirdPlacePlayoff, codeOf),
     champion: cleanTeam({ name: scenario.champion, elo: teamsByName.get(scenario.champion).elo }, codeOf),
   };
 

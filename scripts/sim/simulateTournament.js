@@ -1,8 +1,10 @@
 const { simulateGroup } = require('./groupStage');
 const { matchProbabilities } = require('./eloModel');
+const { assignThirdPlaceSlots } = require('./thirdPlace');
 const {
-  GROUPS, HOST_NATIONS, ROUND_OF_32, ROUND_OF_16_PAIRS,
-  QUARTER_FINAL_PAIRS, SEMI_FINAL_PAIRS,
+  GROUPS, HOST_NATIONS, ROUND_OF_32,
+  ROUND_OF_16_PAIRS, QUARTER_FINAL_PAIRS, SEMI_FINAL_PAIRS,
+  FINAL_PAIR, THIRD_PLACE_PAIR,
 } = require('./tournament');
 
 // Plays a single knockout match (no draws - extra time/penalties resolve it).
@@ -37,7 +39,7 @@ function playKnockout(teamA, teamB, rand) {
 
 // Picks the 8 best third-place teams from the 12 group thirds, ranked by
 // points -> gd -> gf -> random. Returns array of 8 team-stat objects
-// (ranked best to worst), each tagged with their group letter.
+// (ranked best to worst), each tagged with their group letter (.group).
 function pickBestThirds(thirdPlaceRows) {
   const ranked = [...thirdPlaceRows].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
@@ -48,8 +50,8 @@ function pickBestThirds(thirdPlaceRows) {
   return ranked.slice(0, 8);
 }
 
-// Resolves the "3RD:n" placeholders in ROUND_OF_32 to actual teams, using the
-// simplified fixed ordering described in tournament.js.
+// Resolves all 16 Round of 32 matches to actual teams, given group standings.
+// Returns an array of { id, home, away } in ROUND_OF_32 order.
 function resolveRoundOf32(groupStandings) {
   const winners = {};
   const runnersUp = {};
@@ -62,26 +64,27 @@ function resolveRoundOf32(groupStandings) {
   }
 
   const bestThirds = pickBestThirds(thirds);
+  const thirdAssignment = assignThirdPlaceSlots(bestThirds); // matchId -> team
 
-  const lookup = (slot) => {
+  const lookup = (slot, matchId) => {
     if (slot.startsWith('W:')) return winners[slot.slice(2)];
     if (slot.startsWith('R:')) return runnersUp[slot.slice(2)];
-    if (slot.startsWith('3RD:')) {
-      const n = parseInt(slot.slice(4), 10);
-      return bestThirds[n - 1];
-    }
+    if (slot.startsWith('3RD:')) return thirdAssignment.get(matchId);
     throw new Error(`Unknown slot: ${slot}`);
   };
 
   return ROUND_OF_32.map((m) => ({
     id: m.id,
-    home: lookup(m.home),
-    away: lookup(m.away),
+    home: lookup(m.home, m.id),
+    away: lookup(m.away, m.id),
   }));
 }
 
 // Runs one full tournament simulation. teamsByName: Map of team name -> { elo }.
 // rand: PRNG returning [0,1).
+//
+// Returns a structure keyed by official FIFA match ids (M73-M104), plus
+// convenience round arrays (r32, r16, qf, sf) and `final`/`thirdPlacePlayoff`.
 function simulateTournament(teamsByName, rand) {
   const groupStandings = {};
 
@@ -91,39 +94,55 @@ function simulateTournament(teamsByName, rand) {
   }
 
   const r32Matches = resolveRoundOf32(groupStandings);
-  const r32Winners = r32Matches.map((m) => playKnockout(m.home, m.away, rand));
+  const matchesById = new Map(); // matchId -> { id, home, away, winner }
 
-  const r16Matches = ROUND_OF_16_PAIRS.map(([a, b], i) => ({
-    id: `R16-${i + 1}`,
-    home: r32Winners[ROUND_OF_32.findIndex((m) => m.id === a)],
-    away: r32Winners[ROUND_OF_32.findIndex((m) => m.id === b)],
-  }));
-  const r16Winners = r16Matches.map((m) => playKnockout(m.home, m.away, rand));
+  for (const m of r32Matches) {
+    const winner = playKnockout(m.home, m.away, rand);
+    matchesById.set(m.id, { ...m, winner });
+  }
 
-  const qfMatches = QUARTER_FINAL_PAIRS.map(([a, b], i) => ({
-    id: `QF-${i + 1}`,
-    home: r16Winners[a],
-    away: r16Winners[b],
-  }));
-  const qfWinners = qfMatches.map((m) => playKnockout(m.home, m.away, rand));
+  function playRound(pairs) {
+    const results = [];
+    for (const [matchId, [fromA, fromB]] of pairs) {
+      const home = matchesById.get(fromA).winner;
+      const away = matchesById.get(fromB).winner;
+      const winner = playKnockout(home, away, rand);
+      const entry = { id: matchId, home, away, winner };
+      matchesById.set(matchId, entry);
+      results.push(entry);
+    }
+    return results;
+  }
 
-  const sfMatches = SEMI_FINAL_PAIRS.map(([a, b], i) => ({
-    id: `SF-${i + 1}`,
-    home: qfWinners[a],
-    away: qfWinners[b],
-  }));
-  const sfWinners = sfMatches.map((m) => playKnockout(m.home, m.away, rand));
+  const r16Matches = playRound(ROUND_OF_16_PAIRS);
+  const qfMatches = playRound(QUARTER_FINAL_PAIRS);
+  const sfMatches = playRound(SEMI_FINAL_PAIRS);
 
-  const finalMatch = { id: 'F', home: sfWinners[0], away: sfWinners[1] };
-  const champion = playKnockout(finalMatch.home, finalMatch.away, rand);
+  const [finalId, [finalA, finalB]] = FINAL_PAIR;
+  const finalHome = matchesById.get(finalA).winner;
+  const finalAway = matchesById.get(finalB).winner;
+  const champion = playKnockout(finalHome, finalAway, rand);
+  const finalMatch = { id: finalId, home: finalHome, away: finalAway, winner: champion };
+  matchesById.set(finalId, finalMatch);
+
+  // Third-place playoff: losers of the two semi-finals
+  const [tpId, [tpA, tpB]] = THIRD_PLACE_PAIR;
+  const semiA = matchesById.get(tpA);
+  const semiB = matchesById.get(tpB);
+  const loser = (m) => (m.winner.name === m.home.name ? m.away : m.home);
+  const tpHome = loser(semiA);
+  const tpAway = loser(semiB);
+  const tpWinner = playKnockout(tpHome, tpAway, rand);
+  const thirdPlacePlayoff = { id: tpId, home: tpHome, away: tpAway, winner: tpWinner };
 
   return {
     groupStandings,
-    r32: r32Matches.map((m, i) => ({ ...m, winner: r32Winners[i] })),
-    r16: r16Matches.map((m, i) => ({ ...m, winner: r16Winners[i] })),
-    qf: qfMatches.map((m, i) => ({ ...m, winner: qfWinners[i] })),
-    sf: sfMatches.map((m, i) => ({ ...m, winner: sfWinners[i] })),
-    final: { ...finalMatch, winner: champion },
+    r32: r32Matches.map((m) => matchesById.get(m.id)),
+    r16: r16Matches,
+    qf: qfMatches,
+    sf: sfMatches,
+    final: finalMatch,
+    thirdPlacePlayoff,
     champion,
   };
 }

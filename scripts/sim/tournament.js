@@ -24,70 +24,96 @@ const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
 // --- Round of 32 bracket -------------------------------------------------
 //
-// The *official* bracket assigns 8 of the 12 third-placed teams to specific
-// Round-of-32 slots via FIFA's 495-scenario "Annex C" table, which can only be
-// resolved once final group standings are known. For this simulation we use a
-// SIMPLIFIED, fixed assignment: in each simulated tournament, after determining
-// the 8 best third-place teams (by points, then goal difference, then goals
-// scored, then a random tiebreak), we assign them to the 8 "vs 3rd place" slots
-// below in a fixed, deterministic order (ranked best-third to weakest-third
-// against the labelled slots in matchup order). This is an approximation of
-// the real Annex C mapping, not a reproduction of it.
+// Official FIFA structure (Matches 73-88), per the 2026 World Cup regulations
+// and https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage.
 //
-// R32 matches use letters R32-1 .. R32-16. "W:X" = winner of group X,
-// "R:X" = runner-up of group X, "3RD:n" = the nth-best third-place team
-// (1 = best of the 8 qualifying thirds) under our simplified assignment.
+// Fixed slots (winners/runners-up) are unambiguous. The eight "3rd Group
+// X/Y/Z/.../W" slots depend on which 8 third-placed teams actually qualify
+// (FIFA's 495-scenario Annex C table). We approximate Annex C with a
+// constraint-respecting greedy assignment (see resolveThirdPlaceSlots in
+// simulateTournament.js / mostLikely.js): each "3RD:<groups>" slot is filled
+// with the best-ranked qualifying third whose group is in that slot's
+// allowed set, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87).
+// This guarantees every matchup is one FIFA could actually produce, even
+// though it won't reproduce all 495 exact scenarios.
 const ROUND_OF_32 = [
-  { id: 'R32-1', home: 'W:A', away: '3RD:1' },
-  { id: 'R32-2', home: 'W:C', away: 'R:F' },
-  { id: 'R32-3', home: 'W:E', away: '3RD:2' },
-  { id: 'R32-4', home: 'R:A', away: 'R:B' },
-  { id: 'R32-5', home: 'W:F', away: 'R:C' },
-  { id: 'R32-6', home: 'W:B', away: '3RD:3' },
-  { id: 'R32-7', home: 'W:I', away: '3RD:4' },
-  { id: 'R32-8', home: 'R:E', away: 'R:I' },
-  { id: 'R32-9', home: 'W:D', away: '3RD:5' },
-  { id: 'R32-10', home: 'W:G', away: '3RD:6' },
-  { id: 'R32-11', home: 'W:L', away: '3RD:7' },
-  { id: 'R32-12', home: 'W:H', away: 'R:J' },
-  { id: 'R32-13', home: 'W:J', away: '3RD:8' },
-  { id: 'R32-14', home: 'R:K', away: 'R:L' },
-  { id: 'R32-15', home: 'W:K', away: 'R:H' },
-  { id: 'R32-16', home: 'R:D', away: 'R:G' },
+  { id: 'M73', home: 'R:A', away: 'R:B' },
+  { id: 'M74', home: 'W:E', away: '3RD:A,B,C,D,F' },
+  { id: 'M75', home: 'W:F', away: 'R:C' },
+  { id: 'M76', home: 'W:C', away: 'R:F' },
+  { id: 'M77', home: 'W:I', away: '3RD:C,D,F,G,H' },
+  { id: 'M78', home: 'R:E', away: 'R:I' },
+  { id: 'M79', home: 'W:A', away: '3RD:C,E,F,H,I' },
+  { id: 'M80', home: 'W:L', away: '3RD:E,H,I,J,K' },
+  { id: 'M81', home: 'W:D', away: '3RD:B,E,F,I,J' },
+  { id: 'M82', home: 'W:G', away: '3RD:A,E,H,I,J' },
+  { id: 'M83', home: 'R:K', away: 'R:L' },
+  { id: 'M84', home: 'W:H', away: 'R:J' },
+  { id: 'M85', home: 'W:B', away: '3RD:E,F,G,I,J' },
+  { id: 'M86', home: 'W:J', away: 'R:H' },
+  { id: 'M87', home: 'W:K', away: '3RD:D,E,I,J,L' },
+  { id: 'M88', home: 'R:D', away: 'R:G' },
 ];
-// (3RD:n placeholders are filled in dynamically per simulation run - see simulate.js)
 
-// Round of 16 pairings, by R32 match id (winner of R32-X plays winner of R32-Y)
+// Order in which the eight "3RD:<groups>" slots are resolved when assigning
+// the 8 qualifying third-placed teams to slots. This is the order the slots
+// appear in FIFA's official match list (74, 77, 79, 80, 81, 82, 85, 87).
+const THIRD_PLACE_SLOT_ORDER = ['M74', 'M77', 'M79', 'M80', 'M81', 'M82', 'M85', 'M87'];
+
+// Round of 16 pairings, by R32 match id (winner of R32-X plays winner of R32-Y).
+// Official FIFA match numbers (89-96):
+//   M89 = Winner M74 vs Winner M77
+//   M90 = Winner M73 vs Winner M75
+//   M91 = Winner M76 vs Winner M78
+//   M92 = Winner M79 vs Winner M80
+//   M93 = Winner M83 vs Winner M84
+//   M94 = Winner M81 vs Winner M82
+//   M95 = Winner M86 vs Winner M88
+//   M96 = Winner M85 vs Winner M87
+// Each entry here is [officialMatchId, [fromR32IdA, fromR32IdB]].
 const ROUND_OF_16_PAIRS = [
-  ['R32-1', 'R32-2'],
-  ['R32-3', 'R32-4'],
-  ['R32-5', 'R32-6'],
-  ['R32-7', 'R32-8'],
-  ['R32-9', 'R32-10'],
-  ['R32-11', 'R32-12'],
-  ['R32-13', 'R32-14'],
-  ['R32-15', 'R32-16'],
+  ['M89', ['M74', 'M77']],
+  ['M90', ['M73', 'M75']],
+  ['M91', ['M76', 'M78']],
+  ['M92', ['M79', 'M80']],
+  ['M93', ['M83', 'M84']],
+  ['M94', ['M81', 'M82']],
+  ['M95', ['M86', 'M88']],
+  ['M96', ['M85', 'M87']],
 ];
 
-// Quarter-finals: winner of R16 match i plays winner of R16 match i+1, in pairs
+// Quarter-finals (97-100):
+//   M97 = Winner M89 vs Winner M90
+//   M98 = Winner M93 vs Winner M94
+//   M99 = Winner M91 vs Winner M92
+//   M100 = Winner M95 vs Winner M96
 const QUARTER_FINAL_PAIRS = [
-  [0, 1], // R16 match 0 vs R16 match 1
-  [2, 3],
-  [4, 5],
-  [6, 7],
+  ['M97', ['M89', 'M90']],
+  ['M98', ['M93', 'M94']],
+  ['M99', ['M91', 'M92']],
+  ['M100', ['M95', 'M96']],
 ];
 
-// Semi-finals: QF winners paired 0v1, 2v3
+// Semi-finals (101-102):
+//   M101 = Winner M97 vs Winner M98
+//   M102 = Winner M99 vs Winner M100
 const SEMI_FINAL_PAIRS = [
-  [0, 1],
-  [2, 3],
+  ['M101', ['M97', 'M98']],
+  ['M102', ['M99', 'M100']],
 ];
+
+// Final (104) and third-place playoff (103)
+const FINAL_PAIR = ['M104', ['M101', 'M102']];
+const THIRD_PLACE_PAIR = ['M103', ['M101', 'M102']]; // losers of M101/M102
 
 module.exports = {
   GROUPS,
   HOST_NATIONS,
   ROUND_OF_32,
+  THIRD_PLACE_SLOT_ORDER,
   ROUND_OF_16_PAIRS,
   QUARTER_FINAL_PAIRS,
   SEMI_FINAL_PAIRS,
+  FINAL_PAIR,
+  THIRD_PLACE_PAIR,
 };
