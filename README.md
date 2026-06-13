@@ -1,104 +1,104 @@
-# Elo vs. Market — World Cup 2026 (static / GitHub Pages)
+# World Cup 2026 — Elo Predictions
 
-A sortable comparison of [World Football Elo Ratings](https://www.eloratings.net) against
-implied rankings from [Polymarket's "World Cup Winner" market](https://polymarket.com/event/world-cup-winner),
-for the teams in the 2026 FIFA World Cup.
+A static site with two views of an Elo-based prediction model for the 2026 FIFA
+World Cup:
 
-This version is a **static site** — designed to be served directly by GitHub Pages.
-There's no backend; the page reads a pre-generated `data.json` file.
+- **`index.html`** — the "most likely scenario": predicted group standings (1st-4th
+  for all 12 groups) and a knockout bracket tree from the Round of 32 to the final,
+  built by taking the modal group outcome and then a "chalk" (favourite-wins) bracket.
+  Click any team to highlight its path through the whole tournament.
+- **`predictions.html`** — the full probability table: for all 48 teams, the
+  probability of finishing 1st/2nd in their group and of reaching the R32, R16, QF,
+  SF, Final, and winning the tournament, from a 20,000-run Monte Carlo simulation.
+
+No backend — both pages read pre-generated JSON files (`scenario.json` and
+`predictions.json`).
 
 ## Repo structure
 
 ```
-index.html          <- Elo vs. Market comparison page
-predictions.html    <- Tournament simulation / predictions page
+index.html           <- group tables + knockout bracket (home page)
+predictions.html     <- full per-team probability table
 styles.css
-app.js              <- reads data.json for index.html
-predictions.js      <- reads predictions.json for predictions.html
-data.json           <- pre-generated Elo vs odds snapshot (commit after each refresh)
-predictions.json    <- pre-generated simulation output (commit after each refresh)
+app.js                <- reads scenario.json, renders groups + bracket, handles highlighting
+predictions.js        <- reads predictions.json, renders the sortable table
+scenario.json         <- pre-generated "most likely scenario" (commit after refresh)
+predictions.json      <- pre-generated Monte Carlo probabilities (commit after refresh)
 scripts/
-  build-data.js     <- run locally to refresh data.json with live data
-  seed-data.js      <- one-off script that produced the initial data.json
-  eloSource.js      <- fetches eloratings.net/World.tsv
-  oddsSource.js     <- fetches Polymarket's public Gamma API
-  compare.js        <- merges both, computes rank diffs
-  countryMap.js     <- maps Elo codes <-> Polymarket/team names
+  eloSource.js        <- fetches eloratings.net/World.tsv
+  countryMap.js        <- maps Elo codes <-> team names
   sim/
-    tournament.js       <- groups, host nations, Round-of-32 bracket structure
-    eloModel.js         <- Elo -> win/draw/loss probability model
-    groupStage.js       <- simulates one group's round-robin
-    simulateTournament.js <- full tournament (groups -> R32 -> ... -> final)
-    runSimulation.js    <- Monte Carlo runner, writes predictions.json
+    tournament.js        <- groups, host nations, Round-of-32 bracket structure
+    eloModel.js          <- Elo -> win/draw/loss probability model
+    groupStage.js         <- simulates one group's round-robin (with goal sim for tiebreaks)
+    simulateTournament.js <- full Monte Carlo tournament (groups -> R32 -> ... -> final)
+    mostLikely.js          <- modal group order + chalk bracket ("most likely scenario")
+    runSimulation.js       <- runs N simulations, writes predictions.json
+    runScenario.js          <- computes the most-likely scenario, writes scenario.json
 ```
 
 ## Deploying
 
 1. Push this repo to GitHub.
-2. In repo Settings → Pages, set source to the branch/root (or `/docs` if you move
-   things there) — whichever contains `index.html`.
-3. The page will be live at `https://<username>.github.io/<repo>/`.
+2. In repo Settings → Pages, set source to the branch/root containing `index.html`.
+3. Live at `https://<username>.github.io/<repo>/`.
 
 ## Refreshing the data
 
-Since GitHub Pages can't run a server, you refresh `data.json` and `predictions.json`
-manually (or via your own automation later):
-
 ```bash
-node scripts/build-data.js          # refreshes data.json (Elo vs market odds)
-node scripts/sim/runSimulation.js   # refreshes predictions.json (20,000-run simulation, ~1-2s)
-git add data.json predictions.json
-git commit -m "Refresh Elo/odds data and tournament predictions"
+node scripts/sim/runScenario.js     # refreshes scenario.json (group tables + bracket)
+node scripts/sim/runSimulation.js   # refreshes predictions.json (probability table)
+git add scenario.json predictions.json
+git commit -m "Refresh Elo-based predictions"
 git push
 ```
 
-`build-data.js` fetches the latest Elo ratings from eloratings.net and the latest
-World Cup Winner odds from Polymarket, recomputes ranks and the Δ rank column.
-`runSimulation.js` accepts an optional argument for the number of simulations
-(default 20,000), e.g. `node scripts/sim/runSimulation.js 50000` for a higher-precision
-run (takes a few seconds longer). Both pages cache-bust their JSON fetch with a
-timestamp query string, so refreshed files are picked up on next load.
+`runSimulation.js` accepts an optional simulation count (default 20,000), e.g.
+`node scripts/sim/runSimulation.js 50000`. Both pages cache-bust their JSON fetch
+with a timestamp query string, so refreshed files are picked up on next load.
 
-## Tournament predictions methodology
+## Methodology
 
-`predictions.html` runs a Monte Carlo simulation of the full 104-match tournament:
+**Match probabilities.** Derived from each team's current
+[Elo rating](https://en.wikipedia.org/wiki/World_Football_Elo_Ratings) using
+eloratings.net's expected-result formula:
 
-- **Match probabilities**: derived from each team's current Elo rating using
-  eloratings.net's expected-result formula (`We = 1 / (10^(-dr/400) + 1)`, where
-  `dr` = rating difference, +100 for the home/host side). An empirical draw-probability
-  model splits `We` into separate win/draw/loss probabilities (~26% draw at parity,
-  floor of ~12% for lopsided matchups).
-- **Groups**: the official 12-group draw (A-L) is simulated as a full round-robin;
-  standings use points, then goal difference, then goals scored (goal differences are
-  sampled from Poisson distributions calibrated to each match's win probability).
-- **Round of 32**: the top 2 from each group plus the 8 best third-placed teams advance.
-  Bracket placement of the 8 thirds uses a **simplified approximation**, not FIFA's
-  official 495-scenario "Annex C" table.
-- **Knockouts**: no draws — tied matches go to penalties, modelled as roughly a coin
-  flip with a small Elo-based tilt toward the favourite.
-- **Host advantage**: USA, Canada, and Mexico receive the +100 Elo home boost in
-  *every* match they play, including knockout rounds — a deliberate choice that can
-  push host-nation tournament-win probabilities above what prediction markets imply
-  (see the Elo vs. Market page for context).
-- **v1 limitation**: this is a pre-tournament-style baseline. Results already played
-  in the live tournament are not yet incorporated into the simulation.
+```
+dr = (homeElo + homeAdvantage) - awayElo   [homeAdvantage = 100, 0 if neutral]
+We = 1 / (10^(-dr/400) + 1)
+```
 
-## How the comparison works
+`We` (draw counts as 0.5) is split into separate win/draw/loss probabilities via an
+empirical draw model: ~26% draw probability for evenly matched teams (dr≈0), falling
+to a floor of ~12% for lopsided matchups.
 
-- **Elo rank**: from `eloratings.net/World.tsv`, 1 = highest rated.
-- **Market rank**: from Polymarket's "Will X win the 2026 FIFA World Cup?" markets,
-  ranked by implied probability (the "Yes" price), 1 = most likely.
-- **Δ rank** = Elo rank − market rank. Positive = the market is more bullish on that
-  team than Elo is. Negative = Elo rates them more highly than the market currently does.
+**Group stage.** Each group is a full round-robin. Standings use points, then goal
+difference, then goals scored; goal differences are sampled from Poisson
+distributions calibrated to each match's win probability (for tiebreak purposes only).
 
-## Notes / limitations
+**Round of 32.** Top 2 from each group plus the 8 best third-placed teams advance.
+The bracket placement of the 8 thirds uses a **simplified approximation** of FIFA's
+official 495-scenario "Annex C" table.
 
-- This is an independent comparison of two public data sources, not an official
-  ranking from either.
-- Only teams with a corresponding Polymarket market get a Δ rank; others show `—`.
-- `eloratings.net` has no official scraping API — `build-data.js` is meant to be run
-  occasionally (e.g. weekly), not continuously.
-- If you want automatic hourly/daily refreshes without running the script yourself,
-  a GitHub Actions workflow on a schedule (`cron`) that runs `build-data.js` and
-  commits the result is the natural next step — not included here per your request,
-  but straightforward to add later.
+**Knockouts.** No draws — tied matches go to penalties, modelled as roughly a coin
+flip with a small Elo-based tilt toward the favourite.
+
+**Host advantage.** USA, Canada, and Mexico receive the +100 Elo boost in *every*
+match they play, including knockout rounds. This is a deliberate choice consistent
+with the eloratings.net convention, and is one reason host-nation probabilities here
+may sit above what you'd see in betting/prediction markets.
+
+**"Most likely scenario" vs. probability table.** `scenario.json` is a single
+representative bracket - useful for following one coherent narrative - not a
+forecast with a stated probability of occurring exactly as shown (the chance of every
+result landing on the modal outcome is small). `predictions.json` is the underlying
+distribution and is the more statistically meaningful output for "what's the chance
+Brazil reaches the semis."
+
+**v1 limitation.** This is a pre-tournament-style baseline - results already played
+in the live tournament are not yet incorporated.
+
+## Disclaimer
+
+This is an independent, simplified simulation for illustrative purposes - not an
+official forecast from FIFA, eloratings.net, or any other body.

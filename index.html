@@ -3,83 +3,62 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Elo vs. Market — World Cup 2026</title>
+<title>World Cup 2026 — Elo Prediction</title>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="page">
+  <div class="page page-wide">
     <header class="masthead">
       <div class="masthead-top">
-        <h1>Elo <span class="vs">vs.</span> Market</h1>
-        <p class="subtitle">World Football Elo Ratings against prediction-market implied rankings — 2026 FIFA World Cup</p>
+        <h1>Most likely <span class="vs">scenario</span></h1>
+        <p class="subtitle">A single coherent route to the final, built from current <a href="https://www.eloratings.net" target="_blank" rel="noopener">Elo ratings</a>: the modal group outcome for each group, followed by a "chalk" knockout bracket where the favourite advances at every stage.</p>
       </div>
       <div class="meta-bar" id="meta-bar">
         <span id="meta-updated">Loading…</span>
         <span class="meta-sep">·</span>
-        <span id="meta-volume"></span>
-        <span class="meta-sep">·</span>
-        <a href="predictions.html">Tournament predictions →</a>
+        <a href="predictions.html">Full probability table →</a>
       </div>
     </header>
 
-    <section class="legend">
-      <div class="legend-item">
-        <span class="swatch swatch-elo"></span>
-        <div>
-          <strong>Elo rank</strong>
-          <p>Results-based, from <a href="https://www.eloratings.net" target="_blank" rel="noopener">eloratings.net</a>. Reflects recent match outcomes, weighted by competition importance.</p>
-        </div>
-      </div>
-      <div class="legend-item">
-        <span class="swatch swatch-odds"></span>
-        <div>
-          <strong>Market rank</strong>
-          <p>Implied probability from Polymarket's "World Cup Winner" market. Forward-looking, incorporates squads, draw, injuries, sentiment.</p>
-        </div>
-      </div>
-      <div class="legend-item">
-        <span class="swatch swatch-diff"></span>
-        <div>
-          <strong>Δ rank</strong>
-          <p>Elo rank minus market rank. Positive = market more bullish than Elo. Negative = Elo more bullish than market.</p>
-        </div>
-      </div>
+    <section class="instructions">
+      <p>Click any team name to trace its predicted path through the tournament. Each group table shows the modal (most likely) finishing order; the percentage is how often that exact order occurred across simulations — lower numbers mean a tighter, less predictable group.</p>
     </section>
 
-    <section class="table-wrap">
-      <table id="comparison-table">
-        <thead>
-          <tr>
-            <th data-key="team" class="col-team sortable">Team</th>
-            <th data-key="eloRating" class="col-num sortable">Elo rating</th>
-            <th data-key="eloRank" class="col-num sortable sorted-asc">Elo rank</th>
-            <th data-key="impliedProbability" class="col-num sortable">Market prob.</th>
-            <th data-key="oddsRank" class="col-num sortable">Market rank</th>
-            <th data-key="rankDiff" class="col-num sortable">Δ rank</th>
-          </tr>
-        </thead>
-        <tbody id="table-body">
-          <tr><td colspan="6" class="loading-row">Loading data.json…</td></tr>
-        </tbody>
-      </table>
+    <section class="groups-grid" id="groups-grid">
+      <!-- Group tables injected here -->
+    </section>
+
+    <section class="bracket-section">
+      <h2>Knockout bracket</h2>
+      <div class="bracket-wrap">
+        <div class="bracket" id="bracket">
+          <!-- Bracket columns injected here -->
+        </div>
+      </div>
     </section>
 
     <footer class="footnote">
       <p>
-        Δ rank = Elo rank − market rank. A large positive value means the betting/prediction market
-        is considerably more confident in that team than the Elo model is (the market ranks them
-        higher). A large negative value means Elo rates the team's recent results more highly than
-        the market is currently pricing.
+        <strong>How this scenario is built.</strong> For each group, 5,000 simulations are run
+        (using the Elo-based win/draw/loss model with the +100 home-advantage convention for
+        co-hosts USA, Canada, and Mexico); the most frequently occurring full 1st-4th order is
+        used as that group's "predicted" result. The eight best third-placed teams are then
+        ranked (using Elo as a proxy for points/goal difference - an approximation of the
+        official process) and placed into the Round of 32 using a simplified bracket mapping.
+        From the Round of 32 onward, the higher-rated team (including penalty-shootout odds for
+        drawn knockout matches) is taken as the winner at each stage.
       </p>
       <p>
-        Data sources: <a href="https://www.eloratings.net/World.tsv" target="_blank" rel="noopener">eloratings.net (World.tsv)</a>
-        and <a href="https://polymarket.com/event/world-cup-winner" target="_blank" rel="noopener">Polymarket — World Cup Winner</a>.
-        Only the 48 teams qualified for the 2026 FIFA World Cup are shown.
+        This is <strong>one representative scenario</strong>, not a forecast with a stated
+        probability of occurring in full - the chance of every single result going exactly this
+        way is small. For the underlying per-team, per-stage probabilities (e.g. "Brazil's
+        chance of reaching the semi-final"), see the
+        <a href="predictions.html">full probability table</a>.
       </p>
       <p>
-        This page shows a static snapshot from <code>data.json</code>, regenerated by running
-        <code>node scripts/build-data.js</code> and pushing the update. See the
-        <a href="https://github.com" target="_blank" rel="noopener">repo README</a> for details.
+        Regenerate via <code>node scripts/sim/runScenario.js</code> (group tables) and
+        <code>node scripts/sim/runSimulation.js</code> (probability table), then commit
+        <code>scenario.json</code> and <code>predictions.json</code>.
       </p>
     </footer>
   </div>
