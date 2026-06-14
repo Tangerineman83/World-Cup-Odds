@@ -452,41 +452,36 @@
 
     clearBtn.hidden = false;
 
-    // Teams that share a match with the selected team anywhere along their
-    // bracket path (i.e. current/past/future opponents) should stay fully
-    // visible too - dimming them makes it hard to see who the selected team
-    // is actually playing, especially in not-yet-decided future rounds.
+    // Highlight match boxes the team appears in
     const path = teamMatchPath(selectedTeam);
     const pathMatchIds = new Set(path.map((p) => p.matchId));
-    const rounds = getRounds();
-    const opponentNames = new Set();
-    for (const round of rounds) {
-      for (const m of round.matches) {
-        if (!pathMatchIds.has(m.id)) continue;
-        if (m.home && m.home.name !== selectedTeam) opponentNames.add(m.home.name);
-        if (m.away && m.away.name !== selectedTeam) opponentNames.add(m.away.name);
-      }
-    }
-
-    allTeamEls.forEach((el) => {
-      const isMatch = el.dataset.team === selectedTeam;
-      const isOpponent = opponentNames.has(el.dataset.team);
-      el.classList.toggle('highlight', isMatch);
-      el.classList.toggle('dim', !isMatch && !isOpponent && el.closest('.bracket-wrap') !== null);
-    });
-
-    groupRows.forEach((el) => {
-      const isMatch = el.dataset.team === selectedTeam;
-      el.classList.toggle('row-highlight', isMatch);
-    });
-
-    // Highlight match boxes the team appears in
     document.querySelectorAll('.match').forEach((matchEl) => {
       matchEl.classList.toggle('match-highlight', pathMatchIds.has(matchEl.dataset.matchId));
     });
     if (champEl()) {
       champEl().classList.toggle('match-highlight', data.champion.name === selectedTeam);
     }
+
+    // A [data-team] element should NOT be dimmed if either:
+    //  - it's the selected team themselves, OR
+    //  - it sits inside a match box that's on the selected team's path
+    //    (i.e. it's an opponent the selected team plays/played in THAT
+    //    specific match - keeping it visible there). Crucially this is
+    //    scoped to that match box only: the same team name appearing in a
+    //    DIFFERENT, unrelated match elsewhere in the bracket is still
+    //    dimmed, so unrelated fixtures don't look like part of the path.
+    allTeamEls.forEach((el) => {
+      const isSelected = el.dataset.team === selectedTeam;
+      const matchEl = el.closest('.match');
+      const inPathMatch = matchEl && pathMatchIds.has(matchEl.dataset.matchId);
+      el.classList.toggle('highlight', isSelected);
+      el.classList.toggle('dim', !isSelected && !inPathMatch && el.closest('.bracket-wrap') !== null);
+    });
+
+    groupRows.forEach((el) => {
+      const isMatch = el.dataset.team === selectedTeam;
+      el.classList.toggle('row-highlight', isMatch);
+    });
 
     // Highlight connectors along the team's path, but only up to (and
     // including) the connector leaving the last match they won.
