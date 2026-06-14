@@ -452,10 +452,27 @@
 
     clearBtn.hidden = false;
 
+    // Teams that share a match with the selected team anywhere along their
+    // bracket path (i.e. current/past/future opponents) should stay fully
+    // visible too - dimming them makes it hard to see who the selected team
+    // is actually playing, especially in not-yet-decided future rounds.
+    const path = teamMatchPath(selectedTeam);
+    const pathMatchIds = new Set(path.map((p) => p.matchId));
+    const rounds = getRounds();
+    const opponentNames = new Set();
+    for (const round of rounds) {
+      for (const m of round.matches) {
+        if (!pathMatchIds.has(m.id)) continue;
+        if (m.home && m.home.name !== selectedTeam) opponentNames.add(m.home.name);
+        if (m.away && m.away.name !== selectedTeam) opponentNames.add(m.away.name);
+      }
+    }
+
     allTeamEls.forEach((el) => {
       const isMatch = el.dataset.team === selectedTeam;
+      const isOpponent = opponentNames.has(el.dataset.team);
       el.classList.toggle('highlight', isMatch);
-      el.classList.toggle('dim', !isMatch && el.closest('.bracket-wrap') !== null);
+      el.classList.toggle('dim', !isMatch && !isOpponent && el.closest('.bracket-wrap') !== null);
     });
 
     groupRows.forEach((el) => {
@@ -464,8 +481,6 @@
     });
 
     // Highlight match boxes the team appears in
-    const path = teamMatchPath(selectedTeam);
-    const pathMatchIds = new Set(path.map((p) => p.matchId));
     document.querySelectorAll('.match').forEach((matchEl) => {
       matchEl.classList.toggle('match-highlight', pathMatchIds.has(matchEl.dataset.matchId));
     });
