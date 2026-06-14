@@ -27,17 +27,23 @@ app.js                <- reads scenario.json, renders groups + bracket, handles 
 predictions.js        <- reads predictions.json, renders the sortable table
 scenario.json         <- pre-generated "most likely scenario" (commit after refresh)
 predictions.json      <- pre-generated Monte Carlo probabilities (commit after refresh)
+elo_baseline.json     <- frozen pre-tournament Elo snapshot (one-time, see Methodology)
+results.json          <- all 72 group-stage fixtures; fill in scores as played
 scripts/
-  eloSource.js        <- fetches eloratings.net/World.tsv
+  eloSource.js        <- fetches eloratings.net/World.tsv (used only by compareToLive.js)
   countryMap.js        <- maps Elo codes <-> team names
   sim/
     tournament.js        <- groups, host nations, Round-of-32 bracket structure
     eloModel.js          <- Elo -> win/draw/loss probability model
-    groupStage.js         <- simulates one group's round-robin (with goal sim for tiebreaks)
-    simulateTournament.js <- full Monte Carlo tournament (groups -> R32 -> ... -> final)
-    mostLikely.js          <- modal group order + chalk bracket ("most likely scenario")
-    runSimulation.js       <- runs N simulations, writes predictions.json
-    runScenario.js          <- computes the most-likely scenario, writes scenario.json
+    eloUpdate.js          <- Elo update formula (K=60, goal-difference weighted)
+    eloBaseline.js        <- baseline + results.json -> current ratings (deterministic)
+    resultsSource.js       <- loads results.json, extracts played fixtures per group
+    groupStage.js           <- simulates one group's round-robin (with goal sim for tiebreaks)
+    simulateTournament.js   <- full Monte Carlo tournament (groups -> R32 -> ... -> final)
+    mostLikely.js            <- modal group order + chalk bracket ("most likely scenario")
+    runSimulation.js         <- runs N simulations, writes predictions.json
+    runScenario.js            <- computes the most-likely scenario, writes scenario.json
+    compareToLive.js          <- MANUAL diagnostic: baseline+results vs live eloratings.net
 ```
 
 ## Deploying
@@ -49,19 +55,28 @@ scripts/
 ## Refreshing the data
 
 ```bash
-node scripts/sim/runScenario.js     # refreshes scenario.json (group tables + bracket)
 node scripts/sim/runSimulation.js   # refreshes predictions.json (probability table)
+node scripts/sim/runScenario.js     # refreshes scenario.json (group tables + bracket)
 git add scenario.json predictions.json
 git commit -m "Refresh Elo-based predictions"
 git push
 ```
 
-`runSimulation.js` accepts an optional simulation count (default 20,000), e.g.
-`node scripts/sim/runSimulation.js 50000`. Both pages cache-bust their JSON fetch
-with a timestamp query string, so refreshed files are picked up on next load.
+Run `runSimulation.js` first - `runScenario.js` reads its output (`pChampion`) to
+compute each team's `worldRank`. `runSimulation.js` accepts an optional simulation
+count (default 20,000), e.g. `node scripts/sim/runSimulation.js 50000`. Both pages
+cache-bust their JSON fetch with a timestamp query string, so refreshed files are
+picked up on next load.
 
-**Updating with live tournament results.** Edit `results.json` and add an entry for
-each completed group-stage match:
+**No live fetch is needed or used.** Ratings are computed deterministically from
+`elo_baseline.json` (a frozen pre-tournament Elo snapshot) plus every played result
+in `results.json`, applied in date order via the standard World Cup Elo formula.
+Same baseline + same `results.json` always produces the same ratings - see
+Methodology below for why.
+
+**Updating with live tournament results.** `results.json` lists all 72 group-stage
+fixtures up front with `homeGoals`/`awayGoals`/`date` set to `null`. To record a
+result, find the fixture and fill in the two goal counts (and optionally the date):
 
 ```json
 {
@@ -74,12 +89,23 @@ each completed group-stage match:
 }
 ```
 
-Team names must exactly match the names used in `scripts/sim/tournament.js`'s
-`GROUPS`. On the next run of either script, each result is (a) applied directly to
-that group's standings - the fixture is excluded from simulation entirely - and (b)
-used to update both teams' Elo ratings via the standard World Cup Elo formula (see
-Methodology below), which then feeds into every subsequent match probability
-(remaining group fixtures and the whole knockout bracket).
+Team names are pre-populated correctly - nothing to type. Only fixtures where both
+`homeGoals` and `awayGoals` are non-null are treated as played: each is (a) applied
+directly to that group's standings (excluded from simulation) and (b) included in
+the deterministic Elo calculation described above. Then re-run both scripts (or
+trigger the GitHub Action).
+
+**Checking the baseline is still accurate.** Periodically (e.g. after each round of
+group matches), run:
+
+```bash
+node scripts/sim/compareToLive.js
+```
+
+This fetches LIVE ratings from eloratings.net and compares them to our
+baseline+results.json-derived ratings, flagging any team that's drifted by more
+than 15 points. This script needs network access and is for local/manual use only -
+it's not part of the GitHub Actions workflow.
 
 ## Methodology
 
@@ -127,9 +153,11 @@ result landing on the modal outcome is small). `predictions.json` is the underly
 distribution and is the more statistically meaningful output for "what's the chance
 Brazil reaches the semis."
 
-**Live results & Elo updates.** Completed group-stage matches (tracked in
-`results.json`) are applied directly to group standings rather than simulated, and
-update both teams' Elo ratings using eloratings.net's own formula:
+**Ratings: frozen baseline + deterministic results.json updates.** Rather than
+fetching live ratings from eloratings.net on every run, the pipeline starts from
+`elo_baseline.json` - a one-time snapshot of every team's Elo rating taken just
+before the tournament began (2026-06-11) - and applies every played result from
+`results.json`, in date order, using eloratings.net's own update formula:
 
 ```
 Elo_new = Elo_old + K * G * (W - We)
@@ -138,9 +166,26 @@ Elo_new = Elo_old + K * G * (W - We)
 where K=60 (World Cup matches), G is a goal-difference weight (1 for a draw/1-goal
 margin, 1.5 for 2 goals, (11+N)/8 for N≥3 goals), W is the actual result (1/0.5/0 for
 win/draw/loss), and We is the pre-match expected result (including home advantage
-where applicable). Updated ratings then feed into every remaining fixture - both
-the rest of that team's group and the entire knockout bracket. See
-`scripts/sim/eloUpdate.js`.
+where applicable). See `scripts/sim/eloUpdate.js` for the formula and
+`scripts/sim/eloBaseline.js` for how it's applied to the baseline.
+
+**Why a frozen baseline instead of a live fetch?** eloratings.net updates its own
+ratings after matches too, on its own schedule. If we fetched live ratings (which
+may or may not already reflect a given match) AND separately applied our own delta
+for that same match, we could double-count it. Starting from a fixed,
+never-refetched baseline and applying only our own `results.json`-driven updates
+makes the calculation fully deterministic and immune to this - there is exactly one
+source of rating movement. The trade-off is that our ratings will gradually diverge
+from eloratings.net's live values over the tournament (e.g. if a team plays a
+friendly we don't track, or from small formula/rounding differences compounding).
+Run `node scripts/sim/compareToLive.js` periodically (locally, since it needs
+network access) to check the drift - if it grows large, consider re-freezing
+`elo_baseline.json` from a fresh live fetch between matchdays (with `results.json`
+reset accordingly, so the new baseline + new results don't double-count either).
+
+Completed group-stage matches are also applied directly to that group's standings
+(excluded from simulation, real scoreline used instead) - independent of the rating
+calculation above.
 
 **Climate/altitude adjustment.** Group-stage matches include a small (±25 Elo-point)
 adjustment based on whether each team is "accustomed" (by federation/confederation)
