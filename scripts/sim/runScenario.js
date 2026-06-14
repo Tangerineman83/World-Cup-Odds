@@ -74,10 +74,14 @@ function cleanMatch(m, codeOf) {
   // exists. The GitHub Actions workflow runs runSimulation.js BEFORE
   // runScenario.js so predictions.json is fresh when this runs.
   let pChampionByName = new Map();
+  let predictionsByName = new Map();
   try {
     const predictionsRaw = fs.readFileSync(path.join(__dirname, '..', '..', 'predictions.json'), 'utf-8');
     const predictions = JSON.parse(predictionsRaw);
-    for (const t of predictions.teams) pChampionByName.set(t.name, t.pChampion);
+    for (const t of predictions.teams) {
+      pChampionByName.set(t.name, t.pChampion);
+      predictionsByName.set(t.name, t);
+    }
     console.log(`Loaded pChampion for ${pChampionByName.size} teams from predictions.json (for world ranking).`);
   } catch (e) {
     console.log('predictions.json not found/unreadable - world ranking will fall back to Elo for this run.');
@@ -108,6 +112,75 @@ function cleanMatch(m, codeOf) {
     };
   }
 
+  // allThirds: all 12 third-placed teams (one per group).
+  //
+  // The 8 that qualify (per bestThirds/the bracket) are listed FIRST, sorted
+  // by their Round-of-32 match id (M74 < M77 < M79 < M80 < M81 < M82 < M85 <
+  // M87) - i.e. the same order/grouping the knockout bracket below will show
+  // them in - each annotated with `opponent` (the group winner they're
+  // paired against in that match) and `matchId`/`pWin` for that fixture.
+  // This is the bridge between the group-stage section and the knockout
+  // section: "8th in this list plays the winner of Group X in match Y".
+  //
+  // The remaining 4 (eliminated) are listed after, sorted by pThird
+  // descending (probability of advancing to the Last 32 via the third-place
+  // route specifically: finishing 3rd in their group AND being one of the 8
+  // best thirds, derived from predictions.json as
+  // pRoundOf32 - pGroupWinner - pRunnerUp) - i.e. "how close did they come".
+  const bestThirdNames = new Set(scenario.bestThirds.map((t) => t.name));
+  const r32OpponentByThird = new Map();
+  for (const m of scenario.r32) {
+    if (bestThirdNames.has(m.away.name)) {
+      r32OpponentByThird.set(m.away.name, { match: m, opponent: m.home });
+    }
+  }
+
+  const allThirdsRaw = Object.entries(scenario.groups).map(([letter, g]) => {
+    const name = g.order[2];
+    const team = teamsByName.get(name);
+    const pred = predictionsByName.get(name);
+    const pThird = pred ? Math.max(0, pred.pRoundOf32 - pred.pGroupWinner - pred.pRunnerUp) : null;
+    return {
+      name,
+      code: codeOf[name] || null,
+      group: letter,
+      elo: team.elo,
+      worldRank: worldRankByName.get(name),
+      positionProbabilities: g.positionProbabilities[name],
+      pThird,
+    };
+  });
+
+  const qualifying = [];
+  const eliminated = [];
+  for (const t of allThirdsRaw) {
+    const r32 = r32OpponentByThird.get(t.name);
+    if (r32) {
+      qualifying.push({
+        ...t,
+        qualifies: true,
+        matchId: r32.match.id,
+        pWin: r32.match.pWin,
+        opponent: cleanTeam(r32.opponent, codeOf),
+      });
+    } else {
+      eliminated.push({ ...t, qualifies: false, matchId: null, pWin: null, opponent: null });
+    }
+  }
+
+  // Sort qualifying thirds by their R32 match id (M74, M77, M79, M80, M81,
+  // M82, M85, M87 - numeric order happens to match this case, but compare
+  // numerically rather than as strings to be safe).
+  qualifying.sort((a, b) => parseInt(a.matchId.slice(1), 10) - parseInt(b.matchId.slice(1), 10));
+  // Sort eliminated thirds by pThird descending (falling back to Elo if
+  // pThird is unavailable).
+  eliminated.sort((a, b) => {
+    if (a.pThird != null && b.pThird != null) return b.pThird - a.pThird;
+    return teamsByName.get(b.name).elo - teamsByName.get(a.name).elo;
+  });
+
+  const allThirds = [...qualifying, ...eliminated];
+
   const output = {
     generatedAt: new Date().toISOString(),
     resultsApplied: resultsCount,
@@ -118,6 +191,7 @@ function cleanMatch(m, codeOf) {
         : 'predictions.json was unavailable when this was generated, so worldRank falls back to a simple rank by rating - regenerate after running runSimulation.js for a pChampion-based rank.',
       groupOrdering: 'modal (most frequent) full 1st-4th ordering across 5,000 group simulations per group',
       thirdPlaceRanking: 'approximate - thirds ranked by Elo as a proxy for points/GD/GF (not the official Annex C ranking process)',
+      allThirds: 'allThirds lists all 12 third-placed teams. The first 8 are the qualifying thirds per bestThirds/the bracket, ordered by their Round-of-32 match id (M74, M77, M79, M80, M81, M82, M85, M87) - matching the order/grouping shown in the knockout bracket below - each with `opponent`/`matchId`/`pWin` for that fixture. The remaining 4 (eliminated in this scenario) are ordered by pThird descending (probability of advancing via the third-place route specifically, derived from predictions.json as pRoundOf32 - pGroupWinner - pRunnerUp).',
       bracketStructure: 'official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 "3rd-placed" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup',
       knockouts: 'chalk bracket - at each match, the team with the higher combined win+penalty probability advances',
       liveResults: resultsCount > 0
@@ -127,6 +201,7 @@ function cleanMatch(m, codeOf) {
       note: 'This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations.',
     },
     groups,
+    allThirds,
     bestThirds: scenario.bestThirds.map((t) => cleanTeam(t, codeOf, { includeGroup: true })),
     r32: scenario.r32.map((m) => cleanMatch(m, codeOf)),
     r16: scenario.r16.map((m) => cleanMatch(m, codeOf)),
