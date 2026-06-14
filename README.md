@@ -169,6 +169,20 @@ win/draw/loss), and We is the pre-match expected result (including home advantag
 where applicable). See `scripts/sim/eloUpdate.js` for the formula and
 `scripts/sim/eloBaseline.js` for how it's applied to the baseline.
 
+**In-tournament delta multiplier (1.5x).** Every in-tournament result's Elo delta
+(as computed by the formula above) is multiplied by
+`IN_TOURNAMENT_DELTA_MULTIPLIER = 1.5` (in `scripts/sim/eloUpdate.js`), applied
+uniformly to every World Cup 2026 match as it's played - not decayed, and not
+limited to a team's most recent matches. The rationale: a team's performance at
+this tournament, against tournament-quality opposition and under tournament
+conditions, is more representative of their true current strength than their
+pre-tournament rating - so it should move the rating proportionally further. As a
+team plays more tournament matches, their rating becomes increasingly anchored to
+their actual tournament form rather than their pre-tournament baseline. This is a
+deliberate, uniform methodological choice (similar in spirit to eloratings.net's
+own use of a higher K for World Cup matches than for friendlies) - not a
+team-specific or judgment-based adjustment.
+
 **Why a frozen baseline instead of a live fetch?** eloratings.net updates its own
 ratings after matches too, on its own schedule. If we fetched live ratings (which
 may or may not already reflect a given match) AND separately applied our own delta
@@ -176,12 +190,17 @@ for that same match, we could double-count it. Starting from a fixed,
 never-refetched baseline and applying only our own `results.json`-driven updates
 makes the calculation fully deterministic and immune to this - there is exactly one
 source of rating movement. The trade-off is that our ratings will gradually diverge
-from eloratings.net's live values over the tournament (e.g. if a team plays a
-friendly we don't track, or from small formula/rounding differences compounding).
-Run `node scripts/sim/compareToLive.js` periodically (locally, since it needs
-network access) to check the drift - if it grows large, consider re-freezing
-`elo_baseline.json` from a fresh live fetch between matchdays (with `results.json`
-reset accordingly, so the new baseline + new results don't double-count either).
+from eloratings.net's live values over the tournament - partly *by design* now
+(the 1.5x multiplier means our results-driven movement is always 50% larger than
+eloratings.net's own), and partly for the same reasons as before (a team plays a
+friendly we don't track, small formula/rounding differences compounding). Run
+`node scripts/sim/compareToLive.js` periodically (locally, since it needs network
+access) to check for *unexplained* drift - the script accounts for the expected
+1.5x effect and flags only residual differences beyond that, which would suggest a
+missing/extra result rather than the multiplier itself. If unexplained drift grows
+large, consider re-freezing `elo_baseline.json` from a fresh live fetch between
+matchdays (with `results.json` reset accordingly, so the new baseline + new results
+don't double-count either).
 
 Completed group-stage matches are also applied directly to that group's standings
 (excluded from simulation, real scoreline used instead) - independent of the rating
