@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { applyResultsToElo } = require('./eloUpdate');
+const { applyResultsToElo, IN_TOURNAMENT_DELTA_MULTIPLIER } = require('./eloUpdate');
 
 const BASELINE_PATH = path.join(__dirname, '..', '..', 'elo_baseline.json');
 
@@ -14,7 +14,9 @@ function loadBaseline() {
 // Computes current Elo ratings: starts from the frozen pre-tournament
 // baseline and applies every PLAYED fixture (homeGoals/awayGoals both
 // non-null) from results.json's results array, in date order, via the
-// standard World Cup Elo update (K=60, goal-difference weighted).
+// standard World Cup Elo update (K=60, goal-difference weighted), with each
+// delta scaled by IN_TOURNAMENT_DELTA_MULTIPLIER (currently 1.5x - see
+// eloUpdate.js for rationale).
 //
 // This is fully deterministic - same baseline + same results.json always
 // produces the same ratings - and requires no live fetch, so there is no
@@ -48,9 +50,16 @@ function computeCurrentRatings(allFixtures) {
       return a._origIndex - b._origIndex;
     });
 
-  const eloChanges = applyResultsToElo(teamsByName, played);
+  const eloChanges = applyResultsToElo(teamsByName, played, IN_TOURNAMENT_DELTA_MULTIPLIER);
 
-  return { teamsByName, eloChanges, appliedCount: played.length, baselineFetchedAt: fetchedAt, baselineSource: source };
+  return {
+    teamsByName,
+    eloChanges,
+    appliedCount: played.length,
+    baselineFetchedAt: fetchedAt,
+    baselineSource: source,
+    deltaMultiplier: IN_TOURNAMENT_DELTA_MULTIPLIER,
+  };
 }
 
 module.exports = { loadBaseline, computeCurrentRatings, BASELINE_PATH };

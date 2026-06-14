@@ -36,7 +36,7 @@ function mulberry32(seed) {
 
   console.log('Computing ratings from baseline + results.json...');
   const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
-  const { teamsByName, appliedCount, baselineFetchedAt } = computeCurrentRatings(
+  const { teamsByName, appliedCount, baselineFetchedAt, deltaMultiplier } = computeCurrentRatings(
     require(path.join(__dirname, '..', '..', 'results.json')).results
   );
 
@@ -123,7 +123,7 @@ function mulberry32(seed) {
     generatedAt: new Date().toISOString(),
     numSimulations: N_SIMULATIONS,
     methodology: {
-      ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values.`,
+      ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted), with each in-tournament result's rating change multiplied by ${deltaMultiplier}x (on the basis that current tournament form is more representative of a team's true strength than their pre-tournament rating alone). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values (noting ours will diverge somewhat by design, due to the multiplier).`,
       homeAdvantage: 100,
       drawModel: 'empirical (base 26% at parity, floor 12% for large gaps)',
       thirdPlaceAndBracket: 'simplified approximation of FIFA Annex C; not the official 495-scenario mapping',

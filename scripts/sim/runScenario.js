@@ -50,7 +50,7 @@ function cleanMatch(m, codeOf) {
 
   console.log('Computing ratings from baseline + results.json...');
   const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
-  const { teamsByName, eloChanges, appliedCount, baselineFetchedAt } = computeCurrentRatings(
+  const { teamsByName, eloChanges, appliedCount, baselineFetchedAt, deltaMultiplier } = computeCurrentRatings(
     require(path.join(__dirname, '..', '..', 'results.json')).results
   );
 
@@ -112,7 +112,7 @@ function cleanMatch(m, codeOf) {
     generatedAt: new Date().toISOString(),
     resultsApplied: resultsCount,
     methodology: {
-      ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values.`,
+      ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted), with each in-tournament result's rating change multiplied by ${deltaMultiplier}x (on the basis that current tournament form is more representative of a team's true strength than their pre-tournament rating alone). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values (noting ours will diverge somewhat by design, due to the multiplier).`,
       worldRank: pChampionByName.size === allTeams.length
         ? 'Each team\'s worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions.json) - i.e. the rank matches the same model used for the odds table, not raw rating.'
         : 'predictions.json was unavailable when this was generated, so worldRank falls back to a simple rank by rating - regenerate after running runSimulation.js for a pChampion-based rank.',

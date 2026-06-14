@@ -14,7 +14,8 @@
 const path = require('path');
 const { getEloRatings } = require('../eloSource');
 const { GROUPS } = require('./tournament');
-const { computeCurrentRatings } = require('./eloBaseline');
+const { computeCurrentRatings, loadBaseline } = require('./eloBaseline');
+const { IN_TOURNAMENT_DELTA_MULTIPLIER } = require('./eloUpdate');
 
 const DRIFT_WARN_THRESHOLD = 15; // Elo points - flag teams beyond this
 
@@ -42,24 +43,42 @@ const DRIFT_WARN_THRESHOLD = 15; // Elo points - flag teams beyond this
   const { teamsByName, appliedCount, baselineFetchedAt } = computeCurrentRatings(
     require(path.join(__dirname, '..', '..', 'results.json')).results
   );
+  const { ratings: baselineRatings } = loadBaseline();
 
-  console.log(`\nBaseline fetched: ${baselineFetchedAt} | Results applied: ${appliedCount}\n`);
-  console.log('Team'.padEnd(20), 'Ours'.padStart(8), 'Live'.padStart(8), 'Diff'.padStart(8));
-  console.log('-'.repeat(46));
+  console.log(`\nBaseline fetched: ${baselineFetchedAt} | Results applied: ${appliedCount} | In-tournament multiplier: ${IN_TOURNAMENT_DELTA_MULTIPLIER}x\n`);
+  console.log('NOTE: "ours" is EXPECTED to differ from "live" for teams that have played');
+  console.log(`matches, by roughly (${IN_TOURNAMENT_DELTA_MULTIPLIER}x - 1) = ${((IN_TOURNAMENT_DELTA_MULTIPLIER - 1) * 100).toFixed(0)}% of their live movement so far - that's the`);
+  console.log('point of the multiplier. The check below accounts for this and flags only');
+  console.log('UNEXPLAINED drift beyond what the multiplier predicts.\n');
+
+  console.log('Team'.padEnd(20), 'Ours'.padStart(8), 'Live'.padStart(8), 'Baseline'.padStart(9), 'Unexplained'.padStart(12));
+  console.log('-'.repeat(60));
 
   const flagged = [];
   for (const name of allTeams) {
     const ours = teamsByName.get(name).elo;
     const live = liveByName.get(name);
-    if (live == null) {
-      console.log(name.padEnd(20), ours.toFixed(1).padStart(8), 'N/A'.padStart(8), '-'.padStart(8));
+    const baseline = baselineRatings[name];
+    if (live == null || baseline == null) {
+      console.log(name.padEnd(20), ours.toFixed(1).padStart(8), 'N/A'.padStart(8), '-'.padStart(9), '-'.padStart(12));
       continue;
     }
-    const diff = ours - live;
-    const line = `${name.padEnd(20)} ${ours.toFixed(1).padStart(8)} ${live.toFixed(1).padStart(8)} ${diff >= 0 ? '+' : ''}${diff.toFixed(1).padStart(7)}`;
-    if (Math.abs(diff) >= DRIFT_WARN_THRESHOLD) {
-      console.log(line, '  <-- drift >', DRIFT_WARN_THRESHOLD);
-      flagged.push({ name, ours, live, diff });
+
+    // liveMovement = how much eloratings.net has moved this team since our
+    // baseline (could include World Cup matches AND anything else, e.g.
+    // friendlies). expectedOurs = baseline + multiplier * liveMovement is
+    // our best guess at what "ours" should be if results.json + the
+    // multiplier fully explains the difference. "unexplained" is the
+    // residual - large values suggest a missing/extra result rather than
+    // the multiplier itself.
+    const liveMovement = live - baseline;
+    const expectedOurs = baseline + IN_TOURNAMENT_DELTA_MULTIPLIER * liveMovement;
+    const unexplained = ours - expectedOurs;
+
+    const line = `${name.padEnd(20)} ${ours.toFixed(1).padStart(8)} ${live.toFixed(1).padStart(8)} ${baseline.toFixed(1).padStart(9)} ${unexplained >= 0 ? '+' : ''}${unexplained.toFixed(1).padStart(11)}`;
+    if (Math.abs(unexplained) >= DRIFT_WARN_THRESHOLD) {
+      console.log(line, '  <-- unexplained drift >', DRIFT_WARN_THRESHOLD);
+      flagged.push({ name, ours, live, baseline, unexplained });
     } else {
       console.log(line);
     }
@@ -67,16 +86,17 @@ const DRIFT_WARN_THRESHOLD = 15; // Elo points - flag teams beyond this
 
   console.log();
   if (flagged.length === 0) {
-    console.log('All teams within', DRIFT_WARN_THRESHOLD, 'points of live eloratings.net. Baseline looks good.');
+    console.log('All teams within', DRIFT_WARN_THRESHOLD, 'points of "baseline + multiplier x live movement". Looks good.');
   } else {
-    console.log(`${flagged.length} team(s) drifted more than ${DRIFT_WARN_THRESHOLD} points from live eloratings.net:`);
+    console.log(`${flagged.length} team(s) have unexplained drift beyond ${DRIFT_WARN_THRESHOLD} points:`);
     for (const f of flagged) {
-      console.log(`  ${f.name}: ours=${f.ours.toFixed(1)}, live=${f.live.toFixed(1)}, diff=${f.diff >= 0 ? '+' : ''}${f.diff.toFixed(1)}`);
+      console.log(`  ${f.name}: ours=${f.ours.toFixed(1)}, live=${f.live.toFixed(1)}, baseline=${f.baseline.toFixed(1)}, unexplained=${f.unexplained >= 0 ? '+' : ''}${f.unexplained.toFixed(1)}`);
     }
     console.log();
     console.log('Possible causes:');
     console.log('  - A match this team played isn\'t in results.json yet (add it).');
-    console.log('  - eloratings.net has processed a match (e.g. a friendly) we don\'t track.');
+    console.log('  - eloratings.net has processed a match (e.g. a friendly) we don\'t track,');
+    console.log('    so liveMovement includes something results.json doesn\'t.');
     console.log('  - Small formula/rounding differences compounding over several matches.');
     console.log('If drift is widespread and growing, consider re-freezing elo_baseline.json');
     console.log('from a fresh live fetch (only do this BETWEEN matchdays, with results.json');
