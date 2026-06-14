@@ -79,7 +79,31 @@ jobs:
           git add scenario.json predictions.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
-          else
-            git commit -m "Refresh predictions ($(date -u +'%Y-%m-%d %H:%M UTC'))"
-            git push
+            exit 0
           fi
+
+          git commit -m "Refresh predictions ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+
+          # The remote may have moved since checkout (e.g. a manual edit to
+          # results.json landed in between). Rebase our commit on top of the
+          # latest remote main before pushing, retrying a few times in case
+          # of a tight race. Our changes are only to generated JSON files, so
+          # a rebase here should not produce conflicts in normal use.
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase origin/main; then
+              if git push origin main; then
+                echo "Pushed successfully."
+                exit 0
+              fi
+            else
+              echo "Rebase conflict - aborting rebase. Manual intervention needed."
+              git rebase --abort
+              exit 1
+            fi
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          echo "ERROR: failed to push after retries."
+          exit 1
