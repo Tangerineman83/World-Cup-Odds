@@ -738,3 +738,107 @@ td.col-team .code {
   font-weight: 800;
   border-left: 2px solid var(--border);
 }
+
+/* =====================================================================
+   Best of the third-placed teams (index.html)
+   ===================================================================== */
+
+.thirds-section {
+  margin: 0.5rem 0 2rem;
+}
+
+.thirds-intro {
+  margin: 0 0 0.9rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 56em;
+}
+
+.thirds-table-wrap {
+  overflow-x: auto;
+}
+
+.thirds-table {
+  width: 100%;
+}
+
+.thirds-table th.col-thirdpct,
+.thirds-table td.col-thirdpct {
+  text-align: left;
+  min-width: 13em;
+}
+
+.thirds-table td.col-team {
+  min-width: 11em;
+}
+
+.third-fixture {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.third-fixture-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.third-fixture-pct {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.third-out {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.thirds-table tr.third-eliminated {
+  opacity: 0.55;
+}
+
+.thirds-table tr.third-eliminated .team-cell,
+.thirds-table tr.third-eliminated .elo-num {
+  color: var(--text-muted);
+}
+
+/* Divider row marking the cutoff between the 8 thirds likely to advance
+   and the 4 likely eliminated. */
+.thirds-divider-row td {
+  padding: 0;
+  border-bottom: none;
+}
+
+.thirds-divider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.8rem;
+  border-top: 2px dashed var(--accent);
+  border-bottom: 2px dashed var(--accent);
+  background: var(--accent-soft);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+@media (max-width: 700px) {
+  .thirds-table td, .thirds-table th {
+    padding: 0.5rem 0.6rem;
+  }
+  .third-pct-bar {
+    width: 40%;
+    max-width: 6em;
+  }
+}
