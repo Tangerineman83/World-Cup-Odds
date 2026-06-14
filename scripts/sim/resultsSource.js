@@ -22,11 +22,18 @@ function loadResults() {
 // (K=60, goal-difference weighted - see eloUpdate.js). Returns the list of
 // per-match Elo changes for transparency/logging.
 //
+// results.json lists ALL 72 group-stage fixtures as placeholders
+// (homeGoals/awayGoals: null) so team names/groups never need to be typed by
+// hand - only entries where BOTH homeGoals and awayGoals are non-null are
+// treated as "played" and applied here; everything else is ignored (and
+// still simulated normally).
+//
 // Also returns a Map from group letter -> array of known-result objects
 // ({ home, away, homeGoals, awayGoals }), for passing to simulateGroup so
 // completed fixtures are excluded from simulation.
 function applyKnownResults(teamsByName) {
-  const { results, lastUpdated } = loadResults();
+  const { results: allFixtures, lastUpdated } = loadResults();
+  const results = allFixtures.filter((r) => r.homeGoals != null && r.awayGoals != null);
 
   const eloChanges = applyResultsToElo(teamsByName, results);
 
