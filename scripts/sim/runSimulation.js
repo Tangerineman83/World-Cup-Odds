@@ -1,15 +1,21 @@
 #!/usr/bin/env node
-// Runs a Monte Carlo simulation of the 2026 World Cup using current Elo ratings,
-// and writes predictions.json with per-team probabilities of reaching each stage.
+// Runs a Monte Carlo simulation of the 2026 World Cup using current Elo
+// ratings, and writes predictions.json with per-team probabilities of
+// reaching each stage.
 //
 // Usage: node scripts/sim/runSimulation.js [numSimulations]
+//
+// Ratings come from elo_baseline.json (frozen pre-tournament snapshot) plus
+// results.json (applied deterministically via eloBaseline.js) - NOT a live
+// fetch. See eloBaseline.js and compareToLive.js for the rationale and the
+// manual verification process.
 
 const fs = require('fs');
 const path = require('path');
-const { getEloRatings } = require('../eloSource');
 const { GROUPS } = require('./tournament');
 const { simulateTournament } = require('./simulateTournament');
-const { applyKnownResults } = require('./resultsSource');
+const { getKnownResultsByGroup } = require('./resultsSource');
+const { computeCurrentRatings } = require('./eloBaseline');
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
@@ -26,28 +32,18 @@ function mulberry32(seed) {
 }
 
 (async () => {
-  console.log('Fetching current Elo ratings...');
-  const eloRows = await getEloRatings(); // [{ code, team, eloRating, eloRank }]
-  const eloByName = new Map(eloRows.map((r) => [r.team, r.eloRating]));
-
-  // Verify every team in the official groups has an Elo rating
   const allTeams = Object.values(GROUPS).flat();
-  const missing = allTeams.filter((t) => !eloByName.has(t));
-  if (missing.length) {
-    console.warn('WARNING: missing Elo ratings for:', missing.join(', '));
-    console.warn('These teams will be assigned a default rating of 1400.');
-  }
 
-  const teamsByName = new Map(
-    allTeams.map((name) => [name, { name, elo: eloByName.get(name) ?? 1400 }])
+  console.log('Computing ratings from baseline + results.json...');
+  const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
+  const { teamsByName, appliedCount, baselineFetchedAt } = computeCurrentRatings(
+    require(path.join(__dirname, '..', '..', 'results.json')).results
   );
 
-  console.log('Applying completed match results...');
-  const { eloChanges, knownByGroup, resultsCount, lastUpdated } = applyKnownResults(teamsByName);
-  if (resultsCount > 0) {
-    console.log(`  Applied ${resultsCount} result(s), updating Elo ratings (results.json last updated ${lastUpdated}).`);
+  if (appliedCount > 0) {
+    console.log(`  Applied ${appliedCount} result(s) on top of the ${baselineFetchedAt} baseline (results.json last updated ${lastUpdated}).`);
   } else {
-    console.log('  No completed results found (results.json empty or missing).');
+    console.log('  No completed results found (results.json empty or all placeholders) - using baseline ratings as-is.');
   }
 
   // Aggregation counters
@@ -127,14 +123,14 @@ function mulberry32(seed) {
     generatedAt: new Date().toISOString(),
     numSimulations: N_SIMULATIONS,
     methodology: {
-      eloSource: 'https://www.eloratings.net/World.tsv',
+      ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values.`,
       homeAdvantage: 100,
       drawModel: 'empirical (base 26% at parity, floor 12% for large gaps)',
       thirdPlaceAndBracket: 'simplified approximation of FIFA Annex C; not the official 495-scenario mapping',
       knockoutTies: 'extra time/penalties treated as draw-probability mass resolved ~50/50 with a small Elo-based tilt',
       liveResults: resultsCount > 0
         ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated) in every simulation run, and have updated each involved team's Elo rating (eloRating below) using the standard World Cup Elo formula (K=60, goal-difference weighted).`
-        : 'No completed results applied yet - eloRating values are the pre-tournament Elo snapshot.',
+        : 'No completed results applied yet - eloRating values are the pre-tournament Elo baseline.',
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
     },
     teams,

@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { applyResultsToElo } = require('./eloUpdate');
 
 const RESULTS_PATH = path.join(__dirname, '..', '..', 'results.json');
 
@@ -17,25 +16,24 @@ function loadResults() {
   }
 }
 
-// Applies all completed results to teamsByName (Map of name -> {name, elo}),
-// mutating Elo ratings in place via the standard World Cup Elo update
-// (K=60, goal-difference weighted - see eloUpdate.js). Returns the list of
-// per-match Elo changes for transparency/logging.
+// Returns a Map from group letter -> array of known-result objects
+// ({ home, away, homeGoals, awayGoals }), for passing to simulateGroup so
+// completed fixtures are excluded from simulation (the real scoreline is
+// used directly for that group's standings instead).
 //
 // results.json lists ALL 72 group-stage fixtures as placeholders
 // (homeGoals/awayGoals: null) so team names/groups never need to be typed by
 // hand - only entries where BOTH homeGoals and awayGoals are non-null are
-// treated as "played" and applied here; everything else is ignored (and
-// still simulated normally).
+// treated as "played"; everything else is ignored (and still simulated
+// normally).
 //
-// Also returns a Map from group letter -> array of known-result objects
-// ({ home, away, homeGoals, awayGoals }), for passing to simulateGroup so
-// completed fixtures are excluded from simulation.
-function applyKnownResults(teamsByName) {
+// NOTE: this does NOT update Elo ratings - that's handled separately and
+// deterministically by eloBaseline.js (frozen pre-tournament baseline +
+// results.json, applied in date order). Keeping the two concerns separate
+// avoids ever double-applying an Elo delta.
+function getKnownResultsByGroup() {
   const { results: allFixtures, lastUpdated } = loadResults();
   const results = allFixtures.filter((r) => r.homeGoals != null && r.awayGoals != null);
-
-  const eloChanges = applyResultsToElo(teamsByName, results);
 
   const knownByGroup = new Map();
   for (const r of results) {
@@ -45,7 +43,7 @@ function applyKnownResults(teamsByName) {
     });
   }
 
-  return { eloChanges, knownByGroup, resultsCount: results.length, lastUpdated };
+  return { knownByGroup, resultsCount: results.length, lastUpdated };
 }
 
-module.exports = { loadResults, applyKnownResults, RESULTS_PATH };
+module.exports = { loadResults, getKnownResultsByGroup, RESULTS_PATH };

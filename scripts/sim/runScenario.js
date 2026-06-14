@@ -3,15 +3,25 @@
 // knockout bracket) and writes scenario.json.
 //
 // Usage: node scripts/sim/runScenario.js
+//
+// Ratings come from elo_baseline.json (frozen pre-tournament snapshot) plus
+// results.json (applied deterministically via eloBaseline.js) - NOT a live
+// fetch. See eloBaseline.js and compareToLive.js for the rationale and the
+// manual verification process.
 
 const fs = require('fs');
 const path = require('path');
-const { getEloRatings } = require('../eloSource');
+const { ELO_TO_NAME } = require('../countryMap');
 const { GROUPS } = require('./tournament');
 const { computeMostLikelyScenario } = require('./mostLikely');
-const { applyKnownResults } = require('./resultsSource');
+const { getKnownResultsByGroup } = require('./resultsSource');
+const { computeCurrentRatings } = require('./eloBaseline');
 
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario.json');
+
+// Inverse of ELO_TO_NAME (code -> name), for displaying each team's code.
+const NAME_TO_CODE = {};
+for (const [code, name] of Object.entries(ELO_TO_NAME)) NAME_TO_CODE[name] = code;
 
 // Strips a team object down to plain { name, code, elo } for JSON output,
 // dropping any internal proxy fields (points/gd/gf used for third-place ranking).
@@ -35,43 +45,22 @@ function cleanMatch(m, codeOf) {
 }
 
 (async () => {
-  console.log('Fetching current Elo ratings...');
-  const eloRows = await getEloRatings();
-  const eloByName = new Map(eloRows.map((r) => [r.team, r.eloRating]));
-  const codeOf = {};
-  for (const r of eloRows) codeOf[r.team] = r.code;
-
   const allTeams = Object.values(GROUPS).flat();
-  const missing = allTeams.filter((t) => !eloByName.has(t));
+  const codeOf = NAME_TO_CODE;
 
-  if (eloRows.length === 0) {
-    console.error('ERROR: getEloRatings() returned no rows at all - eloratings.net fetch likely failed.');
-    console.error('Aborting without writing scenario.json (refusing to overwrite good data with a uniform-rating run).');
-    process.exit(1);
-  }
-
-  if (missing.length > 0) {
-    console.error(`ERROR: missing Elo ratings for ${missing.length}/${allTeams.length} teams: ${missing.join(', ')}`);
-    if (missing.length === allTeams.length) {
-      console.error('ALL teams are missing - this looks like a total data-source failure, not a few name mismatches.');
-    }
-    console.error('Aborting without writing scenario.json. Check scripts/eloSource.js and scripts/countryMap.js (team name spelling, World.tsv format).');
-    process.exit(1);
-  }
-
-  const teamsByName = new Map(
-    allTeams.map((name) => [name, { name, elo: eloByName.get(name) }])
+  console.log('Computing ratings from baseline + results.json...');
+  const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
+  const { teamsByName, eloChanges, appliedCount, baselineFetchedAt } = computeCurrentRatings(
+    require(path.join(__dirname, '..', '..', 'results.json')).results
   );
 
-  console.log('Applying completed match results...');
-  const { eloChanges, knownByGroup, resultsCount, lastUpdated } = applyKnownResults(teamsByName);
-  if (resultsCount > 0) {
-    console.log(`  Applied ${resultsCount} result(s) (results.json last updated ${lastUpdated}):`);
+  if (appliedCount > 0) {
+    console.log(`  Applied ${appliedCount} result(s) on top of the ${baselineFetchedAt} baseline (results.json last updated ${lastUpdated}):`);
     for (const c of eloChanges) {
       console.log(`    ${c.home} ${c.homeGoals}-${c.awayGoals} ${c.away}: ${c.home} ${c.homeEloChange >= 0 ? '+' : ''}${c.homeEloChange.toFixed(1)}, ${c.away} ${c.awayEloChange >= 0 ? '+' : ''}${c.awayEloChange.toFixed(1)}`);
     }
   } else {
-    console.log('  No completed results found (results.json empty or missing).');
+    console.log('  No completed results found (results.json empty or all placeholders) - using baseline ratings as-is.');
   }
 
   console.log('Computing most-likely scenario...');
@@ -123,6 +112,7 @@ function cleanMatch(m, codeOf) {
     generatedAt: new Date().toISOString(),
     resultsApplied: resultsCount,
     methodology: {
+      ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values.`,
       worldRank: pChampionByName.size === allTeams.length
         ? 'Each team\'s worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions.json) - i.e. the rank matches the same model used for the odds table, not raw rating.'
         : 'predictions.json was unavailable when this was generated, so worldRank falls back to a simple rank by rating - regenerate after running runSimulation.js for a pChampion-based rank.',
@@ -132,7 +122,7 @@ function cleanMatch(m, codeOf) {
       knockouts: 'chalk bracket - at each match, the team with the higher combined win+penalty probability advances',
       liveResults: resultsCount > 0
         ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).`
-        : 'No completed results applied yet - all ratings are the pre-tournament Elo snapshot.',
+        : 'No completed results applied yet - all ratings are the pre-tournament Elo baseline.',
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. This is a clearly-labelled methodological judgement, not a fitted parameter - treat it as directional, not precise. Not applied to knockout matches (venue depends on bracket outcome).',
       note: 'This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations.',
     },
