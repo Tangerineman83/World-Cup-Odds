@@ -1,0 +1,85 @@
+name: Refresh predictions
+
+# Recomputes ratings deterministically from elo_baseline.json (frozen
+# pre-tournament Elo snapshot) + results.json (every played result applied
+# in date order), re-runs the Monte Carlo simulation and the group/bracket
+# scenario, and commits the updated scenario.json / predictions.json if
+# anything changed.
+#
+# No live network fetch is used - ratings come solely from
+# elo_baseline.json + results.json, so this workflow has no external
+# dependency and cannot silently produce uniform/garbage ratings from a
+# failed fetch.
+#
+# results.json (completed match results) is NOT touched by this workflow -
+# update it manually as matches are played, then trigger this workflow
+# (or wait for the schedule).
+#
+# Periodically (e.g. after each round of group matches), run
+# `node scripts/sim/compareToLive.js` LOCALLY (it needs network access to
+# eloratings.net) to confirm our baseline+results ratings are still tracking
+# live eloratings.net values.
+
+on:
+  schedule:
+    # Twice daily during the tournament window (adjust as needed) - mainly a
+    # safety net; the main trigger is workflow_dispatch after updating
+    # results.json.
+    - cron: '0 6,18 * * *'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run simulation (full probability table)
+        run: node scripts/sim/runSimulation.js 20000
+
+      - name: Sanity-check simulation output
+        run: |
+          node -e "
+            const data = require('./predictions.json');
+            const ratings = data.teams.map(t => t.eloRating);
+            const min = Math.min(...ratings), max = Math.max(...ratings);
+            console.log('Elo range:', min, '-', max, '(spread', (max-min).toFixed(0) + ')');
+            // Real Elo ratings for the 2026 field span roughly 1400-2200 - a
+            // spread under 100 points would indicate something has gone
+            // badly wrong with elo_baseline.json or results.json.
+            if (max - min < 100) {
+              console.error('ERROR: Elo spread is suspiciously narrow (<100). Check elo_baseline.json and results.json. Refusing to commit.');
+              process.exit(1);
+            }
+            const sum = data.teams.reduce((a, t) => a + t.pChampion, 0);
+            console.log('Sum of pChampion across all teams:', sum.toFixed(4), '(expect ~1.0)');
+            if (Math.abs(sum - 1) > 0.01) {
+              console.error('ERROR: pChampion does not sum to ~1. Refusing to commit.');
+              process.exit(1);
+            }
+          "
+
+      # Runs AFTER the simulation so it can read predictions.json's pChampion
+      # values and include a pChampion-based world ranking (worldRank) for
+      # each team in scenario.json's group tables.
+      - name: Run scenario (group tables + bracket)
+        run: node scripts/sim/runScenario.js
+
+      - name: Commit updated predictions if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scenario.json predictions.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Refresh predictions ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi
