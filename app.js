@@ -131,16 +131,21 @@
         lastCol = `<span class="third-out">Out</span>`;
       }
 
+      const ptsGd = team.points != null
+        ? `${team.points} <span class="third-gd">${team.gd >= 0 ? '+' : ''}${team.gd}</span>`
+        : '—';
+
       rows += `<tr data-team="${team.name}" class="${team.qualifies ? 'third-qualifies' : 'third-eliminated'}">
         <td class="col-team">${teamButton(team)}</td>
         <td class="col-num">${team.group}</td>
+        <td class="col-num third-ptsgd" title="${team.points != null ? `${team.points} point${team.points === 1 ? '' : 's'}, goal difference ${team.gd >= 0 ? '+' : ''}${team.gd}` : ''}">${ptsGd}</td>
         <td class="col-thirdpct">${lastCol}</td>
       </tr>`;
 
       // Divider after the 8th team: 8 of 12 thirds advance to the Last 32.
       if (i === 7 && thirds.length > 8) {
         rows += `<tr class="thirds-divider-row" aria-hidden="true">
-          <td colspan="3"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
+          <td colspan="4"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
         </tr>`;
       }
     });
