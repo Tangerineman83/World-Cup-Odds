@@ -170,7 +170,75 @@ function mulberry32(seed) {
     return scenarios;
   }
 
-  // thirdPlaceScenarios: kept for the existing third-place table popup,
+  // Builds the pooled (points,gd) breakdown across ALL 5 outcome buckets for
+  // one team, for the new Sankey-style diagram: left nodes = the 5 buckets,
+  // right nodes = (points,gd) combos pooled across buckets (so e.g. "6pts
+  // GD+1" reached via both '2nd' and 'thirdQualified' is ONE right-side
+  // node, fed by ribbons from both buckets). The >1% SCENARIO_THRESHOLD is
+  // applied to each combo's POOLED total (summed across buckets) - combos
+  // at or below stay folded into a single "Other" node (points/gd: null),
+  // which itself aggregates each bucket's leftover mass for that combo.
+  // Sorted by points desc, then gd desc ("best to poorest"); "Other" last.
+  // Each entry's byBucket gives the per-bucket contribution (for ribbons),
+  // omitting buckets with a zero contribution. total = sum of byBucket
+  // values = this node's overall probability (unconditional, fraction of
+  // N_SIMULATIONS). Summing all entries' totals gives 1.
+  // Maps raw histogram bucket keys (matching OUTCOME_BUCKETS array at the
+  // top of the sim loop) to the JS-friendly keys used in outcomeScenarios
+  // and in scenarioFlow.js's OUTCOME_BUCKETS[].key - so pooledScenarios
+  // byBucket keys match what the Sankey renderer expects.
+  const BUCKET_KEY_MAP = {
+    '1st': 'first',
+    '2nd': 'second',
+    '3rd_qualified': 'thirdQualified',
+    '3rd_eliminated': 'thirdEliminated',
+    '4th': 'fourth',
+  };
+
+  function buildPooledScenarios(name) {
+    const pooled = new Map(); // "points,gd" -> { points, gd, byBucket: {bucket: count} }
+    for (const bucket of OUTCOME_BUCKETS) {
+      const mappedKey = BUCKET_KEY_MAP[bucket];
+      const hist = outcomeHistograms.get(name).get(bucket);
+      for (const [key, count] of hist.entries()) {
+        if (!pooled.has(key)) {
+          const [points, gd] = key.split(',').map(Number);
+          pooled.set(key, { points, gd, byBucket: {} });
+        }
+        pooled.get(key).byBucket[mappedKey] = count / N_SIMULATIONS;
+      }
+    }
+
+    const entries = [...pooled.values()].map((e) => ({
+      ...e,
+      total: Object.values(e.byBucket).reduce((sum, p) => sum + p, 0),
+    }));
+
+    const shown = entries.filter((e) => e.total > SCENARIO_THRESHOLD)
+      .sort((a, b) => (b.points - a.points) || (b.gd - a.gd));
+
+    const others = entries.filter((e) => e.total <= SCENARIO_THRESHOLD);
+    if (others.length > 0) {
+      const othersByBucket = {};
+      for (const e of others) {
+        for (const [bucket, p] of Object.entries(e.byBucket)) {
+          othersByBucket[bucket] = (othersByBucket[bucket] || 0) + p;
+        }
+      }
+      const othersTotal = Object.values(othersByBucket).reduce((sum, p) => sum + p, 0);
+      if (othersTotal > 0) {
+        shown.push({ points: null, gd: null, total: othersTotal, byBucket: othersByBucket });
+      }
+    }
+
+    return shown.map((e) => ({
+      points: e.points,
+      gd: e.gd,
+      total: e.total,
+      byBucket: e.byBucket,
+    }));
+  }
+
   // which expects pct relative to P(finish 3rd) (= pFinish3rd), i.e. "given
   // finish 3rd, what's the points/GD AND qualified breakdown" - entries sum
   // to pQualifyGiven3rd. Derived from the new '3rd_qualified' bucket
@@ -214,6 +282,7 @@ function mulberry32(seed) {
         thirdEliminated: buildOutcomeScenarios(name, '3rd_eliminated'),
         fourth: buildOutcomeScenarios(name, '4th'),
       },
+      pooledScenarios: buildPooledScenarios(name),
     };
   });
 
@@ -235,7 +304,8 @@ function mulberry32(seed) {
         : 'No completed results applied yet - eloRating values are the pre-tournament Elo baseline.',
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
       thirdPlaceScenarios: 'For each team, thirdPlaceScenarios lists the most common (points, gd) combinations from simulations where that team finished 3rd in their group AND qualified as a top-8 third. The pct for each entry is a fraction of ALL simulations where the team finished 3rd (not just qualifying ones) - so the entries sum to pQualifyGiven3rd (in scenario.json allThirds), not to 1. The top 5 distinct (points, gd) combos are listed individually; any remainder is grouped into an "Others" entry (points: null, gd: null). The remaining gap to 1 (i.e. 1 - pQualifyGiven3rd) represents simulations where the team finished 3rd but did NOT qualify - not itemised here. Empty for teams that (almost) never finish 3rd.',
-      outcomeScenarios: 'For each team, outcomeScenarios breaks the group stage down into 5 mutually exclusive outcome buckets: first, second, thirdQualified (finished 3rd AND advanced as a top-8 third), thirdEliminated (finished 3rd, did not advance), fourth. Each bucket lists the most common (points, gd) combinations (top 5 + an "Others" entry, points/gd: null) seen in simulations landing in that bucket. Every pct is unconditional - a fraction of ALL simulations (not just this bucket) - so summing the entries for a bucket gives the overall probability of that bucket (matching positionProbabilities[0]/[1]/[3] for first/second/fourth, and pThird / (pFinish3rd - pThird) for the two third-place splits). Summing across all 5 buckets gives 1 (every simulation lands in exactly one bucket).',
+      outcomeScenarios: 'For each team, outcomeScenarios breaks the group stage down into 5 mutually exclusive outcome buckets: first, second, thirdQualified (finished 3rd AND advanced as a top-8 third), thirdEliminated (finished 3rd, did not advance), fourth. Each bucket lists every (points, gd) combination with unconditional probability >1% (a fraction of ALL simulations, not just this bucket), plus an "Others" entry (points/gd: null) for the remainder. Summing the entries for a bucket gives the overall probability of that bucket (matching positionProbabilities[0]/[1]/[3] for first/second/fourth, and pThird / (pFinish3rd - pThird) for the two third-place splits). Summing across all 5 buckets gives 1 (every simulation lands in exactly one bucket).',
+      pooledScenarios: 'pooledScenarios is the same underlying data as outcomeScenarios, pooled across all 5 buckets into a single list of (points, gd) outcomes for the whole group stage - used for the "right-hand side" of the team Sankey diagram. Each entry has points, gd (or both null for "Other"), total (unconditional probability, summing to 1 across all entries), and byBucket (a map of bucket name -> probability, giving the per-bucket contribution to this (points, gd) combo - i.e. the ribbons feeding this node from the left-hand outcome buckets). The >1% threshold is applied to each combo\\u2019s POOLED total (summed across buckets) before folding into "Other" - so a combo can appear here even if it was <1% (and thus inside "Others") within an individual outcomeScenarios bucket. Sorted by points descending then gd descending ("best to poorest"), with "Other" last.',
     },
     teams,
   };
