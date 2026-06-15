@@ -40,7 +40,7 @@ function mulberry32(seed) {
 //     groupStage.js::simulateGroup), applied directly rather than simulated.
 //   - groupLetter: this group's letter, used for the climate adjustment
 //     (see venues.js). Optional - omit to skip climate adjustment.
-function modalGroupOrdering(teams, N = 5000, options = {}) {
+function modalGroupOrdering(teams, N = 20000, options = {}) {
   const orderingCounts = new Map(); // key = "team1|team2|team3|team4" -> count
   const positionCounts = new Map(); // team name -> [count1st, count2nd, count3rd, count4th]
   // For each distinct ordering, tabulate how often each (points, gd, gf)
@@ -142,7 +142,7 @@ function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
 
   for (const [letter, names] of Object.entries(GROUPS)) {
     const teams = names.map((name) => ({ name, elo: teamsByName.get(name).elo }));
-    groupResults[letter] = modalGroupOrdering(teams, 5000, {
+    groupResults[letter] = modalGroupOrdering(teams, 20000, {
       knownResults: knownByGroup.get(letter) || [],
       groupLetter: letter,
     });
@@ -163,7 +163,7 @@ function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
     // the actual probability calculations), via the official FIFA tiebreak
     // order (points -> GD -> GF) in pickBestThirds. Falls back to an
     // Elo-based proxy only if stats are unexpectedly unavailable (e.g. a
-    // group with fewer than 5000 distinct simulation outcomes - shouldn't
+    // group with fewer than 20000 distinct simulation outcomes - shouldn't
     // happen in practice).
     const thirdStats = result.thirdPlaceStats && result.thirdPlaceStats[third];
     if (thirdStats) {
