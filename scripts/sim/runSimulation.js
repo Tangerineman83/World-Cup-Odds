@@ -15,7 +15,8 @@ const path = require('path');
 const { GROUPS } = require('./tournament');
 const { simulateTournament } = require('./simulateTournament');
 const { getKnownResultsByGroup } = require('./resultsSource');
-const { computeCurrentRatings } = require('./eloBaseline');
+const { computeCurrentRatings, loadBaseline } = require('./eloBaseline');
+const { FIFA_RANK } = require('../fifaRankings');
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
@@ -99,13 +100,20 @@ function mulberry32(seed) {
   const nameToCode = {};
   for (const [code, name] of Object.entries(ELO_TO_NAME)) nameToCode[name] = code;
 
+  const { ratings: baselineRatings } = loadBaseline();
+
   const teams = allTeams.map((name) => {
     const c = stageCounts.get(name);
+    const currentElo = teamsByName.get(name).elo;
+    const baselineElo = baselineRatings[name];
     return {
       name,
       code: nameToCode[name] || null,
       group: Object.entries(GROUPS).find(([, members]) => members.includes(name))[0],
-      eloRating: teamsByName.get(name).elo,
+      fifaRank: FIFA_RANK[name] != null ? FIFA_RANK[name] : null,
+      eloBaseline: baselineElo,
+      eloRating: currentElo,
+      eloChange: baselineElo != null ? currentElo - baselineElo : null,
       pGroupWinner: c.groupWinner / N_SIMULATIONS,
       pRunnerUp: c.runnerUp / N_SIMULATIONS,
       pRoundOf32: c.r32 / N_SIMULATIONS,
@@ -124,6 +132,8 @@ function mulberry32(seed) {
     numSimulations: N_SIMULATIONS,
     methodology: {
       ratingSource: `Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched ${baselineFetchedAt}) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted), with each in-tournament result's rating change multiplied by ${deltaMultiplier}x (on the basis that current tournament form is more representative of a team's true strength than their pre-tournament rating alone). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values (noting ours will diverge somewhat by design, due to the multiplier).`,
+      fifaRank: 'fifaRank is the official FIFA/Coca-Cola Men\'s World Ranking position (1-211ish across all FIFA members; only the 48 World Cup teams are listed here), from the 11 June 2026 update - the last one before the tournament (next update: 20 July 2026, after the tournament). This is FIFA\'s own ranking, independent of and not used by this site\'s model - included for comparison only. See scripts/fifaRankings.js.',
+      eloRatings: 'eloBaseline is each team\'s rating immediately before the tournament (elo_baseline.json). eloRating is their CURRENT rating, adjusted for tournament performance so far (see ratingSource above). eloChange = eloRating - eloBaseline.',
       homeAdvantage: 100,
       drawModel: 'empirical (base 26% at parity, floor 12% for large gaps)',
       thirdPlaceAndBracket: 'simplified approximation of FIFA Annex C; not the official 495-scenario mapping',
