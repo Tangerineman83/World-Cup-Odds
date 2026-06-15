@@ -53,6 +53,19 @@ function mulberry32(seed) {
     stageCounts.set(name, { r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0, groupWinner: 0, runnerUp: 0 });
   }
 
+  // Third-place qualification scenario tracking: for each team, across sims
+  // where they finish 3rd in their group, a histogram of (points,gd) ->
+  // count restricted to sims where they ALSO qualified as a top-8 third
+  // (i.e. appear in r32). thirdCount tracks the total "finished 3rd"
+  // denominator. Used to build a "top 5 scenarios + Others" breakdown per
+  // team for the third-place table popup - see buildThirdScenarios below.
+  const thirdQualifyHistograms = new Map(); // team -> Map("points,gd" -> count)
+  const thirdCounts = new Map(); // team -> count of sims where they finished 3rd
+  for (const name of allTeams) {
+    thirdQualifyHistograms.set(name, new Map());
+    thirdCounts.set(name, 0);
+  }
+
   console.log(`Running ${N_SIMULATIONS} simulations...`);
   const startTime = Date.now();
 
@@ -68,9 +81,26 @@ function mulberry32(seed) {
 
     // R32 participants = group winners + runners-up + 8 best thirds.
     // Derive from r32 matches (home/away of each match = the 32 entrants).
+    const r32Names = new Set();
     for (const m of result.r32) {
       stageCounts.get(m.home.name).r32++;
       stageCounts.get(m.away.name).r32++;
+      r32Names.add(m.home.name);
+      r32Names.add(m.away.name);
+    }
+
+    // Third-place scenario tracking: for each group's 3rd-placed team,
+    // record this sim's (points,gd) and whether they qualified (appear in
+    // r32 - the only way a 3rd-placed team reaches r32 is via the
+    // third-place route).
+    for (const standings of Object.values(result.groupStandings)) {
+      const third = standings[2];
+      thirdCounts.set(third.name, thirdCounts.get(third.name) + 1);
+      if (r32Names.has(third.name)) {
+        const hist = thirdQualifyHistograms.get(third.name);
+        const key = `${third.points},${third.gd}`;
+        hist.set(key, (hist.get(key) || 0) + 1);
+      }
     }
 
     // R16 participants = the 16 winners of the R32 matches (i.e. the home/away
@@ -102,6 +132,32 @@ function mulberry32(seed) {
 
   const { ratings: baselineRatings } = loadBaseline();
 
+  // Builds the "top 5 (points,gd) scenarios + Others" breakdown for a team,
+  // for the third-place table popup. Each entry's `pct` is expressed as a
+  // fraction of ALL sims where this team finished 3rd (thirdCount) - i.e.
+  // the top 5 + Others sum to pQualifyGiven3rd (the conditional probability
+  // of qualifying given finishing 3rd), NOT to 1. The remaining mass
+  // (1 - sum) corresponds to sims where the team finished 3rd but did NOT
+  // qualify - not itemised here, but derivable as
+  // 1 - pQualifyGiven3rd = 1 - sum(scenario percentages).
+  function buildThirdScenarios(name) {
+    const thirdCount = thirdCounts.get(name);
+    if (!thirdCount) return [];
+    const hist = thirdQualifyHistograms.get(name);
+    const entries = [...hist.entries()]
+      .map(([key, count]) => {
+        const [points, gd] = key.split(',').map(Number);
+        return { points, gd, pct: count / thirdCount };
+      })
+      .sort((a, b) => b.pct - a.pct);
+
+    const top5 = entries.slice(0, 5);
+    const othersPct = entries.slice(5).reduce((sum, e) => sum + e.pct, 0);
+    const scenarios = top5.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct }));
+    if (othersPct > 0) scenarios.push({ points: null, gd: null, pct: othersPct });
+    return scenarios;
+  }
+
   const teams = allTeams.map((name) => {
     const c = stageCounts.get(name);
     const currentElo = teamsByName.get(name).elo;
@@ -122,6 +178,7 @@ function mulberry32(seed) {
       pSemiFinal: c.sf / N_SIMULATIONS,
       pFinal: c.final / N_SIMULATIONS,
       pChampion: c.champion / N_SIMULATIONS,
+      thirdPlaceScenarios: buildThirdScenarios(name),
     };
   });
 
@@ -142,6 +199,7 @@ function mulberry32(seed) {
         ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated) in every simulation run, and have updated each involved team's Elo rating (eloRating below) using the standard World Cup Elo formula (K=60, goal-difference weighted).`
         : 'No completed results applied yet - eloRating values are the pre-tournament Elo baseline.',
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
+      thirdPlaceScenarios: 'For each team, thirdPlaceScenarios lists the most common (points, gd) combinations from simulations where that team finished 3rd in their group AND qualified as a top-8 third. The pct for each entry is a fraction of ALL simulations where the team finished 3rd (not just qualifying ones) - so the entries sum to pQualifyGiven3rd (in scenario.json allThirds), not to 1. The top 5 distinct (points, gd) combos are listed individually; any remainder is grouped into an "Others" entry (points: null, gd: null). The remaining gap to 1 (i.e. 1 - pQualifyGiven3rd) represents simulations where the team finished 3rd but did NOT qualify - not itemised here. Empty for teams that (almost) never finish 3rd.',
     },
     teams,
   };
