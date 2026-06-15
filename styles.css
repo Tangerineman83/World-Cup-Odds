@@ -792,7 +792,7 @@ td.col-team .code {
 
 .thirds-table {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .thirds-table .team-cell {
@@ -801,38 +801,40 @@ td.col-team .code {
 }
 
 /* Team column: allow team name to wrap onto a second line (e.g.
-   "Bosnia-Herzegovina") rather than forcing the table wider. */
+   "Bosnia-Herzegovina") rather than forcing the table much wider. */
 .thirds-table .col-team .team-cell {
   white-space: normal;
 }
 
-/* "Plays X" column: keep on one line, truncating the opponent's name with
-   an ellipsis if it doesn't fit, rather than wrapping/widening the table. */
+/* "Plays X" column: keep on one line - the table can scroll horizontally
+   if needed, so no need to truncate the opponent's name. */
 .thirds-table .third-fixture .team-cell {
   white-space: nowrap;
 }
 
 .thirds-table th.col-team,
 .thirds-table td.col-team {
-  width: 38%;
+  min-width: 9em;
 }
 
 .thirds-table th.col-thirdpct,
 .thirds-table td.col-thirdpct {
   text-align: left;
-  width: 46%;
+  min-width: 11em;
 }
 
 .thirds-table th.col-num,
 .thirds-table td.col-num {
-  width: 3.2em;
+  min-width: 2.6em;
+  text-align: center;
 }
 
 .thirds-table .third-ptsgd {
-  width: 4.2em;
+  min-width: 4.5em;
   font-family: var(--font-mono);
   font-size: 0.82rem;
   white-space: nowrap;
+  text-align: center;
 }
 
 .third-gd {
@@ -859,9 +861,6 @@ td.col-team .code {
   white-space: nowrap;
 }
 
-.third-fixture .team-cell .code {
-  display: none;
-}
 
 .third-fixture-label {
   font-family: var(--font-mono);
