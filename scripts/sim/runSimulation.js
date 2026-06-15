@@ -153,7 +153,7 @@ function mulberry32(seed) {
   // '1st'). The SCENARIO_THRESHOLD is unconditional - i.e. a combo needs to
   // represent >1% of ALL simulations to get its own row, not >1% of this
   // bucket's sims.
-  const SCENARIO_THRESHOLD = 0.01;
+  const SCENARIO_THRESHOLD = 0.02; // combos below 2% unconditional go into "Other"
   function buildOutcomeScenarios(name, bucket) {
     const hist = outcomeHistograms.get(name).get(bucket);
     const entries = [...hist.entries()]
