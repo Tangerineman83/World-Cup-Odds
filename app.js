@@ -7,6 +7,9 @@
   const metaUpdated = document.getElementById('meta-updated');
   const clearBtn = document.getElementById('clear-selection');
   const scrollHint = document.getElementById('scroll-hint');
+  const scenarioModalBackdrop = document.getElementById('scenario-modal-backdrop');
+  const scenarioModal = document.getElementById('scenario-modal');
+  const scenarioModalClose = document.getElementById('scenario-modal-close');
 
   let data = null;
   let selectedTeam = null; // team name, or null
@@ -152,6 +155,57 @@
     });
 
     thirdsTableBody.innerHTML = rows;
+  }
+
+  // Renders the "how might team X qualify as a top-8 third" popup, given an
+  // allThirds entry. Shows the top 5 (points, gd) scenarios (each as a
+  // fraction of all sims where the team finished 3rd, per
+  // thirdPlaceScenarios), plus "Others", then a note about the remaining
+  // probability of not qualifying at all.
+  function openScenarioModal(team) {
+    const scenarios = team.thirdPlaceScenarios || [];
+    const titleEl = scenarioModal.querySelector('.modal-title');
+    const subtitleEl = scenarioModal.querySelector('.modal-subtitle');
+    const bodyEl = document.getElementById('scenario-modal-body');
+
+    titleEl.innerHTML = `${teamButton(team)}`;
+    subtitleEl.textContent = `If ${team.name} finish 3rd in Group ${team.group}, here's how they'd most likely make the top 8 and reach the Last 32.`;
+
+    if (scenarios.length === 0) {
+      bodyEl.innerHTML = `<p class="scenario-not-qualify">Not enough simulation data for this team.</p>`;
+    } else {
+      let rows = '';
+      for (const s of scenarios) {
+        const isOthers = s.points === null;
+        const label = isOthers
+          ? `<span class="scenario-others">Other records</span>`
+          : `${s.points} pt${s.points === 1 ? '' : 's'}, GD ${s.gd >= 0 ? '+' : ''}${s.gd}`;
+        const pct = Math.round(s.pct * 100);
+        rows += `<div class="scenario-row">
+          <span class="scenario-label">${label}</span>
+          <div class="scenario-bar-wrap">
+            <div class="scenario-bar-track"><div class="scenario-bar-fill${isOthers ? ' scenario-others-fill' : ''}" style="width:${Math.max(pct, 2)}%"></div></div>
+            <span class="scenario-pct">${pct}%</span>
+          </div>
+        </div>`;
+      }
+
+      const pQualify = Math.round((team.pQualifyGiven3rd || 0) * 100);
+      const pNotQualify = 100 - pQualify;
+      rows += `<p class="scenario-not-qualify">
+        Percentages are a share of all simulations where ${team.name} finish 3rd in Group ${team.group}.
+        Altogether these scenarios make up the ${pQualify}% chance of qualifying shown in the table.
+        The remaining ${pNotQualify}% of the time, ${team.name} finish 3rd but don't make the top 8.
+      </p>`;
+
+      bodyEl.innerHTML = rows;
+    }
+
+    scenarioModalBackdrop.hidden = false;
+  }
+
+  function closeScenarioModal() {
+    scenarioModalBackdrop.hidden = true;
   }
 
   function renderGroups() {
@@ -540,6 +594,18 @@
   }
 
   function onTeamClick(e) {
+    // Clicks on a team's OWN cell within the third-place table open the
+    // qualification-scenario popup instead of toggling the bracket
+    // highlight. Scoped to .col-team specifically so clicking the opponent
+    // shown in "Next match" doesn't open this team's popup.
+    const thirdsCell = e.target.closest('#thirds-table-body td.col-team');
+    if (thirdsCell) {
+      const row = thirdsCell.closest('tr[data-team]');
+      const team = row && (data.allThirds || []).find((t) => t.name === row.dataset.team);
+      if (team) openScenarioModal(team);
+      return;
+    }
+
     const target = e.target.closest('[data-team]');
     if (!target || !target.dataset.team) return;
     const team = target.dataset.team;
@@ -606,6 +672,14 @@
       clearBtn.addEventListener('click', () => {
         selectedTeam = null;
         applyHighlight();
+      });
+
+      scenarioModalClose.addEventListener('click', closeScenarioModal);
+      scenarioModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === scenarioModalBackdrop) closeScenarioModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !scenarioModalBackdrop.hidden) closeScenarioModal();
       });
 
       // Hide the scroll hint once the user has scrolled the bracket
