@@ -3,7 +3,7 @@ const { matchProbabilities } = require('./eloModel');
 const { assignThirdPlaceSlots } = require('./thirdPlace');
 const { FIFA_RANK } = require('../fifaRankings');
 const {
-  GROUPS, HOST_NATIONS, ROUND_OF_32,
+  GROUPS, HOST_NATIONS, KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER, ROUND_OF_32,
   ROUND_OF_16_PAIRS, QUARTER_FINAL_PAIRS, SEMI_FINAL_PAIRS,
   FINAL_PAIR, THIRD_PLACE_PAIR,
 } = require('./tournament');
@@ -18,7 +18,7 @@ function playKnockout(teamA, teamB, rand) {
   let home = teamA, away = teamB, swapped = false;
   if (!neutralVenue && bIsHost) { home = teamB; away = teamA; swapped = true; }
 
-  const { pWin, pDraw } = matchProbabilities(home.elo, away.elo, { neutralVenue });
+  const { pWin, pDraw } = matchProbabilities(home.elo, away.elo, { neutralVenue, homeAdvantageMultiplier: KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER });
 
   // Penalties: modelled as ~coin-flip with a very slight Elo-based tilt
   // (favourite marginally more likely to win a shootout).

@@ -1,5 +1,5 @@
 const { matchProbabilities } = require('./eloModel');
-const { HOST_NATIONS } = require('./tournament');
+const { HOST_NATIONS, HOME_ADVANTAGE_SCHEDULE } = require('./tournament');
 const { climateAdjustment, GROUP_VENUE } = require('./venues');
 const { FIFA_RANK } = require('../fifaRankings');
 
@@ -65,6 +65,31 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
     knownByFixture.set(fixtureKey(r.home, r.away), r);
   }
 
+  // If this group has a host nation, work out the home-advantage multiplier
+  // to use for their REMAINING (unplayed) group fixtures. HOME_ADVANTAGE_SCHEDULE
+  // gives per-match-number values (1st/2nd/3rd), but for unplayed fixtures we
+  // don't know whether a given remaining fixture is the host's 2nd or 3rd
+  // group match (results.json doesn't assign dates to unplayed fixtures) -
+  // so as an approximation, every remaining fixture gets the AVERAGE of the
+  // schedule entries not yet "used up" by already-played matches. E.g. if the
+  // host has played 1 of 3 (their 1st), both remaining fixtures get
+  // avg(75%, 50%) = 62.5%; if they've played 0, all 3 get avg(100%,75%,50%).
+  // This at least reflects "later games get less boost than the first" in
+  // expectation, without needing fixture ordering.
+  let hostRemainingMultiplier = 1;
+  const hostTeamObj = teams.find((t) => HOST_NATIONS.has(t.name));
+  if (hostTeamObj) {
+    let played = 0;
+    for (const t of teams) {
+      if (t.name === hostTeamObj.name) continue;
+      if (knownByFixture.has(fixtureKey(hostTeamObj.name, t.name))) played++;
+    }
+    const remaining = HOME_ADVANTAGE_SCHEDULE.slice(played);
+    if (remaining.length > 0) {
+      hostRemainingMultiplier = remaining.reduce((a, b) => a + b, 0) / remaining.length;
+    }
+  }
+
   const venueName = groupLetter ? GROUP_VENUE[groupLetter] : null;
 
   // All 6 round-robin pairings
@@ -105,7 +130,7 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
         climateAdj = climateAdjustment(effHome.name, venueName) - climateAdjustment(effAway.name, venueName);
       }
 
-      const { pWin, pDraw } = matchProbabilities(effHome.elo, effAway.elo, { neutralVenue, climateAdj });
+      const { pWin, pDraw } = matchProbabilities(effHome.elo, effAway.elo, { neutralVenue, climateAdj, homeAdvantageMultiplier: hostRemainingMultiplier });
       const outcome = playMatch(pWin, pDraw, rand());
 
       // Goal simulation: base expected goals scaled by win probability

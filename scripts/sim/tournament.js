@@ -22,6 +22,32 @@ const GROUPS = {
 // Co-hosts: USA, Canada, Mexico.
 const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
+// A host nation's home-advantage boost (HOME_ADVANTAGE in eloModel.js) tapers
+// over their group-stage matches: full boost for their 1st group match, 75%
+// for their 2nd, 50% for their 3rd. The rationale: the "extra" home advantage
+// (beyond what's already reflected in a host's Elo from qualifying/friendlies
+// at home) is most pronounced for the tournament-opening atmosphere and
+// likely diminishes - opponents adjust, the host's group fixtures often
+// aren't all in the same city, etc. This is a judgement call, not derived
+// from data - if it doesn't look right after a few matchdays, revisit.
+const HOME_ADVANTAGE_SCHEDULE = [1, 0.75, 0.5]; // by group match number (1st/2nd/3rd)
+
+// All knockout matches (Last 32 onward) use a flat, smaller multiplier - by
+// this stage a host's "extra" boost is assumed to have mostly faded, though
+// some residual crowd/travel advantage remains if they're still playing at
+// home.
+const KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER = 0.25;
+
+// Returns the home-advantage multiplier for a host nation's Nth group match
+// (matchNumber: 1, 2, or 3). Used by applyResultToElo (via eloBaseline.js,
+// for real played results) and by the group simulation (for the host's
+// remaining fixtures).
+function hostGroupMatchMultiplier(matchNumber) {
+  return HOME_ADVANTAGE_SCHEDULE[matchNumber - 1] != null
+    ? HOME_ADVANTAGE_SCHEDULE[matchNumber - 1]
+    : HOME_ADVANTAGE_SCHEDULE[HOME_ADVANTAGE_SCHEDULE.length - 1];
+}
+
 // --- Round of 32 bracket -------------------------------------------------
 //
 // Official FIFA structure (Matches 73-88), per the 2026 World Cup regulations
@@ -109,6 +135,9 @@ const THIRD_PLACE_PAIR = ['M103', ['M101', 'M102']]; // losers of M101/M102
 module.exports = {
   GROUPS,
   HOST_NATIONS,
+  HOME_ADVANTAGE_SCHEDULE,
+  KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER,
+  hostGroupMatchMultiplier,
   ROUND_OF_32,
   THIRD_PLACE_SLOT_ORDER,
   ROUND_OF_16_PAIRS,

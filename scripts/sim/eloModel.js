@@ -37,9 +37,13 @@ function drawProbability(dr) {
 // adjustment minus away team's, both from venues.js::climateAdjustment) -
 // captures altitude/heat acclimatisation effects. Small relative to
 // HOME_ADVANTAGE; see venues.js for details and caveats.
+// homeAdvantageMultiplier: scales HOME_ADVANTAGE (default 1 = full). Used to
+// model the "home boost" tapering off over a host nation's tournament - see
+// HOME_ADVANTAGE_SCHEDULE / hostMatchMultiplier in tournament.js. Ignored if
+// neutralVenue is true.
 // Constraints: pWin + 0.5*pDraw = We(dr), and pWin + pDraw + pLoss = 1.
-function matchProbabilities(homeElo, awayElo, { neutralVenue = false, climateAdj = 0 } = {}) {
-  const dr = (homeElo + (neutralVenue ? 0 : HOME_ADVANTAGE) + climateAdj) - awayElo;
+function matchProbabilities(homeElo, awayElo, { neutralVenue = false, climateAdj = 0, homeAdvantageMultiplier = 1 } = {}) {
+  const dr = (homeElo + (neutralVenue ? 0 : HOME_ADVANTAGE * homeAdvantageMultiplier) + climateAdj) - awayElo;
   const we = expectedResult(dr);
   const pDraw = drawProbability(dr);
   let pWin = we - pDraw / 2;

@@ -30,7 +30,7 @@
 // increasingly anchored to its actual tournament performance.
 
 const { expectedResult, HOME_ADVANTAGE } = require('./eloModel');
-const { HOST_NATIONS } = require('./tournament');
+const { HOST_NATIONS, hostGroupMatchMultiplier } = require('./tournament');
 
 const WORLD_CUP_K = 60;
 
@@ -48,17 +48,35 @@ function goalDiffWeight(margin) {
 // Applies a single result to a Map of team name -> { name, elo }, mutating
 // the Elo values in place. homeTeam/awayTeam are team names; homeGoals/
 // awayGoals are the final score. deltaMultiplier (default 1) scales the
-// resulting Elo change. Returns { homeEloChange, awayEloChange } (the final,
-// already-multiplied deltas).
-function applyResultToElo(teamsByName, homeTeam, awayTeam, homeGoals, awayGoals, deltaMultiplier = 1) {
+// resulting Elo change. homeAdvantageMultiplier (default 1) scales
+// HOME_ADVANTAGE for whichever side is the host nation (if either) - see
+// HOME_ADVANTAGE_SCHEDULE / hostGroupMatchMultiplier in tournament.js for the
+// group-stage decay schedule and KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER for
+// knockout matches; callers (applyResultsToElo) compute the right value per
+// match. If NEITHER side is a host nation, this has no effect (no advantage
+// is applied either way) - the multiplier only matters when one side is a
+// host nation in HOST_NATIONS.
+// Returns { homeEloChange, awayEloChange } (the final, already-multiplied
+// deltas).
+function applyResultToElo(teamsByName, homeTeam, awayTeam, homeGoals, awayGoals, deltaMultiplier = 1, homeAdvantageMultiplier = 1) {
   const home = teamsByName.get(homeTeam);
   const away = teamsByName.get(awayTeam);
   if (!home || !away) {
     throw new Error(`applyResultToElo: unknown team(s) "${homeTeam}" / "${awayTeam}"`);
   }
 
-  const neutralVenue = !(HOST_NATIONS.has(homeTeam) || HOST_NATIONS.has(awayTeam));
-  const dr = (home.elo + (neutralVenue ? 0 : HOME_ADVANTAGE)) - away.elo;
+  // Apply the (possibly-scaled) home advantage to whichever side is actually
+  // the host nation - not necessarily the "home" team in the fixture
+  // listing. If neither side is a host, no advantage applies (neutral
+  // venue). If both were hosts this would need a different approach, but no
+  // 2026 group has two co-hosts together.
+  const homeIsHost = HOST_NATIONS.has(homeTeam);
+  const awayIsHost = HOST_NATIONS.has(awayTeam);
+  let homeAdvantage = 0;
+  if (homeIsHost) homeAdvantage = HOME_ADVANTAGE * homeAdvantageMultiplier;
+  else if (awayIsHost) homeAdvantage = -HOME_ADVANTAGE * homeAdvantageMultiplier;
+
+  const dr = (home.elo + homeAdvantage) - away.elo;
   const we = expectedResult(dr);
 
   let w; // actual result for the home team
@@ -80,11 +98,30 @@ function applyResultToElo(teamsByName, homeTeam, awayTeam, homeGoals, awayGoals,
 // the list reflect Elo changes from earlier ones - matching how eloratings.net
 // processes results chronologically). deltaMultiplier (default 1) is passed
 // through to applyResultToElo for every result.
+//
+// For each result involving a host nation (USA/Canada/Mexico), tracks how
+// many group-stage matches that host has played so far (in the order given -
+// results should be pre-sorted chronologically by date, as eloBaseline.js
+// does) and applies HOME_ADVANTAGE_SCHEDULE accordingly (1st group match =
+// full advantage, 2nd = 75%, 3rd = 50%). Results aren't currently tagged as
+// group/knockout, but results.json only contains group-stage fixtures at
+// present (knockout fixtures will need this revisited once they appear -
+// KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER should apply to those instead).
 function applyResultsToElo(teamsByName, results, deltaMultiplier = 1) {
+  const hostMatchCounts = new Map(); // host name -> number of matches processed so far
+
   const changes = [];
   for (const r of results) {
+    const host = HOST_NATIONS.has(r.home) ? r.home : HOST_NATIONS.has(r.away) ? r.away : null;
+    let homeAdvantageMultiplier = 1;
+    if (host) {
+      const matchNumber = (hostMatchCounts.get(host) || 0) + 1;
+      homeAdvantageMultiplier = hostGroupMatchMultiplier(matchNumber);
+      hostMatchCounts.set(host, matchNumber);
+    }
+
     const { homeEloChange, awayEloChange } = applyResultToElo(
-      teamsByName, r.home, r.away, r.homeGoals, r.awayGoals, deltaMultiplier
+      teamsByName, r.home, r.away, r.homeGoals, r.awayGoals, deltaMultiplier, homeAdvantageMultiplier
     );
     changes.push({ ...r, homeEloChange, awayEloChange });
   }

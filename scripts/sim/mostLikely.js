@@ -14,7 +14,7 @@
 
 const { matchProbabilities } = require('./eloModel');
 const {
-  GROUPS, HOST_NATIONS, ROUND_OF_32,
+  GROUPS, HOST_NATIONS, KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER, ROUND_OF_32,
   ROUND_OF_16_PAIRS, QUARTER_FINAL_PAIRS, SEMI_FINAL_PAIRS,
   FINAL_PAIR, THIRD_PLACE_PAIR,
 } = require('./tournament');
@@ -119,7 +119,7 @@ function chalkWinner(teamA, teamB) {
   let home = teamA, away = teamB, swapped = false;
   if (!neutralVenue && bIsHost) { home = teamB; away = teamA; swapped = true; }
 
-  const { pWin, pDraw, pLoss } = matchProbabilities(home.elo, away.elo, { neutralVenue });
+  const { pWin, pDraw, pLoss } = matchProbabilities(home.elo, away.elo, { neutralVenue, homeAdvantageMultiplier: KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER });
 
   const eloDiff = home.elo - away.elo;
   const tilt = Math.max(-0.05, Math.min(0.05, eloDiff / 4000));
