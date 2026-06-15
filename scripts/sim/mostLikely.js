@@ -165,7 +165,7 @@ function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
     // Elo-based proxy only if stats are unexpectedly unavailable (e.g. a
     // group with fewer than 5000 distinct simulation outcomes - shouldn't
     // happen in practice).
-    const thirdStats = result.stats && result.stats[third];
+    const thirdStats = result.thirdPlaceStats && result.thirdPlaceStats[third];
     if (thirdStats) {
       thirdsForRanking.push({ ...thirdTeam, points: thirdStats.points, gd: thirdStats.gd, gf: thirdStats.gf });
     } else {
