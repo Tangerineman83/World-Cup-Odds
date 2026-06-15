@@ -144,11 +144,16 @@ function mulberry32(seed) {
 
   const { ratings: baselineRatings } = loadBaseline();
 
-  // Builds the "top 5 (points,gd) scenarios + Others" breakdown for one
-  // team/bucket. Each entry's pct is count/N_SIMULATIONS (i.e. P(this
-  // outcome bucket AND this points/GD combo), unconditional - summing all
-  // entries across all (points,gd) combos for a bucket gives that bucket's
-  // overall probability, e.g. matching positionProbabilities[0] for '1st').
+  // Builds the (points,gd) scenario breakdown for one team/bucket. Every
+  // combo with pct (= count/N_SIMULATIONS, i.e. P(this outcome bucket AND
+  // this points/GD combo), unconditional) greater than 1% gets its own
+  // entry; everything else is folded into a single "Others" entry
+  // (points: null, gd: null). Summing all entries for a bucket gives that
+  // bucket's overall probability (e.g. matching positionProbabilities[0] for
+  // '1st'). The SCENARIO_THRESHOLD is unconditional - i.e. a combo needs to
+  // represent >1% of ALL simulations to get its own row, not >1% of this
+  // bucket's sims.
+  const SCENARIO_THRESHOLD = 0.01;
   function buildOutcomeScenarios(name, bucket) {
     const hist = outcomeHistograms.get(name).get(bucket);
     const entries = [...hist.entries()]
@@ -158,9 +163,9 @@ function mulberry32(seed) {
       })
       .sort((a, b) => b.pct - a.pct);
 
-    const top5 = entries.slice(0, 5);
-    const othersPct = entries.slice(5).reduce((sum, e) => sum + e.pct, 0);
-    const scenarios = top5.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct }));
+    const shown = entries.filter((e) => e.pct > SCENARIO_THRESHOLD);
+    const othersPct = entries.filter((e) => e.pct <= SCENARIO_THRESHOLD).reduce((sum, e) => sum + e.pct, 0);
+    const scenarios = shown.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct }));
     if (othersPct > 0) scenarios.push({ points: null, gd: null, pct: othersPct });
     return scenarios;
   }
