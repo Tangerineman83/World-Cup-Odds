@@ -80,35 +80,30 @@
       tdFifa.textContent = row.fifaRank != null ? '#' + row.fifaRank : '—';
       tdFifa.title = 'Official FIFA World Ranking (11 June 2026)';
 
-      const tdPreTournament = document.createElement('td');
-      tdPreTournament.className = 'col-num';
-      tdPreTournament.textContent = row.eloBaseline != null ? Math.round(row.eloBaseline) : '—';
-      tdPreTournament.title = "This team's rating before the tournament started";
-
-      const tdAdjusted = document.createElement('td');
-      tdAdjusted.className = 'col-num';
+      // Rating: current (adjusted-for-tournament-performance) rating, with
+      // the change from the pre-tournament rating shown as a signed point
+      // value + directional arrow. Small changes (rounding noise / no
+      // results yet) show neither.
+      const tdRating = document.createElement('td');
+      tdRating.className = 'col-num col-rating';
       if (row.eloRating != null) {
         const change = row.eloChange;
-        // Small changes (rounding noise / no results yet) show no arrow.
         const ARROW_THRESHOLD = 2;
-        let arrow = '';
-        let arrowClass = '';
+        let changeHtml = '';
         if (change != null && change >= ARROW_THRESHOLD) {
-          arrow = ' \u25B2'; // ▲
-          arrowClass = 'change-up';
+          changeHtml = `<span class="change-up">&#9650;${Math.round(change)}</span>`;
         } else if (change != null && change <= -ARROW_THRESHOLD) {
-          arrow = ' \u25BC'; // ▼
-          arrowClass = 'change-down';
+          changeHtml = `<span class="change-down">&#9660;${Math.round(Math.abs(change))}</span>`;
         }
-        tdAdjusted.innerHTML = `${Math.round(row.eloRating)}${arrow ? `<span class="${arrowClass}">${arrow}</span>` : ''}`;
-        tdAdjusted.title = change != null
-          ? `Adjusted for tournament performance: ${change >= 0 ? '+' : ''}${change.toFixed(1)} from pre-tournament rating`
-          : "Adjusted for tournament performance so far";
+        tdRating.innerHTML = `${Math.round(row.eloRating)}${changeHtml ? ' ' + changeHtml : ''}`;
+        tdRating.title = row.eloBaseline != null
+          ? `Pre-tournament rating: ${Math.round(row.eloBaseline)}. Adjusted for tournament performance so far: ${Math.round(row.eloRating)} (${change >= 0 ? '+' : ''}${change.toFixed(1)}).`
+          : `Adjusted for tournament performance so far: ${Math.round(row.eloRating)}.`;
       } else {
-        tdAdjusted.textContent = '—';
+        tdRating.textContent = '—';
       }
 
-      tr.append(tdTeam, tdGroup, tdRank, tdFifa, tdPreTournament, tdAdjusted);
+      tr.append(tdRank, tdTeam, tdGroup, tdFifa, tdRating);
 
       const stageCols = [
         ['pGroupWinner', '--accent'],

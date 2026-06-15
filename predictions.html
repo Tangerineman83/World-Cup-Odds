@@ -41,7 +41,7 @@
         <span class="swatch swatch-pos"></span>
         <div>
           <strong>Reading the table</strong>
-          <p>Rank is our world ranking (#1 = most likely to win it all). FIFA is the official FIFA World Ranking from just before the tournament — a different system, shown for comparison. Pre-tournament and Adjusted are our own rating before and now — the arrow shows whether a team's tournament form has pushed their rating up or down. 1st/2nd are the chance of finishing top or second in the group. Last 32, Last 16, Quarters, Semis, Final and Champions are the chance of <em>reaching</em> that stage — Champions means winning the whole thing.</p>
+          <p>Rank is our world ranking (#1 = most likely to win it all). FIFA is the official FIFA World Ranking from just before the tournament — a different system, shown for comparison. Rating is our own current rating, adjusted for tournament performance — the number and arrow next to it show how much it's moved from before the tournament (hover for the exact pre-tournament value). 1st/2nd are the chance of finishing top or second in the group. Last 32, Last 16, Quarters, Semis, Final and Champions are the chance of <em>reaching</em> that stage — Champions means winning the whole thing.</p>
         </div>
       </div>
     </section>
@@ -50,12 +50,11 @@
       <table id="predictions-table">
         <thead>
           <tr>
+            <th data-key="eloRating" class="col-num sortable" title="World ranking based on each team's rating - #1 is the strongest team">Rank</th>
             <th data-key="name" class="col-team sortable">Team</th>
             <th data-key="group" class="col-num sortable">Group</th>
-            <th data-key="eloRating" class="col-num sortable" title="World ranking based on each team's rating - #1 is the strongest team">Rank</th>
             <th data-key="fifaRank" class="col-num sortable" title="Official FIFA World Ranking position (11 June 2026, the last update before the tournament)">FIFA</th>
-            <th data-key="eloBaseline" class="col-num sortable" title="This team's rating before the tournament started">Pre-tournament</th>
-            <th data-key="eloRating" class="col-num sortable" title="This team's rating now, adjusted for tournament performance so far">Adjusted</th>
+            <th data-key="eloRating" class="col-num sortable col-rating" title="This team's rating now, adjusted for tournament performance so far. The arrow and number show the change from their pre-tournament rating - hover for both values.">Rating</th>
             <th data-key="pGroupWinner" class="col-num sortable">1st</th>
             <th data-key="pRunnerUp" class="col-num sortable">2nd</th>
             <th data-key="pRoundOf32" class="col-num sortable">Last 32</th>
