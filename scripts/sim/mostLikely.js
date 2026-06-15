@@ -43,6 +43,17 @@ function mulberry32(seed) {
 function modalGroupOrdering(teams, N = 5000, options = {}) {
   const orderingCounts = new Map(); // key = "team1|team2|team3|team4" -> count
   const positionCounts = new Map(); // team name -> [count1st, count2nd, count3rd, count4th]
+  // For each distinct ordering, tabulate how often each (points, gd, gf)
+  // combination occurs for the team finishing 3rd - then, for whichever
+  // ordering turns out to be modal, report the MODAL stats combination (not
+  // just "a" representative run). A single representative run can be
+  // unrepresentative even when its ordering is correct - e.g. a 3rd-place
+  // finish on 6 points (2W 1L) is possible but rare (~2%) compared to the
+  // typical 3-4 points, even though many different points totals can produce
+  // the same final ORDERING. Reporting the modal stats combo for the modal
+  // ordering avoids surfacing such an outlier as if it were typical.
+  const statsCountsByKey = new Map(); // orderingKey -> Map("points|gd|gf" -> count)
+  const statsExampleByKey = new Map(); // orderingKey -> Map("points|gd|gf" -> {points,gd,gf})
 
   for (const t of teams) positionCounts.set(t.name, [0, 0, 0, 0]);
 
@@ -51,6 +62,18 @@ function modalGroupOrdering(teams, N = 5000, options = {}) {
     const standings = simulateGroup(teams, null, rand, options);
     const key = standings.map((s) => s.name).join('|');
     orderingCounts.set(key, (orderingCounts.get(key) || 0) + 1);
+
+    const third = standings[2];
+    const statsKey = `${third.points}|${third.gd}|${third.gf}`;
+    if (!statsCountsByKey.has(key)) {
+      statsCountsByKey.set(key, new Map());
+      statsExampleByKey.set(key, new Map());
+    }
+    const counts = statsCountsByKey.get(key);
+    counts.set(statsKey, (counts.get(statsKey) || 0) + 1);
+    if (!statsExampleByKey.get(key).has(statsKey)) {
+      statsExampleByKey.get(key).set(statsKey, { points: third.points, gd: third.gd, gf: third.gf });
+    }
 
     standings.forEach((s, pos) => {
       positionCounts.get(s.name)[pos] += 1;
@@ -68,10 +91,20 @@ function modalGroupOrdering(teams, N = 5000, options = {}) {
     positionProbabilities[name] = counts.map((c) => c / N);
   }
 
+  // Modal (points, gd, gf) for the 3rd-placed team, among runs that produced
+  // bestKey's ordering.
+  const thirdName = names[2];
+  let bestStatsKey = null, bestStatsCount = -1;
+  for (const [statsKey, count] of statsCountsByKey.get(bestKey).entries()) {
+    if (count > bestStatsCount) { bestStatsCount = count; bestStatsKey = statsKey; }
+  }
+  const thirdStats = statsExampleByKey.get(bestKey).get(bestStatsKey);
+
   return {
     order: names,
     probability: bestCount / N,
     positionProbabilities, // { teamName: [p1st, p2nd, p3rd, p4th] }
+    thirdPlaceStats: { [thirdName]: thirdStats }, // { teamName: {points, gd, gf} } - modal stats for the 3rd-placed team under the modal ordering
   };
 }
 
@@ -125,9 +158,19 @@ function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
     runnersUp[letter] = { name: second, elo: teamsByName.get(second).elo, group: letter };
 
     const thirdTeam = { name: third, elo: teamsByName.get(third).elo, group: letter };
-    // Synthetic stats proxy for cross-group third-place ranking: Elo stands in
-    // for points/GD/GF (an approximation of the official ranking process).
-    thirdsForRanking.push({ ...thirdTeam, points: thirdTeam.elo, gd: 0, gf: 0 });
+    // Cross-group third-place ranking uses the real points/GD/GF from this
+    // group's modal scenario (the same stats simulateTournament.js uses for
+    // the actual probability calculations), via the official FIFA tiebreak
+    // order (points -> GD -> GF) in pickBestThirds. Falls back to an
+    // Elo-based proxy only if stats are unexpectedly unavailable (e.g. a
+    // group with fewer than 5000 distinct simulation outcomes - shouldn't
+    // happen in practice).
+    const thirdStats = result.stats && result.stats[third];
+    if (thirdStats) {
+      thirdsForRanking.push({ ...thirdTeam, points: thirdStats.points, gd: thirdStats.gd, gf: thirdStats.gf });
+    } else {
+      thirdsForRanking.push({ ...thirdTeam, points: thirdTeam.elo, gd: 0, gf: 0 });
+    }
 
     groupResults[letter].fourth = fourth;
   }

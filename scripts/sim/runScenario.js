@@ -140,7 +140,7 @@ function cleanMatch(m, codeOf) {
     const team = teamsByName.get(name);
     const pred = predictionsByName.get(name);
     const pThird = pred ? Math.max(0, pred.pRoundOf32 - pred.pGroupWinner - pred.pRunnerUp) : null;
-    const stats = g.stats && g.stats[name]; // {points, gd, gf} from the modal scenario
+    const stats = g.thirdPlaceStats && g.thirdPlaceStats[name]; // modal {points, gd, gf} for the 3rd-placed team
     return {
       name,
       code: codeOf[name] || null,
