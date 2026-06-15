@@ -53,17 +53,23 @@ function mulberry32(seed) {
     stageCounts.set(name, { r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0, groupWinner: 0, runnerUp: 0 });
   }
 
-  // Third-place qualification scenario tracking: for each team, across sims
-  // where they finish 3rd in their group, a histogram of (points,gd) ->
-  // count restricted to sims where they ALSO qualified as a top-8 third
-  // (i.e. appear in r32). thirdCount tracks the total "finished 3rd"
-  // denominator. Used to build a "top 5 scenarios + Others" breakdown per
-  // team for the third-place table popup - see buildThirdScenarios below.
-  const thirdQualifyHistograms = new Map(); // team -> Map("points,gd" -> count)
-  const thirdCounts = new Map(); // team -> count of sims where they finished 3rd
+  // Outcome scenario tracking: for each team, a histogram of (points,gd) ->
+  // count for each of 5 group-stage outcome buckets: '1st', '2nd',
+  // '3rd_qualified' (finished 3rd AND qualified as a top-8 third),
+  // '3rd_eliminated' (finished 3rd, did not qualify), '4th'. Counts are out
+  // of N_SIMULATIONS (the full run), so each entry's pct = P(this outcome
+  // AND this points/GD combo) - summing a bucket's entries gives that
+  // bucket's overall probability (matching positionProbabilities for
+  // 1st/2nd/4th, and pThird / (pFinish3rd - pThird) for the 3rd-place
+  // splits). Used to build "top scenarios" breakdowns per team/outcome - see
+  // buildOutcomeScenarios below. (The 3rd_qualified bucket is the same data
+  // previously called thirdQualifyHistograms/thirdCounts, generalized.)
+  const OUTCOME_BUCKETS = ['1st', '2nd', '3rd_qualified', '3rd_eliminated', '4th'];
+  const outcomeHistograms = new Map(); // team -> bucket -> Map("points,gd" -> count)
   for (const name of allTeams) {
-    thirdQualifyHistograms.set(name, new Map());
-    thirdCounts.set(name, 0);
+    const byBucket = new Map();
+    for (const bucket of OUTCOME_BUCKETS) byBucket.set(bucket, new Map());
+    outcomeHistograms.set(name, byBucket);
   }
 
   console.log(`Running ${N_SIMULATIONS} simulations...`);
@@ -89,16 +95,22 @@ function mulberry32(seed) {
       r32Names.add(m.away.name);
     }
 
-    // Third-place scenario tracking: for each group's 3rd-placed team,
-    // record this sim's (points,gd) and whether they qualified (appear in
-    // r32 - the only way a 3rd-placed team reaches r32 is via the
-    // third-place route).
+    // Outcome scenario tracking: for every team in every group, record this
+    // sim's (points,gd) under the appropriate bucket. 1st/2nd/4th come
+    // straight from standings position; 3rd is split into qualified/
+    // eliminated based on r32 membership (the only way a 3rd-placed team
+    // reaches r32 is via the third-place route).
     for (const standings of Object.values(result.groupStandings)) {
-      const third = standings[2];
-      thirdCounts.set(third.name, thirdCounts.get(third.name) + 1);
-      if (r32Names.has(third.name)) {
-        const hist = thirdQualifyHistograms.get(third.name);
-        const key = `${third.points},${third.gd}`;
+      for (let pos = 0; pos < 4; pos++) {
+        const team = standings[pos];
+        let bucket;
+        if (pos === 0) bucket = '1st';
+        else if (pos === 1) bucket = '2nd';
+        else if (pos === 3) bucket = '4th';
+        else bucket = r32Names.has(team.name) ? '3rd_qualified' : '3rd_eliminated';
+
+        const hist = outcomeHistograms.get(team.name).get(bucket);
+        const key = `${team.points},${team.gd}`;
         hist.set(key, (hist.get(key) || 0) + 1);
       }
     }
@@ -132,22 +144,17 @@ function mulberry32(seed) {
 
   const { ratings: baselineRatings } = loadBaseline();
 
-  // Builds the "top 5 (points,gd) scenarios + Others" breakdown for a team,
-  // for the third-place table popup. Each entry's `pct` is expressed as a
-  // fraction of ALL sims where this team finished 3rd (thirdCount) - i.e.
-  // the top 5 + Others sum to pQualifyGiven3rd (the conditional probability
-  // of qualifying given finishing 3rd), NOT to 1. The remaining mass
-  // (1 - sum) corresponds to sims where the team finished 3rd but did NOT
-  // qualify - not itemised here, but derivable as
-  // 1 - pQualifyGiven3rd = 1 - sum(scenario percentages).
-  function buildThirdScenarios(name) {
-    const thirdCount = thirdCounts.get(name);
-    if (!thirdCount) return [];
-    const hist = thirdQualifyHistograms.get(name);
+  // Builds the "top 5 (points,gd) scenarios + Others" breakdown for one
+  // team/bucket. Each entry's pct is count/N_SIMULATIONS (i.e. P(this
+  // outcome bucket AND this points/GD combo), unconditional - summing all
+  // entries across all (points,gd) combos for a bucket gives that bucket's
+  // overall probability, e.g. matching positionProbabilities[0] for '1st').
+  function buildOutcomeScenarios(name, bucket) {
+    const hist = outcomeHistograms.get(name).get(bucket);
     const entries = [...hist.entries()]
       .map(([key, count]) => {
         const [points, gd] = key.split(',').map(Number);
-        return { points, gd, pct: count / thirdCount };
+        return { points, gd, pct: count / N_SIMULATIONS };
       })
       .sort((a, b) => b.pct - a.pct);
 
@@ -156,6 +163,22 @@ function mulberry32(seed) {
     const scenarios = top5.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct }));
     if (othersPct > 0) scenarios.push({ points: null, gd: null, pct: othersPct });
     return scenarios;
+  }
+
+  // thirdPlaceScenarios: kept for the existing third-place table popup,
+  // which expects pct relative to P(finish 3rd) (= pFinish3rd), i.e. "given
+  // finish 3rd, what's the points/GD AND qualified breakdown" - entries sum
+  // to pQualifyGiven3rd. Derived from the new '3rd_qualified' bucket
+  // (unconditional pct, see buildOutcomeScenarios) divided by
+  // pFinish3rd = P('3rd_qualified') + P('3rd_eliminated').
+  function buildThirdScenarios(name) {
+    const qualified = buildOutcomeScenarios(name, '3rd_qualified');
+    const eliminatedHist = outcomeHistograms.get(name).get('3rd_eliminated');
+    const eliminatedTotal = [...eliminatedHist.values()].reduce((sum, c) => sum + c, 0) / N_SIMULATIONS;
+    const qualifiedTotal = qualified.reduce((sum, e) => sum + e.pct, 0);
+    const pFinish3rd = qualifiedTotal + eliminatedTotal;
+    if (pFinish3rd === 0) return [];
+    return qualified.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct / pFinish3rd }));
   }
 
   const teams = allTeams.map((name) => {
@@ -179,6 +202,13 @@ function mulberry32(seed) {
       pFinal: c.final / N_SIMULATIONS,
       pChampion: c.champion / N_SIMULATIONS,
       thirdPlaceScenarios: buildThirdScenarios(name),
+      outcomeScenarios: {
+        first: buildOutcomeScenarios(name, '1st'),
+        second: buildOutcomeScenarios(name, '2nd'),
+        thirdQualified: buildOutcomeScenarios(name, '3rd_qualified'),
+        thirdEliminated: buildOutcomeScenarios(name, '3rd_eliminated'),
+        fourth: buildOutcomeScenarios(name, '4th'),
+      },
     };
   });
 
@@ -200,6 +230,7 @@ function mulberry32(seed) {
         : 'No completed results applied yet - eloRating values are the pre-tournament Elo baseline.',
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
       thirdPlaceScenarios: 'For each team, thirdPlaceScenarios lists the most common (points, gd) combinations from simulations where that team finished 3rd in their group AND qualified as a top-8 third. The pct for each entry is a fraction of ALL simulations where the team finished 3rd (not just qualifying ones) - so the entries sum to pQualifyGiven3rd (in scenario.json allThirds), not to 1. The top 5 distinct (points, gd) combos are listed individually; any remainder is grouped into an "Others" entry (points: null, gd: null). The remaining gap to 1 (i.e. 1 - pQualifyGiven3rd) represents simulations where the team finished 3rd but did NOT qualify - not itemised here. Empty for teams that (almost) never finish 3rd.',
+      outcomeScenarios: 'For each team, outcomeScenarios breaks the group stage down into 5 mutually exclusive outcome buckets: first, second, thirdQualified (finished 3rd AND advanced as a top-8 third), thirdEliminated (finished 3rd, did not advance), fourth. Each bucket lists the most common (points, gd) combinations (top 5 + an "Others" entry, points/gd: null) seen in simulations landing in that bucket. Every pct is unconditional - a fraction of ALL simulations (not just this bucket) - so summing the entries for a bucket gives the overall probability of that bucket (matching positionProbabilities[0]/[1]/[3] for first/second/fourth, and pThird / (pFinish3rd - pThird) for the two third-place splits). Summing across all 5 buckets gives 1 (every simulation lands in exactly one bucket).',
     },
     teams,
   };
