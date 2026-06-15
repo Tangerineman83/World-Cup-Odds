@@ -43,15 +43,18 @@
       </div>
       <p class="thirds-intro">
         Finishing 3rd doesn't always mean you're out — the best 8 of the 12
-        third-placed teams also go through to the Last 32, ranked by points
-        then goal difference. Here they are in the order they'll appear in
-        the knockout rounds below, each shown with who they'd play next. The
+        third-placed teams also go through to the Last 32, ranked by points,
+        then goal difference, then goals scored. "Chance" is each team's
+        likelihood of being one of those 8, given that they finish 3rd in
+        their group. Here they are in the order they'll appear in the
+        knockout rounds below, each shown with who they'd play next. The
         line marks the cutoff — the last 4 go home.
       </p>
       <p class="thirds-disclaimer">
-        Pts/GD shows our most likely group-stage outcome for each team —
-        once all group games are finished, we'll confirm this table against
-        the real final standings.
+        Pts/GD/GF shows our most likely group-stage outcome for each team,
+        for context — the table itself is ordered by Chance. Once all group
+        games are finished, we'll confirm this table against the real final
+        standings.
       </p>
       <div class="table-wrap thirds-table-wrap">
         <table id="thirds-table" class="thirds-table">
@@ -59,13 +62,12 @@
             <tr>
               <th class="col-team">Team</th>
               <th class="col-num">Grp</th>
-              <th class="col-num third-ptsgd" title="Points, goal difference and goals scored in the group stage - the official tiebreak order for ranking 3rd-placed teams">Pts/GD/GF</th>
-              <th class="col-num" title="Official FIFA World Ranking position (11 June 2026) - used as the final tiebreak if points, GD and GF are all equal">FIFA</th>
+              <th class="col-num third-chance" title="Of all simulations where this team finishes 3rd in their group, the % where they're also one of the 8 best third-placed teams overall (ranked by points, then goal difference, then goals scored, then FIFA World Ranking - see footnote)">Chance</th>
               <th class="col-thirdpct">Next match</th>
             </tr>
           </thead>
           <tbody id="thirds-table-body">
-            <tr><td colspan="5" class="loading-row">Loading…</td></tr>
+            <tr><td colspan="4" class="loading-row">Loading…</td></tr>
           </tbody>
         </table>
       </div>
