@@ -140,6 +140,7 @@ function cleanMatch(m, codeOf) {
     const team = teamsByName.get(name);
     const pred = predictionsByName.get(name);
     const pThird = pred ? Math.max(0, pred.pRoundOf32 - pred.pGroupWinner - pred.pRunnerUp) : null;
+    const stats = g.stats && g.stats[name]; // {points, gd, gf} from the modal scenario
     return {
       name,
       code: codeOf[name] || null,
@@ -148,6 +149,9 @@ function cleanMatch(m, codeOf) {
       worldRank: worldRankByName.get(name),
       positionProbabilities: g.positionProbabilities[name],
       pThird,
+      points: stats ? stats.points : null,
+      gd: stats ? stats.gd : null,
+      gf: stats ? stats.gf : null,
     };
   });
 
