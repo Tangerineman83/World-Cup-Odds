@@ -27,6 +27,26 @@
     return (p * 100).toFixed(1) + '%';
   }
 
+  const FLAG_CODE_OVERRIDES = { EN: 'gb-eng', SQ: 'gb-sct', WL: 'gb-wls', NI: 'gb-nir' };
+  function flagUrl(code, height) {
+    if (!code) return null;
+    const c = FLAG_CODE_OVERRIDES[code] || code.toLowerCase();
+    return `https://flagcdn.com/h${height}/${c}.png`;
+  }
+
+  // Builds a flag <img> with retry/fallback: flagcdn occasionally fails a
+  // handful of concurrent requests on first load. Retry once via a
+  // differently-sized (non-srcset) URL; if that also fails, remove the
+  // broken-image element entirely so no placeholder icon (e.g. "?") is left
+  // behind. height: base (1x) pixel height; the 2x retina image is requested
+  // via srcset at 2x height.
+  function flagImgHtml(code, height) {
+    const flag = flagUrl(code, height);
+    if (!flag) return `<span class="flag-icon"></span>`;
+    const retina = flagUrl(code, height * 2);
+    return `<img class="flag-icon" src="${flag}" srcset="${retina} 2x" alt="" loading="lazy" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`;
+  }
+
   // Heatmap-style intensity for probability cells: subtle background tint
   // scaled to value, using the existing palette's accent colors.
   function pctStyle(p, colorVar) {
@@ -62,19 +82,9 @@
       tr.classList.add('team-row');
       if (row.name === selectedTeamName) tr.classList.add('team-row-selected');
 
-      const FLAG_CODE_OVERRIDES = { EN: 'gb-eng', SQ: 'gb-sct', WL: 'gb-wls', NI: 'gb-nir' };
-      function flagUrl(code, height) {
-        if (!code) return null;
-        const c = FLAG_CODE_OVERRIDES[code] || code.toLowerCase();
-        return `https://flagcdn.com/h${height}/${c}.png`;
-      }
-
       const tdTeam = document.createElement('td');
       tdTeam.className = 'col-team';
-      const flag = flagUrl(row.code, 24);
-      const flagHtml = flag
-        ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(row.code, 48)} 2x" alt="" loading="lazy" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
-        : '';
+      const flagHtml = flagImgHtml(row.code, 24);
       tdTeam.innerHTML = `<span class="team-name-wrap">${flagHtml}<span class="team-name">${row.name}</span><span class="code">${row.code || ''}</span></span>`;
 
       const tdGroup = document.createElement('td');
@@ -202,13 +212,6 @@
     selectedBucket = null;
     teamDetail.hidden = true;
     render();
-  }
-
-  const FLAG_CODE_OVERRIDES = { EN: 'gb-eng', SQ: 'gb-sct', WL: 'gb-wls', NI: 'gb-nir' };
-  function flagUrl(code, height) {
-    if (!code) return null;
-    const c = FLAG_CODE_OVERRIDES[code] || code.toLowerCase();
-    return `https://flagcdn.com/h${height}/${c}.png`;
   }
 
   // The 5 mutually-exclusive group-stage outcome buckets, in display order
@@ -366,14 +369,17 @@
       const label = isOthers
         ? `<span class="scenario-others">Other records</span>`
         : `${s.points} pt${s.points === 1 ? '' : 's'}, GD ${s.gd >= 0 ? '+' : ''}${s.gd}`;
-      // Within-bucket share: this combo's probability relative to the
-      // bucket's own total, so the bars sum to ~100% for this bucket.
-      const withinBucketPct = bucketPct > 0 ? Math.round((s.pct / bucketPct) * 100) : 0;
+      // pct is unconditional (a fraction of ALL simulations) - rows for this
+      // bucket sum to bucketPct (the bucket's overall probability, shown in
+      // the heading). Bar width uses the same unconditional value, so bars
+      // are also comparable across different buckets.
+      const pctDisplay = fmtPct(s.pct);
+      const barWidth = Math.max(s.pct * 100, 1.5);
       rows += `<div class="scenario-row">
         <span class="scenario-label">${label}</span>
         <div class="scenario-bar-wrap">
-          <div class="scenario-bar-track"><div class="scenario-bar-fill${isOthers ? ' scenario-others-fill' : ''}" style="width:${Math.max(withinBucketPct, 2)}%"></div></div>
-          <span class="scenario-pct">${withinBucketPct}%</span>
+          <div class="scenario-bar-track"><div class="scenario-bar-fill${isOthers ? ' scenario-others-fill' : ''}" style="width:${barWidth}%"></div></div>
+          <span class="scenario-pct">${pctDisplay}</span>
         </div>
       </div>`;
     }
@@ -389,8 +395,7 @@
     const team = currentData.teams.find((t) => t.name === name);
     if (!team) return;
 
-    const flag = flagUrl(team.code, 32);
-    const flagHtml = flag ? `<img class="flag-icon" src="${flag}" alt="">` : '';
+    const flagHtml = flagImgHtml(team.code, 32);
     teamDetailTitle.innerHTML = `${flagHtml}${team.name} <span class="code">${team.code || ''}</span>`;
 
     renderGauge(team);
