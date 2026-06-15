@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-15T21:23:37.688Z",
-  "resultsApplied": 14,
+  "generatedAt": "2026-06-15T22:46:52.091Z",
+  "resultsApplied": 13,
   "methodology": {
     "ratingSource": "Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched 2026-06-11) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted), with each in-tournament result's rating change multiplied by 1.5x (on the basis that current tournament form is more representative of a team's true strength than their pre-tournament rating alone). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values (noting ours will diverge somewhat by design, due to the multiplier).",
     "worldRank": "Each team's worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions.json) - i.e. the rank matches the same model used for the odds table, not raw rating.",
     "groupOrdering": "modal (most frequent) full 1st-4th ordering across 20,000 group simulations per group",
     "thirdPlaceRanking": "the 12 third-placed teams (one per group, from the modal group scenario) are ranked by P(qualify as a top-8 third | finish 3rd in their group) - computed from the full 20,000-simulation run (predictions.json), where each simulation independently determines its own top-8-of-12 thirds using the official tiebreak order (points -> goal difference -> goals scored -> FIFA World Ranking). 'Ignoring cards' is deliberate: FIFA's real order also includes head-to-head results (above goal difference) and a disciplinary 'team conduct' score (between goals-scored and FIFA ranking) - neither is modelled, since we have no data source for card counts, but both are rare deciders in practice. points/gd/gf/fifaRank are included per team for reference (their modal-scenario stats and FIFA World Ranking) but are NOT the basis for this ranking - pQualifyGiven3rd is. Bracket slot assignment (which qualifying third plays which group winner) is an approximation of FIFA's official Annex C lookup table.",
-    "allThirds": "allThirds lists all 12 third-placed teams (one per group, modal scenario), in one continuous ranking by pQualifyGiven3rd (P(qualify | finish 3rd)) descending - see thirdPlaceRanking. The first 8 (qualifies: true) are the qualifying thirds per bestThirds/the bracket, each with `opponent`/`matchId`/`pWin` for their assigned Round-of-32 fixture (matchIds may not run M74->M87 in ranking order, since slot eligibility is constrained per Annex C). The remaining 4 (qualifies: false) continue the same ranking - i.e. \"how close did they come\". Each team also carries thirdPlaceScenarios (from predictions.json) - the top 5 (points, gd) combinations seen when this team finished 3rd AND qualified, plus an \"Others\" entry, each as a fraction of all sims where the team finished 3rd (summing to pQualifyGiven3rd).",
+    "allThirds": "allThirds lists all 12 third-placed teams (one per group, modal scenario), in one continuous ranking by pQualifyGiven3rd (P(qualify | finish 3rd)) descending - see thirdPlaceRanking. The first 8 (qualifies: true) are the qualifying thirds per bestThirds/the bracket, each with `opponent`/`matchId`/`pWin` for their assigned Round-of-32 fixture (matchIds may not run M74->M87 in ranking order, since slot eligibility is constrained per Annex C). The remaining 4 (qualifies: false) continue the same ranking - i.e. \"how close did they come\". Each team also carries thirdPlaceScenarios (the (points,gd) breakdown conditional on finishing 3rd, see predictions.json), plus outcomeScenarios/pooledScenarios/pGroupWinner/pRunnerUp/pRoundOf32 (copied from predictions.json) - the same data used for the team Sankey popup on predictions.html, shown here for these 12 teams via the same popup design.",
     "bracketStructure": "official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 \"3rd-placed\" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup",
     "knockouts": "chalk bracket - at each match, the team with the higher combined win+penalty probability advances",
-    "liveResults": "14 completed group-stage result(s) as of 2026-06-15 are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).",
+    "liveResults": "13 completed group-stage result(s) as of 2026-06-15 are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).",
     "climateAdjustment": "group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team's acclimatisation to that group's representative host-city altitude/heat profile. This is a clearly-labelled methodological judgement, not a fitted parameter - treat it as directional, not precise. Not applied to knockout matches (venue depends on bracket outcome).",
     "note": "This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations."
   },
@@ -22,10 +22,10 @@
           "elo": 1889.4573978462747,
           "worldRank": 9,
           "positionProbabilities": [
-            0.75845,
-            0.22175,
-            0.0197,
-            0.0001
+            0.771,
+            0.21055,
+            0.01825,
+            0.0002
           ]
         },
         {
@@ -34,22 +34,22 @@
           "elo": 1821.557838819284,
           "worldRank": 23,
           "positionProbabilities": [
-            0.23685,
-            0.71105,
-            0.0488,
-            0.0033
+            0.22395,
+            0.7271,
+            0.0463,
+            0.00265
           ]
         },
         {
           "name": "Czechia",
           "code": "CZ",
           "elo": 1676.442161180716,
-          "worldRank": 33,
+          "worldRank": 32,
           "positionProbabilities": [
-            0.0042,
-            0.05105,
-            0.7299,
-            0.21485
+            0.0047,
+            0.0464,
+            0.732,
+            0.2169
           ]
         },
         {
@@ -58,14 +58,14 @@
           "elo": 1502.5426021537253,
           "worldRank": 40,
           "positionProbabilities": [
-            0.0005,
-            0.01615,
-            0.2016,
-            0.78175
+            0.00035,
+            0.01595,
+            0.20345,
+            0.78025
           ]
         }
       ],
-      "probability": 0.5529
+      "probability": 0.56565
     },
     "B": {
       "order": [
@@ -73,12 +73,12 @@
           "name": "Switzerland",
           "code": "CH",
           "elo": 1851.6382652308498,
-          "worldRank": 19,
+          "worldRank": 20,
           "positionProbabilities": [
-            0.4702,
-            0.26535,
-            0.21525,
-            0.0492
+            0.4704,
+            0.2685,
+            0.2123,
+            0.0488
           ]
         },
         {
@@ -87,22 +87,22 @@
           "elo": 1739.1712802262746,
           "worldRank": 12,
           "positionProbabilities": [
-            0.37055,
-            0.34305,
-            0.23425,
-            0.05215
+            0.37395,
+            0.3394,
+            0.2331,
+            0.05355
           ]
         },
         {
           "name": "Bosnia-Herzegovina",
           "code": "BA",
           "elo": 1643.8287197737254,
-          "worldRank": 34,
+          "worldRank": 35,
           "positionProbabilities": [
-            0.1387,
-            0.2996,
-            0.3492,
-            0.2125
+            0.1359,
+            0.2992,
+            0.3552,
+            0.2097
           ]
         },
         {
@@ -111,14 +111,14 @@
           "elo": 1460.3617347691502,
           "worldRank": 41,
           "positionProbabilities": [
-            0.02055,
-            0.092,
-            0.2013,
-            0.68615
+            0.01975,
+            0.0929,
+            0.1994,
+            0.68795
           ]
         }
       ],
-      "probability": 0.1801
+      "probability": 0.18135
     },
     "C": {
       "order": [
@@ -128,22 +128,22 @@
           "elo": 1971.2072894647563,
           "worldRank": 8,
           "positionProbabilities": [
-            0.50925,
-            0.3288,
-            0.1591,
-            0.00285
+            0.50725,
+            0.33405,
+            0.1559,
+            0.0028
           ]
         },
         {
           "name": "Morocco",
           "code": "MA",
           "elo": 1846.7927105352437,
-          "worldRank": 21,
+          "worldRank": 22,
           "positionProbabilities": [
-            0.28225,
-            0.37695,
-            0.31335,
-            0.02745
+            0.2792,
+            0.3708,
+            0.3218,
+            0.0282
           ]
         },
         {
@@ -152,10 +152,10 @@
           "elo": 1800.5723331130648,
           "worldRank": 25,
           "positionProbabilities": [
-            0.2083,
-            0.29075,
-            0.49285,
-            0.0081
+            0.21335,
+            0.2918,
+            0.4874,
+            0.00745
           ]
         },
         {
@@ -165,13 +165,13 @@
           "worldRank": 42,
           "positionProbabilities": [
             0.0002,
-            0.0035,
-            0.0347,
-            0.9616
+            0.00335,
+            0.0349,
+            0.96155
           ]
         }
       ],
-      "probability": 0.2926
+      "probability": 0.28575
     },
     "D": {
       "order": [
@@ -181,10 +181,10 @@
           "elo": 1836.6897625310455,
           "worldRank": 6,
           "positionProbabilities": [
-            0.5789,
-            0.31225,
-            0.10395,
-            0.0049
+            0.57935,
+            0.3096,
+            0.1065,
+            0.00455
           ]
         },
         {
@@ -193,38 +193,38 @@
           "elo": 1869.3152024161438,
           "worldRank": 18,
           "positionProbabilities": [
-            0.3963,
-            0.5016,
-            0.094,
-            0.0081
+            0.3956,
+            0.50045,
+            0.0959,
+            0.00805
           ]
         },
         {
           "name": "Turkiye",
           "code": "TR",
           "elo": 1818.6847975838562,
-          "worldRank": 28,
+          "worldRank": 29,
           "positionProbabilities": [
-            0.0186,
-            0.1326,
-            0.55465,
-            0.29415
+            0.01855,
+            0.13285,
+            0.55515,
+            0.29345
           ]
         },
         {
           "name": "Paraguay",
           "code": "PY",
           "elo": 1723.3102374689545,
-          "worldRank": 35,
+          "worldRank": 36,
           "positionProbabilities": [
-            0.0062,
-            0.05355,
-            0.2474,
-            0.69285
+            0.0065,
+            0.0571,
+            0.24245,
+            0.69395
           ]
         }
       ],
-      "probability": 0.3379
+      "probability": 0.3408
     },
     "E": {
       "order": [
@@ -234,34 +234,34 @@
           "elo": 1942.2937493534787,
           "worldRank": 11,
           "positionProbabilities": [
-            0.6974,
-            0.2013,
-            0.101,
-            0.0003
+            0.70115,
+            0.19875,
+            0.09975,
+            0.00035
           ]
         },
         {
           "name": "Ivory Coast",
           "code": "CI",
           "elo": 1767.179697970299,
-          "worldRank": 29,
+          "worldRank": 27,
           "positionProbabilities": [
-            0.28875,
-            0.5844,
-            0.12595,
-            0.0009
+            0.28665,
+            0.58295,
+            0.12905,
+            0.00135
           ]
         },
         {
           "name": "Ecuador",
           "code": "EC",
           "elo": 1865.820302029701,
-          "worldRank": 20,
+          "worldRank": 21,
           "positionProbabilities": [
-            0.01385,
-            0.21275,
-            0.75395,
-            0.01945
+            0.0122,
+            0.2153,
+            0.75095,
+            0.02155
           ]
         },
         {
@@ -271,13 +271,13 @@
           "worldRank": 43,
           "positionProbabilities": [
             0,
-            0.00155,
-            0.0191,
-            0.97935
+            0.003,
+            0.02025,
+            0.97675
           ]
         }
       ],
-      "probability": 0.5601
+      "probability": 0.55885
     },
     "F": {
       "order": [
@@ -287,34 +287,34 @@
           "elo": 1942.5864869291288,
           "worldRank": 10,
           "positionProbabilities": [
-            0.4125,
-            0.38215,
-            0.19215,
-            0.0132
+            0.4133,
+            0.3795,
+            0.1913,
+            0.0159
           ]
         },
         {
           "name": "Japan",
           "code": "JP",
           "elo": 1911.4135130708712,
-          "worldRank": 14,
+          "worldRank": 16,
           "positionProbabilities": [
-            0.4017,
-            0.3878,
-            0.19645,
-            0.01405
+            0.40475,
+            0.39435,
+            0.1899,
+            0.011
           ]
         },
         {
           "name": "Sweden",
           "code": "SE",
           "elo": 1776.363929397476,
-          "worldRank": 27,
+          "worldRank": 26,
           "positionProbabilities": [
-            0.1851,
-            0.22815,
-            0.58175,
-            0.005
+            0.1816,
+            0.2244,
+            0.58885,
+            0.00515
           ]
         },
         {
@@ -323,51 +323,51 @@
           "elo": 1563.636070602524,
           "worldRank": 44,
           "positionProbabilities": [
-            0.0007,
-            0.0019,
-            0.02965,
-            0.96775
+            0.00035,
+            0.00175,
+            0.02995,
+            0.96795
           ]
         }
       ],
-      "probability": 0.2972
+      "probability": 0.3032
     },
     "G": {
       "order": [
         {
           "name": "Belgium",
           "code": "BE",
-          "elo": 1870.8124742623972,
-          "worldRank": 17,
+          "elo": 1894,
+          "worldRank": 14,
           "positionProbabilities": [
-            0.46795,
-            0.32575,
-            0.17045,
-            0.03585
-          ]
-        },
-        {
-          "name": "Egypt",
-          "code": "EG",
-          "elo": 1719.1875257376028,
-          "worldRank": 31,
-          "positionProbabilities": [
-            0.1896,
-            0.31855,
-            0.33795,
-            0.1539
+            0.6327,
+            0.25315,
+            0.0955,
+            0.01865
           ]
         },
         {
           "name": "Iran",
           "code": "IR",
           "elo": 1772,
-          "worldRank": 26,
+          "worldRank": 28,
           "positionProbabilities": [
-            0.3099,
-            0.2826,
-            0.2953,
-            0.1122
+            0.2354,
+            0.3972,
+            0.2688,
+            0.0986
+          ]
+        },
+        {
+          "name": "Egypt",
+          "code": "EG",
+          "elo": 1696,
+          "worldRank": 33,
+          "positionProbabilities": [
+            0.1137,
+            0.26585,
+            0.40185,
+            0.2186
           ]
         },
         {
@@ -376,14 +376,14 @@
           "elo": 1562,
           "worldRank": 45,
           "positionProbabilities": [
-            0.03255,
-            0.0731,
-            0.1963,
-            0.69805
+            0.0182,
+            0.0838,
+            0.23385,
+            0.66415
           ]
         }
       ],
-      "probability": 0.16465
+      "probability": 0.25035
     },
     "H": {
       "order": [
@@ -393,22 +393,22 @@
           "elo": 2115.1010897135648,
           "worldRank": 2,
           "positionProbabilities": [
-            0.64385,
-            0.28945,
-            0.0623,
-            0.0044
+            0.64735,
+            0.28475,
+            0.064,
+            0.0039
           ]
         },
         {
           "name": "Uruguay",
           "code": "UY",
           "elo": 1892,
-          "worldRank": 16,
+          "worldRank": 17,
           "positionProbabilities": [
-            0.3122,
-            0.4777,
-            0.1729,
-            0.0372
+            0.31045,
+            0.4826,
+            0.1703,
+            0.03665
           ]
         },
         {
@@ -417,26 +417,26 @@
           "elo": 1619.8989102864355,
           "worldRank": 46,
           "positionProbabilities": [
-            0.03265,
-            0.1714,
-            0.46675,
-            0.3292
+            0.03,
+            0.17085,
+            0.46665,
+            0.3325
           ]
         },
         {
           "name": "Saudi Arabia",
           "code": "SA",
           "elo": 1576,
-          "worldRank": 38,
+          "worldRank": 47,
           "positionProbabilities": [
-            0.0113,
-            0.06145,
-            0.29805,
-            0.6292
+            0.0122,
+            0.0618,
+            0.29905,
+            0.62695
           ]
         }
       ],
-      "probability": 0.2975
+      "probability": 0.29905
     },
     "I": {
       "order": [
@@ -446,10 +446,10 @@
           "elo": 2063,
           "worldRank": 3,
           "positionProbabilities": [
-            0.66265,
-            0.24605,
-            0.08595,
-            0.00535
+            0.6633,
+            0.2428,
+            0.0885,
+            0.0054
           ]
         },
         {
@@ -458,38 +458,38 @@
           "elo": 1914,
           "worldRank": 13,
           "positionProbabilities": [
-            0.21095,
-            0.4101,
-            0.3223,
-            0.05665
+            0.20715,
+            0.40835,
+            0.3262,
+            0.0583
           ]
         },
         {
           "name": "Senegal",
           "code": "SN",
           "elo": 1860,
-          "worldRank": 22,
+          "worldRank": 19,
           "positionProbabilities": [
-            0.1249,
-            0.3169,
-            0.4516,
-            0.1066
+            0.1274,
+            0.3206,
+            0.44095,
+            0.11105
           ]
         },
         {
           "name": "Iraq",
           "code": "IQ",
           "elo": 1607,
-          "worldRank": 47,
+          "worldRank": 37,
           "positionProbabilities": [
-            0.0015,
-            0.02695,
-            0.14015,
-            0.8314
+            0.00215,
+            0.02825,
+            0.14435,
+            0.82525
           ]
         }
       ],
-      "probability": 0.3074
+      "probability": 0.30035
     },
     "J": {
       "order": [
@@ -499,10 +499,10 @@
           "elo": 2115,
           "worldRank": 1,
           "positionProbabilities": [
-            0.84325,
-            0.1276,
-            0.0258,
-            0.00335
+            0.8437,
+            0.1285,
+            0.025,
+            0.0028
           ]
         },
         {
@@ -511,10 +511,10 @@
           "elo": 1830,
           "worldRank": 24,
           "positionProbabilities": [
-            0.08065,
-            0.39045,
-            0.3227,
-            0.2062
+            0.0789,
+            0.3843,
+            0.33385,
+            0.20295
           ]
         },
         {
@@ -523,26 +523,26 @@
           "elo": 1772,
           "worldRank": 30,
           "positionProbabilities": [
-            0.06175,
-            0.32555,
-            0.3648,
-            0.2479
+            0.06265,
+            0.32595,
+            0.3542,
+            0.2572
           ]
         },
         {
           "name": "Jordan",
           "code": "JO",
           "elo": 1680,
-          "worldRank": 37,
+          "worldRank": 38,
           "positionProbabilities": [
-            0.01435,
-            0.1564,
-            0.2867,
-            0.54255
+            0.01475,
+            0.16125,
+            0.28695,
+            0.53705
           ]
         }
       ],
-      "probability": 0.24315
+      "probability": 0.2351
     },
     "K": {
       "order": [
@@ -552,10 +552,10 @@
           "elo": 1989,
           "worldRank": 5,
           "positionProbabilities": [
-            0.5005,
-            0.3961,
-            0.08835,
-            0.01505
+            0.49695,
+            0.39965,
+            0.08715,
+            0.01625
           ]
         },
         {
@@ -564,22 +564,22 @@
           "elo": 1982,
           "worldRank": 7,
           "positionProbabilities": [
-            0.459,
-            0.42395,
-            0.09995,
-            0.0171
+            0.46295,
+            0.41755,
+            0.1001,
+            0.0194
           ]
         },
         {
           "name": "Uzbekistan",
           "code": "UZ",
           "elo": 1714,
-          "worldRank": 36,
+          "worldRank": 34,
           "positionProbabilities": [
-            0.03035,
-            0.11925,
-            0.4744,
-            0.376
+            0.0301,
+            0.1207,
+            0.47085,
+            0.37835
           ]
         },
         {
@@ -588,14 +588,14 @@
           "elo": 1652,
           "worldRank": 39,
           "positionProbabilities": [
-            0.01015,
-            0.0607,
-            0.3373,
-            0.59185
+            0.01,
+            0.0621,
+            0.3419,
+            0.586
           ]
         }
       ],
-      "probability": 0.23905
+      "probability": 0.2336
     },
     "L": {
       "order": [
@@ -605,10 +605,10 @@
           "elo": 2024,
           "worldRank": 4,
           "positionProbabilities": [
-            0.6539,
-            0.2844,
-            0.05915,
-            0.00255
+            0.64615,
+            0.28605,
+            0.0648,
+            0.003
           ]
         },
         {
@@ -617,22 +617,22 @@
           "elo": 1912,
           "worldRank": 15,
           "positionProbabilities": [
-            0.29685,
-            0.5089,
-            0.17825,
-            0.016
+            0.30455,
+            0.50675,
+            0.1735,
+            0.0152
           ]
         },
         {
           "name": "Panama",
           "code": "PA",
           "elo": 1730,
-          "worldRank": 32,
+          "worldRank": 31,
           "positionProbabilities": [
             0.0482,
-            0.1891,
-            0.5957,
-            0.167
+            0.1908,
+            0.59455,
+            0.16645
           ]
         },
         {
@@ -641,14 +641,14 @@
           "elo": 1510,
           "worldRank": 48,
           "positionProbabilities": [
-            0.00105,
-            0.0176,
-            0.1669,
-            0.81445
+            0.0011,
+            0.0164,
+            0.16715,
+            0.81535
           ]
         }
       ],
-      "probability": 0.3913
+      "probability": 0.3883
     }
   },
   "allThirds": [
@@ -657,17 +657,17 @@
       "code": "SE",
       "group": "F",
       "elo": 1776.363929397476,
-      "worldRank": 27,
+      "worldRank": 26,
       "fifaRank": 38,
       "positionProbabilities": [
-        0.1851,
-        0.22815,
-        0.58175,
-        0.005
+        0.1816,
+        0.2244,
+        0.58885,
+        0.00515
       ],
-      "pFinish3rd": 0.58175,
-      "pThird": 0.5593,
-      "pQualifyGiven3rd": 0.96140954018049,
+      "pFinish3rd": 0.58885,
+      "pThird": 0.5599000000000001,
+      "pQualifyGiven3rd": 0.9508363759870936,
       "points": 3,
       "gd": 2,
       "gf": 7,
@@ -675,44 +675,314 @@
         {
           "points": 3,
           "gd": 2,
-          "pct": 0.33136043918339336
+          "pct": 0.3321243523316062
         },
         {
           "points": 4,
           "gd": 3,
-          "pct": 0.2497855549837022
+          "pct": 0.2488773747841105
         },
         {
           "points": 3,
           "gd": 1,
-          "pct": 0.14282038085434895
+          "pct": 0.14723661485319517
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.09109624292331447
+          "pct": 0.08514680483592399
         },
         {
           "points": 4,
           "gd": 2,
-          "pct": 0.05464059015268486
+          "pct": 0.05630397236614852
         },
         {
           "points": 3,
           "gd": -1,
-          "pct": 0.03705609881626351
+          "pct": 0.0385146804835924
         },
         {
           "points": 4,
           "gd": 1,
-          "pct": 0.02744896208612112
+          "pct": 0.028411053540587216
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.025304511923142904
+          "pct": 0.030397236614853204
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 5,
+            "pct": 0.0675
+          },
+          {
+            "points": 5,
+            "gd": 4,
+            "pct": 0.0429
+          },
+          {
+            "points": 6,
+            "gd": 4,
+            "pct": 0.0274
+          },
+          {
+            "points": 9,
+            "gd": 6,
+            "pct": 0.02185
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.025450000000000007
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 4,
+            "pct": 0.11195
+          },
+          {
+            "points": 4,
+            "gd": 3,
+            "pct": 0.0438
+          },
+          {
+            "points": 6,
+            "gd": 3,
+            "pct": 0.02555
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.0128
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.03654999999999999
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": 2,
+            "pct": 0.1923
+          },
+          {
+            "points": 4,
+            "gd": 3,
+            "pct": 0.1441
+          },
+          {
+            "points": 3,
+            "gd": 1,
+            "pct": 0.08525
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0493
+          },
+          {
+            "points": 4,
+            "gd": 2,
+            "pct": 0.0326
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0223
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.01645
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.017600000000000008
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.0191
+          }
+        ],
+        "fourth": [
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.0052499999999999995
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 9,
+          "gd": 6,
+          "total": 0.02185,
+          "byBucket": {
+            "first": 0.02185
+          }
+        },
+        {
+          "points": 7,
+          "gd": 5,
+          "total": 0.0675,
+          "byBucket": {
+            "first": 0.0675
+          }
+        },
+        {
+          "points": 6,
+          "gd": 5,
+          "total": 0.01135,
+          "byBucket": {
+            "first": 0.00225,
+            "second": 0.0091
+          }
+        },
+        {
+          "points": 6,
+          "gd": 4,
+          "total": 0.13935,
+          "byBucket": {
+            "first": 0.0274,
+            "second": 0.11195
+          }
+        },
+        {
+          "points": 6,
+          "gd": 3,
+          "total": 0.03165,
+          "byBucket": {
+            "first": 0.0061,
+            "second": 0.02555
+          }
+        },
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.016050000000000002,
+          "byBucket": {
+            "first": 0.00325,
+            "second": 0.0128
+          }
+        },
+        {
+          "points": 5,
+          "gd": 4,
+          "total": 0.0461,
+          "byBucket": {
+            "first": 0.0429,
+            "second": 0.00315,
+            "thirdQualified": 0.00005
+          }
+        },
+        {
+          "points": 4,
+          "gd": 3,
+          "total": 0.189,
+          "byBucket": {
+            "first": 0.0011,
+            "second": 0.0438,
+            "thirdQualified": 0.1441
+          }
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "total": 0.042199999999999994,
+          "byBucket": {
+            "first": 0.0001,
+            "second": 0.0095,
+            "thirdQualified": 0.0326
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.020749999999999998,
+          "byBucket": {
+            "second": 0.0043,
+            "thirdQualified": 0.01645
+          }
+        },
+        {
+          "points": 3,
+          "gd": 2,
+          "total": 0.1991,
+          "byBucket": {
+            "thirdQualified": 0.1923,
+            "thirdEliminated": 0.0038,
+            "fourth": 0.003
+          }
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "total": 0.08885000000000001,
+          "byBucket": {
+            "thirdQualified": 0.08525,
+            "thirdEliminated": 0.00235,
+            "fourth": 0.00125
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.05125,
+          "byBucket": {
+            "thirdQualified": 0.0493,
+            "thirdEliminated": 0.0013,
+            "fourth": 0.00065
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.02545,
+          "byBucket": {
+            "thirdQualified": 0.0223,
+            "thirdEliminated": 0.003,
+            "fourth": 0.00015
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.010599999999999998,
+          "byBucket": {
+            "thirdQualified": 0.00645,
+            "thirdEliminated": 0.00405,
+            "fourth": 0.0001
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.03895,
+          "byBucket": {
+            "first": 0.012649999999999996,
+            "second": 0.010500000000000002,
+            "thirdQualified": 0.011099999999999999,
+            "thirdEliminated": 0.0046,
+            "fourth": 0.0001
+          }
+        }
+      ],
+      "pGroupWinner": 0.1851,
+      "pRunnerUp": 0.23065,
+      "pRoundOf32": 0.97565,
       "qualifies": true,
       "matchId": "M74",
       "pWin": 0.7309670039836347,
@@ -727,17 +997,17 @@
       "code": "BA",
       "group": "B",
       "elo": 1643.8287197737254,
-      "worldRank": 34,
+      "worldRank": 35,
       "fifaRank": 65,
       "positionProbabilities": [
-        0.1387,
-        0.2996,
-        0.3492,
-        0.2125
+        0.1359,
+        0.2992,
+        0.3552,
+        0.2097
       ],
-      "pFinish3rd": 0.3492,
-      "pThird": 0.28874999999999995,
-      "pQualifyGiven3rd": 0.826890034364261,
+      "pFinish3rd": 0.3552,
+      "pThird": 0.28974999999999995,
+      "pQualifyGiven3rd": 0.8157376126126125,
       "points": 4,
       "gd": 0,
       "gf": 4,
@@ -745,39 +1015,373 @@
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.4219938045620952
+          "pct": 0.4258661803899565
         },
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.13362433117431707
-        },
-        {
-          "points": 4,
-          "gd": -2,
-          "pct": 0.06646015206983948
+          "pct": 0.13045307897320801
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.06322162771050409
+          "pct": 0.06957497545237762
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "pct": 0.068312526301024
         },
         {
           "points": 4,
           "gd": 1,
-          "pct": 0.05097155730780062
-        },
-        {
-          "points": 4,
-          "gd": -3,
-          "pct": 0.028724303013235707
+          "pct": 0.05119932669378594
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.04815544916924809
+          "pct": 0.0674708935334549
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.04545
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.0359
+          },
+          {
+            "points": 7,
+            "gd": 3,
+            "pct": 0.01425
+          },
+          {
+            "points": 5,
+            "gd": 2,
+            "pct": 0.01235
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.026150000000000007
+          }
+        ],
+        "second": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.09205
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.08265
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0378
+          },
+          {
+            "points": 4,
+            "gd": 2,
+            "pct": 0.01975
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.01645
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.01015
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.040400000000000005
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.1518
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.0465
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0248
+          },
+          {
+            "points": 4,
+            "gd": -2,
+            "pct": 0.02435
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.01825
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.02405
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.0566
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.010099999999999998
+          }
+        ],
+        "fourth": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.06765
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.06305
+          },
+          {
+            "points": 2,
+            "gd": -2,
+            "pct": 0.0206
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.0193
+          },
+          {
+            "points": 2,
+            "gd": -3,
+            "pct": 0.01145
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.01025
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.0179
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 7,
+          "gd": 3,
+          "total": 0.01545,
+          "byBucket": {
+            "first": 0.01425,
+            "second": 0.0012
+          }
+        },
+        {
+          "points": 7,
+          "gd": 2,
+          "total": 0.055049999999999995,
+          "byBucket": {
+            "first": 0.04545,
+            "second": 0.0096
+          }
+        },
+        {
+          "points": 5,
+          "gd": 3,
+          "total": 0.0106,
+          "byBucket": {
+            "first": 0.0078,
+            "second": 0.0028
+          }
+        },
+        {
+          "points": 5,
+          "gd": 2,
+          "total": 0.020900000000000002,
+          "byBucket": {
+            "first": 0.01235,
+            "second": 0.00855
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.11855,
+          "byBucket": {
+            "first": 0.0359,
+            "second": 0.08265
+          }
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "total": 0.02645,
+          "byBucket": {
+            "first": 0.0001,
+            "second": 0.01975,
+            "thirdQualified": 0.0066
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.056650000000000006,
+          "byBucket": {
+            "first": 0.0006,
+            "second": 0.0378,
+            "thirdQualified": 0.01825
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.2472,
+          "byBucket": {
+            "first": 0.0014,
+            "second": 0.09205,
+            "thirdQualified": 0.1518,
+            "thirdEliminated": 0.00005,
+            "fourth": 0.0019
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.05795,
+          "byBucket": {
+            "second": 0.01015,
+            "thirdQualified": 0.0465,
+            "thirdEliminated": 0.00035,
+            "fourth": 0.00095
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.029200000000000004,
+          "byBucket": {
+            "second": 0.00415,
+            "thirdQualified": 0.02435,
+            "thirdEliminated": 0.0003,
+            "fourth": 0.0004
+          }
+        },
+        {
+          "points": 4,
+          "gd": -3,
+          "total": 0.011300000000000001,
+          "byBucket": {
+            "second": 0.0014,
+            "thirdQualified": 0.00975,
+            "thirdEliminated": 0.00015
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.0445,
+          "byBucket": {
+            "first": 0.0001,
+            "second": 0.01645,
+            "thirdQualified": 0.0248,
+            "thirdEliminated": 0.00215,
+            "fourth": 0.001
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.1262,
+          "byBucket": {
+            "thirdQualified": 0.00195,
+            "thirdEliminated": 0.0566,
+            "fourth": 0.06765
+          }
+        },
+        {
+          "points": 2,
+          "gd": -2,
+          "total": 0.0252,
+          "byBucket": {
+            "thirdEliminated": 0.0046,
+            "fourth": 0.0206
+          }
+        },
+        {
+          "points": 2,
+          "gd": -3,
+          "total": 0.012750000000000001,
+          "byBucket": {
+            "thirdEliminated": 0.0013,
+            "fourth": 0.01145
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.06365,
+          "byBucket": {
+            "thirdEliminated": 0.0006,
+            "fourth": 0.06305
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.0194,
+          "byBucket": {
+            "thirdEliminated": 0.0001,
+            "fourth": 0.0193
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.01025,
+          "byBucket": {
+            "fourth": 0.01025
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.04875,
+          "byBucket": {
+            "first": 0.016150000000000005,
+            "second": 0.012700000000000001,
+            "thirdQualified": 0.005749999999999999,
+            "thirdEliminated": 0.0005,
+            "fourth": 0.013649999999999997
+          }
+        }
+      ],
+      "pGroupWinner": 0.1341,
+      "pRunnerUp": 0.29925,
+      "pRoundOf32": 0.7231,
       "qualifies": true,
       "matchId": "M81",
       "pWin": 0.7877115360347158,
@@ -788,66 +1392,6 @@
       }
     },
     {
-      "name": "Iran",
-      "code": "IR",
-      "group": "G",
-      "elo": 1772,
-      "worldRank": 26,
-      "fifaRank": 21,
-      "positionProbabilities": [
-        0.3099,
-        0.2826,
-        0.2953,
-        0.1122
-      ],
-      "pFinish3rd": 0.2953,
-      "pThird": 0.22160000000000007,
-      "pQualifyGiven3rd": 0.7504232983406708,
-      "points": 4,
-      "gd": 0,
-      "gf": 4,
-      "thirdPlaceScenarios": [
-        {
-          "points": 4,
-          "gd": 0,
-          "pct": 0.2575425585707062
-        },
-        {
-          "points": 3,
-          "gd": -1,
-          "pct": 0.17343670992752402
-        },
-        {
-          "points": 3,
-          "gd": 0,
-          "pct": 0.0800606775661554
-        },
-        {
-          "points": 4,
-          "gd": -1,
-          "pct": 0.05022754087308275
-        },
-        {
-          "points": 4,
-          "gd": 1,
-          "pct": 0.04129445474464857
-        },
-        {
-          "points": null,
-          "gd": null,
-          "pct": 0.14444631720883203
-        }
-      ],
-      "qualifies": true,
-      "matchId": "M77",
-      "pWin": 0.851640479358933,
-      "opponent": {
-        "name": "France",
-        "code": "FR",
-        "elo": 2063
-      }
-    },
-    {
       "name": "Scotland",
       "code": "SQ",
       "group": "C",
@@ -855,14 +1399,753 @@
       "worldRank": 25,
       "fifaRank": 43,
       "positionProbabilities": [
-        0.2083,
-        0.29075,
-        0.49285,
-        0.0081
+        0.21335,
+        0.2918,
+        0.4874,
+        0.00745
       ],
-      "pFinish3rd": 0.49285,
-      "pThird": 0.34885,
-      "pQualifyGiven3rd": 0.7078218524906158,
+      "pFinish3rd": 0.4874,
+      "pThird": 0.3596999999999999,
+      "pQualifyGiven3rd": 0.7379975379565037,
+      "points": 3,
+      "gd": -1,
+      "gf": 3,
+      "thirdPlaceScenarios": [
+        {
+          "points": 4,
+          "gd": 0,
+          "pct": 0.31133723918182754
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "pct": 0.21656902045431187
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "pct": 0.055093020865453805
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "pct": 0.051289957857950465
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "pct": 0.04039469626888684
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "pct": 0.029191078219755376
+        },
+        {
+          "points": null,
+          "gd": null,
+          "pct": 0.035563778394490715
+        }
+      ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.09345
+          },
+          {
+            "points": 9,
+            "gd": 3,
+            "pct": 0.04065
+          },
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.03195
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04405
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.1473
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0369
+          },
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.02995
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.02285
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.01715
+          },
+          {
+            "points": 6,
+            "gd": -1,
+            "pct": 0.01465
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.026750000000000003
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.15145
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.10535
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.0268
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.02495
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.01965
+          },
+          {
+            "points": 4,
+            "gd": -2,
+            "pct": 0.0142
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.017300000000000006
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0509
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.03565
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.02215
+          },
+          {
+            "points": 3,
+            "gd": -4,
+            "pct": 0.0106
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.007449999999999998
+          }
+        ],
+        "fourth": [
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.007899999999999999
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 9,
+          "gd": 3,
+          "total": 0.04065,
+          "byBucket": {
+            "first": 0.04065
+          }
+        },
+        {
+          "points": 7,
+          "gd": 2,
+          "total": 0.09345,
+          "byBucket": {
+            "first": 0.09345
+          }
+        },
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.020249999999999997,
+          "byBucket": {
+            "first": 0.0031,
+            "second": 0.01715
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.17925,
+          "byBucket": {
+            "first": 0.03195,
+            "second": 0.1473
+          }
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "total": 0.03615,
+          "byBucket": {
+            "first": 0.0062,
+            "second": 0.02995
+          }
+        },
+        {
+          "points": 6,
+          "gd": -1,
+          "total": 0.01725,
+          "byBucket": {
+            "first": 0.0026,
+            "second": 0.01465
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.053,
+          "byBucket": {
+            "first": 0.0052,
+            "second": 0.02285,
+            "thirdQualified": 0.02495
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.18855,
+          "byBucket": {
+            "first": 0.00015,
+            "second": 0.0369,
+            "thirdQualified": 0.15145,
+            "thirdEliminated": 0.00005
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.0333,
+          "byBucket": {
+            "second": 0.0063,
+            "thirdQualified": 0.0268,
+            "thirdEliminated": 0.0002
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.01815,
+          "byBucket": {
+            "second": 0.00375,
+            "thirdQualified": 0.0142,
+            "thirdEliminated": 0.0002
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.1594,
+          "byBucket": {
+            "thirdQualified": 0.10535,
+            "thirdEliminated": 0.0509,
+            "fourth": 0.00315
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.0574,
+          "byBucket": {
+            "thirdQualified": 0.01965,
+            "thirdEliminated": 0.03565,
+            "fourth": 0.0021
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.030699999999999998,
+          "byBucket": {
+            "thirdQualified": 0.0071,
+            "thirdEliminated": 0.02215,
+            "fourth": 0.00145
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.0133,
+          "byBucket": {
+            "thirdQualified": 0.002,
+            "thirdEliminated": 0.0106,
+            "fourth": 0.0007
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.05920000000000001,
+          "byBucket": {
+            "first": 0.026800000000000004,
+            "second": 0.016700000000000007,
+            "thirdQualified": 0.0082,
+            "thirdEliminated": 0.006999999999999999,
+            "fourth": 0.0005
+          }
+        }
+      ],
+      "pGroupWinner": 0.2101,
+      "pRunnerUp": 0.29555,
+      "pRoundOf32": 0.86535,
+      "qualifies": true,
+      "matchId": "M77",
+      "pWin": 0.828790478953682,
+      "opponent": {
+        "name": "France",
+        "code": "FR",
+        "elo": 2063
+      }
+    },
+    {
+      "name": "Ecuador",
+      "code": "EC",
+      "group": "E",
+      "elo": 1865.820302029701,
+      "worldRank": 21,
+      "fifaRank": 23,
+      "positionProbabilities": [
+        0.0122,
+        0.2153,
+        0.75095,
+        0.02155
+      ],
+      "pFinish3rd": 0.75095,
+      "pThird": 0.5264,
+      "pQualifyGiven3rd": 0.7009787602370331,
+      "points": 3,
+      "gd": -1,
+      "gf": 3,
+      "thirdPlaceScenarios": [
+        {
+          "points": 3,
+          "gd": -1,
+          "pct": 0.19410815173527038
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "pct": 0.17843691148775892
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "pct": 0.08757062146892655
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "pct": 0.05185633575464084
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "pct": 0.047888081786386864
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "pct": 0.03779930051116492
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "pct": 0.026029055690072637
+        },
+        {
+          "points": 3,
+          "gd": 2,
+          "pct": 0.020782889426957222
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "pct": 0.01943771859026096
+        },
+        {
+          "points": null,
+          "gd": null,
+          "pct": 0.04418886198547216
+        }
+      ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.013549999999999998
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.09155
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.0421
+          },
+          {
+            "points": 6,
+            "gd": 3,
+            "pct": 0.02645
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.02355
+          },
+          {
+            "points": 6,
+            "gd": 4,
+            "pct": 0.0134
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.023200000000000005
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.1443
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.13265
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0651
+          },
+          {
+            "points": 3,
+            "gd": 1,
+            "pct": 0.03855
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0356
+          },
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0281
+          },
+          {
+            "points": 4,
+            "gd": 2,
+            "pct": 0.01935
+          },
+          {
+            "points": 3,
+            "gd": 2,
+            "pct": 0.01545
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.01445
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.032850000000000004
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.06265
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.05275
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.03635
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0234
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.013
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.028850000000000004
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.0159
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.006899999999999996
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 6,
+          "gd": 4,
+          "total": 0.015349999999999999,
+          "byBucket": {
+            "first": 0.00155,
+            "second": 0.0134,
+            "thirdQualified": 0.0004
+          }
+        },
+        {
+          "points": 6,
+          "gd": 3,
+          "total": 0.029200000000000004,
+          "byBucket": {
+            "first": 0.0015,
+            "second": 0.02645,
+            "thirdQualified": 0.00125
+          }
+        },
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.0486,
+          "byBucket": {
+            "first": 0.0021,
+            "second": 0.0421,
+            "thirdQualified": 0.0044
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.12595,
+          "byBucket": {
+            "first": 0.0063,
+            "second": 0.09155,
+            "thirdQualified": 0.0281
+          }
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "total": 0.0226,
+          "byBucket": {
+            "second": 0.00325,
+            "thirdQualified": 0.01935
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.04115,
+          "byBucket": {
+            "second": 0.00555,
+            "thirdQualified": 0.0356
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.1563,
+          "byBucket": {
+            "second": 0.02355,
+            "thirdQualified": 0.13265,
+            "thirdEliminated": 0.0001
+          }
+        },
+        {
+          "points": 3,
+          "gd": 2,
+          "total": 0.0161,
+          "byBucket": {
+            "second": 0.0003,
+            "thirdQualified": 0.01545,
+            "thirdEliminated": 0.00035
+          }
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "total": 0.040350000000000004,
+          "byBucket": {
+            "second": 0.00075,
+            "thirdQualified": 0.03855,
+            "thirdEliminated": 0.001,
+            "fourth": 0.00005
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.07170000000000001,
+          "byBucket": {
+            "second": 0.0012,
+            "thirdQualified": 0.0651,
+            "thirdEliminated": 0.0054
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.21010000000000004,
+          "byBucket": {
+            "second": 0.00295,
+            "thirdQualified": 0.1443,
+            "thirdEliminated": 0.06265,
+            "fourth": 0.0002
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.03805,
+          "byBucket": {
+            "second": 0.0002,
+            "thirdQualified": 0.01445,
+            "thirdEliminated": 0.0234
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.016,
+          "byBucket": {
+            "thirdQualified": 0.003,
+            "thirdEliminated": 0.013
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.038099999999999995,
+          "byBucket": {
+            "thirdQualified": 0.00085,
+            "thirdEliminated": 0.03635,
+            "fourth": 0.0009
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.0687,
+          "byBucket": {
+            "thirdQualified": 0.00005,
+            "thirdEliminated": 0.05275,
+            "fourth": 0.0159
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.0119,
+          "byBucket": {
+            "thirdEliminated": 0.00965,
+            "fourth": 0.00225
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.049850000000000005,
+          "byBucket": {
+            "first": 0.0021,
+            "second": 0.009,
+            "thirdQualified": 0.022900000000000004,
+            "thirdEliminated": 0.01235,
+            "fourth": 0.0035000000000000005
+          }
+        }
+      ],
+      "pGroupWinner": 0.01355,
+      "pRunnerUp": 0.22025,
+      "pRoundOf32": 0.7602,
+      "qualifies": true,
+      "matchId": "M79",
+      "pWin": 0.5709824324533513,
+      "opponent": {
+        "name": "Mexico",
+        "code": "MX",
+        "elo": 1889.4573978462747
+      }
+    },
+    {
+      "name": "Senegal",
+      "code": "SN",
+      "group": "I",
+      "elo": 1860,
+      "worldRank": 19,
+      "fifaRank": 14,
+      "positionProbabilities": [
+        0.1274,
+        0.3206,
+        0.44095,
+        0.11105
+      ],
+      "pFinish3rd": 0.44095,
+      "pThird": 0.3065,
+      "pQualifyGiven3rd": 0.6950901462750878,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -870,46 +2153,476 @@
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.29970173814666257
+          "pct": 0.17469879518072287
         },
         {
           "points": 3,
           "gd": -1,
-          "pct": 0.20580067880283864
+          "pct": 0.1713520749665328
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "pct": 0.07150825524319501
         },
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.058418183688162095
+          "pct": 0.04730031236055333
         },
         {
-          "points": 5,
+          "points": 3,
+          "gd": -2,
+          "pct": 0.03558679161088799
+        },
+        {
+          "points": 4,
           "gd": 1,
-          "pct": 0.047927594363879465
+          "pct": 0.030789825970548863
         },
         {
           "points": 3,
-          "gd": -2,
-          "pct": 0.04041962357297131
-        },
-        {
-          "points": 4,
-          "gd": -2,
-          "pct": 0.02756350920497789
+          "gd": 1,
+          "pct": 0.027777777777777776
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.03774555178442867
+          "pct": 0.12483266398929055
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.0347
+          },
+          {
+            "points": 9,
+            "gd": 3,
+            "pct": 0.0155
+          },
+          {
+            "points": 7,
+            "gd": 3,
+            "pct": 0.01245
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.05935
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0786
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0606
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.0333
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.02615
+          },
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.0163
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.01445
+          },
+          {
+            "points": 6,
+            "gd": 3,
+            "pct": 0.01385
+          },
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.01185
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.06744999999999997
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0783
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0768
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.03205
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.0212
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.01595
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0138
+          },
+          {
+            "points": 3,
+            "gd": 1,
+            "pct": 0.01245
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.05595000000000002
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.02975
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.02365
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0216
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.01805
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.0166
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.032050000000000016
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.0311
+          },
+          {
+            "points": 0,
+            "gd": -3,
+            "pct": 0.01435
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.0123
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04950000000000002
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 9,
+          "gd": 3,
+          "total": 0.0155,
+          "byBucket": {
+            "first": 0.0155
+          }
+        },
+        {
+          "points": 7,
+          "gd": 3,
+          "total": 0.014799999999999999,
+          "byBucket": {
+            "first": 0.01245,
+            "second": 0.00235
+          }
+        },
+        {
+          "points": 7,
+          "gd": 2,
+          "total": 0.04655,
+          "byBucket": {
+            "first": 0.0347,
+            "second": 0.01185
+          }
+        },
+        {
+          "points": 6,
+          "gd": 3,
+          "total": 0.01775,
+          "byBucket": {
+            "first": 0.0038,
+            "second": 0.01385,
+            "thirdQualified": 0.0001
+          }
+        },
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.03235,
+          "byBucket": {
+            "first": 0.0058,
+            "second": 0.02615,
+            "thirdQualified": 0.0004
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.096,
+          "byBucket": {
+            "first": 0.0092,
+            "second": 0.0786,
+            "thirdQualified": 0.0082
+          }
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "total": 0.0213,
+          "byBucket": {
+            "first": 0.00135,
+            "second": 0.0163,
+            "thirdQualified": 0.00365
+          }
+        },
+        {
+          "points": 6,
+          "gd": -1,
+          "total": 0.011,
+          "byBucket": {
+            "first": 0.00035,
+            "second": 0.0088,
+            "thirdQualified": 0.00185
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.040150000000000005,
+          "byBucket": {
+            "first": 0.00555,
+            "second": 0.0333,
+            "thirdQualified": 0.0013
+          }
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "total": 0.0138,
+          "byBucket": {
+            "second": 0.00755,
+            "thirdQualified": 0.00625
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.028249999999999997,
+          "byBucket": {
+            "second": 0.01445,
+            "thirdQualified": 0.0138
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.13909999999999997,
+          "byBucket": {
+            "first": 0.00005,
+            "second": 0.0606,
+            "thirdQualified": 0.0783,
+            "thirdEliminated": 0.0001,
+            "fourth": 0.00005
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.02965,
+          "byBucket": {
+            "second": 0.0083,
+            "thirdQualified": 0.0212,
+            "thirdEliminated": 0.0001,
+            "fourth": 0.00005
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.0132,
+          "byBucket": {
+            "second": 0.004,
+            "thirdQualified": 0.0091,
+            "thirdEliminated": 0.0001
+          }
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "total": 0.013550000000000001,
+          "byBucket": {
+            "second": 0.00045,
+            "thirdQualified": 0.01245,
+            "thirdEliminated": 0.0005,
+            "fourth": 0.00015
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.036950000000000004,
+          "byBucket": {
+            "first": 0.00005,
+            "second": 0.00245,
+            "thirdQualified": 0.03205,
+            "thirdEliminated": 0.002,
+            "fourth": 0.0004
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.10779999999999999,
+          "byBucket": {
+            "second": 0.0029,
+            "thirdQualified": 0.0768,
+            "thirdEliminated": 0.02365,
+            "fourth": 0.00445
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.04085,
+          "byBucket": {
+            "second": 0.0002,
+            "thirdQualified": 0.01595,
+            "thirdEliminated": 0.0216,
+            "fourth": 0.0031
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.023100000000000002,
+          "byBucket": {
+            "second": 0.0001,
+            "thirdQualified": 0.0047,
+            "thirdEliminated": 0.0166,
+            "fourth": 0.0017
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.010350000000000002,
+          "byBucket": {
+            "thirdQualified": 0.00105,
+            "thirdEliminated": 0.00825,
+            "fourth": 0.00105
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.0412,
+          "byBucket": {
+            "second": 0.00155,
+            "thirdQualified": 0.0018,
+            "thirdEliminated": 0.02975,
+            "fourth": 0.0081
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.0492,
+          "byBucket": {
+            "thirdQualified": 0.00005,
+            "thirdEliminated": 0.01805,
+            "fourth": 0.0311
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.0168,
+          "byBucket": {
+            "thirdEliminated": 0.0045,
+            "fourth": 0.0123
+          }
+        },
+        {
+          "points": 0,
+          "gd": -3,
+          "total": 0.01435,
+          "byBucket": {
+            "fourth": 0.01435
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.12645,
+          "byBucket": {
+            "first": 0.0332,
+            "second": 0.028800000000000013,
+            "thirdQualified": 0.0175,
+            "thirdEliminated": 0.0165,
+            "fourth": 0.03045
+          }
+        }
+      ],
+      "pGroupWinner": 0.122,
+      "pRunnerUp": 0.32255,
+      "pRoundOf32": 0.75105,
       "qualifies": true,
-      "matchId": "M79",
-      "pWin": 0.6632724271690299,
+      "matchId": "M80",
+      "pWin": 0.7286483583829344,
       "opponent": {
-        "name": "Mexico",
-        "code": "MX",
-        "elo": 1889.4573978462747
+        "name": "England",
+        "code": "EN",
+        "elo": 2024
       }
     },
     {
@@ -920,14 +2633,14 @@
       "worldRank": 46,
       "fifaRank": 69,
       "positionProbabilities": [
-        0.03265,
-        0.1714,
-        0.46675,
-        0.3292
+        0.03,
+        0.17085,
+        0.46665,
+        0.3325
       ],
-      "pFinish3rd": 0.46675,
-      "pThird": 0.33004999999999995,
-      "pQualifyGiven3rd": 0.707123727905731,
+      "pFinish3rd": 0.46665,
+      "pThird": 0.3224,
+      "pQualifyGiven3rd": 0.6908818172077574,
       "points": 4,
       "gd": 0,
       "gf": 3,
@@ -935,192 +2648,842 @@
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.3438614900314796
+          "pct": 0.33622257891920815
         },
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.09066107030430222
+          "pct": 0.09834135901551633
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.0801678908709339
+          "pct": 0.07843766720171216
         },
         {
           "points": 4,
           "gd": -2,
-          "pct": 0.053934942287513124
+          "pct": 0.051792402354200115
         },
         {
           "points": 4,
           "gd": 1,
-          "pct": 0.045960125918153204
+          "pct": 0.04686998394863564
         },
         {
           "points": 4,
           "gd": -3,
-          "pct": 0.02256033578174187
+          "pct": 0.02204387372926699
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.05550891920251837
+          "pct": 0.056286784376672026
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.01515
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.016150000000000005
+          }
+        ],
+        "second": [
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.0751
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.042
+          },
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.0117
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04375
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.1571
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.04595
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.03665
+          },
+          {
+            "points": 4,
+            "gd": -2,
+            "pct": 0.0242
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0219
+          },
+          {
+            "points": 4,
+            "gd": -3,
+            "pct": 0.0103
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.0263
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.09525
+          },
+          {
+            "points": 2,
+            "gd": -2,
+            "pct": 0.0259
+          },
+          {
+            "points": 2,
+            "gd": -3,
+            "pct": 0.0121
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.011600000000000001
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.13145
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.07235
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.04935
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.02795
+          },
+          {
+            "points": 2,
+            "gd": -2,
+            "pct": 0.01615
+          },
+          {
+            "points": 1,
+            "gd": -5,
+            "pct": 0.01145
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.020200000000000003
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 7,
+          "gd": 2,
+          "total": 0.02685,
+          "byBucket": {
+            "first": 0.01515,
+            "second": 0.0117
+          }
+        },
+        {
+          "points": 5,
+          "gd": 2,
+          "total": 0.0109,
+          "byBucket": {
+            "first": 0.00225,
+            "second": 0.00855,
+            "thirdQualified": 0.0001
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.0879,
+          "byBucket": {
+            "first": 0.0063,
+            "second": 0.0751,
+            "thirdQualified": 0.0065
+          }
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "total": 0.01235,
+          "byBucket": {
+            "second": 0.0036,
+            "thirdQualified": 0.00875
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.0312,
+          "byBucket": {
+            "second": 0.0093,
+            "thirdQualified": 0.0219
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.1996,
+          "byBucket": {
+            "first": 0.00005,
+            "second": 0.042,
+            "thirdQualified": 0.1571,
+            "thirdEliminated": 0.00025,
+            "fourth": 0.0002
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.050949999999999995,
+          "byBucket": {
+            "second": 0.00475,
+            "thirdQualified": 0.04595,
+            "thirdEliminated": 0.00025
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.0272,
+          "byBucket": {
+            "second": 0.00265,
+            "thirdQualified": 0.0242,
+            "thirdEliminated": 0.00035
+          }
+        },
+        {
+          "points": 4,
+          "gd": -3,
+          "total": 0.01165,
+          "byBucket": {
+            "second": 0.0011,
+            "thirdQualified": 0.0103,
+            "thirdEliminated": 0.00025
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.046150000000000004,
+          "byBucket": {
+            "second": 0.0057,
+            "thirdQualified": 0.03665,
+            "thirdEliminated": 0.00325,
+            "fourth": 0.00055
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.16985,
+          "byBucket": {
+            "second": 0.0003,
+            "thirdQualified": 0.00195,
+            "thirdEliminated": 0.09525,
+            "fourth": 0.07235
+          }
+        },
+        {
+          "points": 2,
+          "gd": -2,
+          "total": 0.042249999999999996,
+          "byBucket": {
+            "thirdQualified": 0.0002,
+            "thirdEliminated": 0.0259,
+            "fourth": 0.01615
+          }
+        },
+        {
+          "points": 2,
+          "gd": -3,
+          "total": 0.0195,
+          "byBucket": {
+            "thirdQualified": 0.00005,
+            "thirdEliminated": 0.0121,
+            "fourth": 0.00735
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.13145,
+          "byBucket": {
+            "fourth": 0.13145
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.04935,
+          "byBucket": {
+            "fourth": 0.04935
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.02795,
+          "byBucket": {
+            "fourth": 0.02795
+          }
+        },
+        {
+          "points": 1,
+          "gd": -5,
+          "total": 0.01145,
+          "byBucket": {
+            "fourth": 0.01145
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.04345,
+          "byBucket": {
+            "first": 0.00755,
+            "second": 0.0078,
+            "thirdQualified": 0.00875,
+            "thirdEliminated": 0.00725,
+            "fourth": 0.012100000000000001
+          }
+        }
+      ],
+      "pGroupWinner": 0.0313,
+      "pRunnerUp": 0.17255,
+      "pRoundOf32": 0.52625,
       "qualifies": true,
-      "matchId": "M80",
-      "pWin": 0.9195721016788532,
+      "matchId": "M82",
+      "pWin": 0.838427933989191,
       "opponent": {
-        "name": "England",
-        "code": "EN",
-        "elo": 2024
+        "name": "Belgium",
+        "code": "BE",
+        "elo": 1894
       }
     },
     {
-      "name": "Senegal",
-      "code": "SN",
-      "group": "I",
-      "elo": 1860,
-      "worldRank": 22,
-      "fifaRank": 14,
+      "name": "Egypt",
+      "code": "EG",
+      "group": "G",
+      "elo": 1696,
+      "worldRank": 33,
+      "fifaRank": 29,
       "positionProbabilities": [
-        0.1249,
-        0.3169,
-        0.4516,
-        0.1066
+        0.1137,
+        0.26585,
+        0.40185,
+        0.2186
       ],
-      "pFinish3rd": 0.4516,
-      "pThird": 0.30589999999999995,
-      "pQualifyGiven3rd": 0.6773693534100973,
+      "pFinish3rd": 0.40185,
+      "pThird": 0.2647999999999999,
+      "pQualifyGiven3rd": 0.6589523454025132,
       "points": 3,
       "gd": -1,
-      "gf": 5,
+      "gf": 4,
       "thirdPlaceScenarios": [
         {
-          "points": 4,
-          "gd": 0,
-          "pct": 0.16800714924039323
-        },
-        {
           "points": 3,
           "gd": -1,
-          "pct": 0.16521447721179625
-        },
-        {
-          "points": 3,
-          "gd": 0,
-          "pct": 0.0767426273458445
+          "pct": 0.17931630260397385
         },
         {
           "points": 4,
+          "gd": 0,
+          "pct": 0.17882265827471305
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "pct": 0.0625694187338023
+        },
+        {
+          "points": 4,
           "gd": -1,
-          "pct": 0.04635835567470956
+          "pct": 0.0443045785511539
         },
         {
           "points": 3,
           "gd": -2,
-          "pct": 0.039991063449508486
-        },
-        {
-          "points": 3,
-          "gd": 1,
-          "pct": 0.03127792672028597
-        },
-        {
-          "points": 4,
-          "gd": 1,
-          "pct": 0.030160857908847184
+          "pct": 0.035789213871405656
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.12567024128686327
+          "pct": 0.15278291990620763
         }
       ],
-      "qualifies": true,
-      "matchId": "M82",
-      "pWin": 0.5162480980495596,
-      "opponent": {
-        "name": "Belgium",
-        "code": "BE",
-        "elo": 1870.8124742623972
-      }
-    },
-    {
-      "name": "Ecuador",
-      "code": "EC",
-      "group": "E",
-      "elo": 1865.820302029701,
-      "worldRank": 20,
-      "fifaRank": 23,
-      "positionProbabilities": [
-        0.01385,
-        0.21275,
-        0.75395,
-        0.01945
-      ],
-      "pFinish3rd": 0.75395,
-      "pThird": 0.50915,
-      "pQualifyGiven3rd": 0.6753100338218715,
-      "points": 3,
-      "gd": -1,
-      "gf": 3,
-      "thirdPlaceScenarios": [
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.03215
+          },
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0139
+          },
+          {
+            "points": 9,
+            "gd": 3,
+            "pct": 0.01385
+          },
+          {
+            "points": 7,
+            "gd": 3,
+            "pct": 0.0104
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04440000000000001
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0602
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0579
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.03125
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.01695
+          },
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.01495
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0126
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.06819999999999996
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.07265
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.07245
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.02535
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.01795
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0145
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.06190000000000002
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.03215
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0249
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0212
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.01955
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.01595
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.026600000000000013
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.055
+          },
+          {
+            "points": 0,
+            "gd": -3,
+            "pct": 0.0332
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.0215
+          },
+          {
+            "points": 0,
+            "gd": -4,
+            "pct": 0.01555
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.015
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.01255
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0116
+          },
+          {
+            "points": 0,
+            "gd": -5,
+            "pct": 0.0103
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.043400000000000015
+          }
+        ]
+      },
+      "pooledScenarios": [
         {
-          "points": 3,
-          "gd": -1,
-          "pct": 0.18345834177985001
+          "points": 9,
+          "gd": 3,
+          "total": 0.01385,
+          "byBucket": {
+            "first": 0.01385
+          }
         },
         {
-          "points": 4,
-          "gd": 0,
-          "pct": 0.18136360564903037
+          "points": 7,
+          "gd": 3,
+          "total": 0.011649999999999999,
+          "byBucket": {
+            "first": 0.0104,
+            "second": 0.00125
+          }
         },
         {
-          "points": 3,
-          "gd": 0,
-          "pct": 0.08074869923643489
+          "points": 7,
+          "gd": 2,
+          "total": 0.03975,
+          "byBucket": {
+            "first": 0.03215,
+            "second": 0.0076
+          }
         },
         {
-          "points": 3,
-          "gd": 1,
-          "pct": 0.04642205554429353
+          "points": 6,
+          "gd": 3,
+          "total": 0.01125,
+          "byBucket": {
+            "first": 0.00405,
+            "second": 0.0072
+          }
         },
         {
-          "points": 4,
-          "gd": 1,
-          "pct": 0.045003040745996356
+          "points": 6,
+          "gd": 2,
+          "total": 0.024399999999999998,
+          "byBucket": {
+            "first": 0.0072,
+            "second": 0.01695,
+            "thirdQualified": 0.00025
+          }
         },
         {
           "points": 6,
           "gd": 1,
-          "pct": 0.037772822488005946
+          "total": 0.08025,
+          "byBucket": {
+            "first": 0.0139,
+            "second": 0.0602,
+            "thirdQualified": 0.00615
+          }
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "total": 0.019049999999999997,
+          "byBucket": {
+            "first": 0.00125,
+            "second": 0.01495,
+            "thirdQualified": 0.00285
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.0402,
+          "byBucket": {
+            "first": 0.00695,
+            "second": 0.03125,
+            "thirdQualified": 0.002
+          }
         },
         {
           "points": 4,
           "gd": 2,
-          "pct": 0.02912358943171836
+          "total": 0.0106,
+          "byBucket": {
+            "first": 0.0002,
+            "second": 0.00615,
+            "thirdQualified": 0.00425
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.0208,
+          "byBucket": {
+            "first": 0.0002,
+            "second": 0.0126,
+            "thirdQualified": 0.008
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.13094999999999998,
+          "byBucket": {
+            "first": 0.0003,
+            "second": 0.0579,
+            "thirdQualified": 0.07245,
+            "fourth": 0.0003
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.026650000000000004,
+          "byBucket": {
+            "second": 0.0086,
+            "thirdQualified": 0.01795,
+            "thirdEliminated": 0.00005,
+            "fourth": 0.00005
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.011550000000000001,
+          "byBucket": {
+            "second": 0.0027,
+            "thirdQualified": 0.0086,
+            "thirdEliminated": 0.00005,
+            "fourth": 0.0002
+          }
         },
         {
           "points": 3,
-          "gd": 2,
-          "pct": 0.021217649841205485
+          "gd": 0,
+          "total": 0.0317,
+          "byBucket": {
+            "first": 0.0001,
+            "second": 0.00335,
+            "thirdQualified": 0.02535,
+            "thirdEliminated": 0.002,
+            "fourth": 0.0009
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.11395,
+          "byBucket": {
+            "second": 0.0048,
+            "thirdQualified": 0.07265,
+            "thirdEliminated": 0.0249,
+            "fourth": 0.0116
+          }
         },
         {
           "points": 3,
           "gd": -2,
-          "pct": 0.01946077437664707
+          "total": 0.0456,
+          "byBucket": {
+            "second": 0.0001,
+            "thirdQualified": 0.0145,
+            "thirdEliminated": 0.0212,
+            "fourth": 0.0098
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.02635,
+          "byBucket": {
+            "thirdQualified": 0.0049,
+            "thirdEliminated": 0.01595,
+            "fourth": 0.0055
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.05015,
+          "byBucket": {
+            "second": 0.00095,
+            "thirdQualified": 0.00205,
+            "thirdEliminated": 0.03215,
+            "fourth": 0.015
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.07455,
+          "byBucket": {
+            "thirdEliminated": 0.01955,
+            "fourth": 0.055
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.025099999999999997,
+          "byBucket": {
+            "thirdEliminated": 0.0036,
+            "fourth": 0.0215
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.0132,
+          "byBucket": {
+            "thirdEliminated": 0.00065,
+            "fourth": 0.01255
+          }
+        },
+        {
+          "points": 0,
+          "gd": -3,
+          "total": 0.0332,
+          "byBucket": {
+            "fourth": 0.0332
+          }
+        },
+        {
+          "points": 0,
+          "gd": -4,
+          "total": 0.01555,
+          "byBucket": {
+            "fourth": 0.01555
+          }
+        },
+        {
+          "points": 0,
+          "gd": -5,
+          "total": 0.0103,
+          "byBucket": {
+            "fourth": 0.0103
+          }
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.04351645381444692
+          "total": 0.1194,
+          "byBucket": {
+            "first": 0.024149999999999998,
+            "second": 0.02550000000000001,
+            "thirdQualified": 0.022850000000000006,
+            "thirdEliminated": 0.020250000000000008,
+            "fourth": 0.02665
+          }
         }
       ],
+      "pGroupWinner": 0.1147,
+      "pRunnerUp": 0.26205,
+      "pRoundOf32": 0.64155,
       "qualifies": true,
       "matchId": "M85",
-      "pWin": 0.5213028054323066,
+      "pWin": 0.7184721926929076,
       "opponent": {
         "name": "Switzerland",
         "code": "CH",
@@ -1132,17 +3495,17 @@
       "code": "PA",
       "group": "L",
       "elo": 1730,
-      "worldRank": 32,
+      "worldRank": 31,
       "fifaRank": 33,
       "positionProbabilities": [
         0.0482,
-        0.1891,
-        0.5957,
-        0.167
+        0.1908,
+        0.59455,
+        0.16645
       ],
-      "pFinish3rd": 0.5957,
-      "pThird": 0.35345,
-      "pQualifyGiven3rd": 0.5933355715964411,
+      "pFinish3rd": 0.59455,
+      "pThird": 0.3695,
+      "pQualifyGiven3rd": 0.621478429063998,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -1150,49 +3513,451 @@
         {
           "points": 3,
           "gd": -1,
-          "pct": 0.1511963346343119
+          "pct": 0.15816283924843422
         },
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.13728152044798916
+          "pct": 0.14346555323590812
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.06380451382996777
+          "pct": 0.06363256784968684
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "pct": 0.04217118997912317
         },
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.04301713897844901
-        },
-        {
-          "points": 3,
-          "gd": -2,
-          "pct": 0.0425929068386221
+          "pct": 0.041002087682672224
         },
         {
           "points": 3,
           "gd": 1,
-          "pct": 0.02604785338537248
+          "pct": 0.026722338204592896
         },
         {
           "points": 4,
           "gd": 1,
-          "pct": 0.024775156965891738
+          "pct": 0.026054279749478073
         },
         {
           "points": 4,
           "gd": -2,
-          "pct": 0.017732903444764976
+          "pct": 0.02137787056367432
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.09333107076192096
+          "pct": 0.0945302713987474
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.015
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.033750000000000016
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0389
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.038
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.02195
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.0137
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.01105
+          },
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.0103
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.05415000000000001
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0947
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0859
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0381
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.02525
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.02455
+          },
+          {
+            "points": 3,
+            "gd": 1,
+            "pct": 0.016
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0156
+          },
+          {
+            "points": 4,
+            "gd": -2,
+            "pct": 0.0128
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.05660000000000001
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.04025
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0366
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.03365
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.0309
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.0264
+          },
+          {
+            "points": 3,
+            "gd": -4,
+            "pct": 0.0177
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04375000000000002
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.03925
+          },
+          {
+            "points": 0,
+            "gd": -3,
+            "pct": 0.0239
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.0213
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.01455
+          },
+          {
+            "points": 0,
+            "gd": -4,
+            "pct": 0.01405
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.05140000000000002
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 7,
+          "gd": 2,
+          "total": 0.01995,
+          "byBucket": {
+            "first": 0.015,
+            "second": 0.00495
+          }
+        },
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.017,
+          "byBucket": {
+            "first": 0.00315,
+            "second": 0.0137,
+            "thirdQualified": 0.00015
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.049999999999999996,
+          "byBucket": {
+            "first": 0.0043,
+            "second": 0.0389,
+            "thirdQualified": 0.0068
+          }
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "total": 0.014799999999999999,
+          "byBucket": {
+            "first": 0.0007,
+            "second": 0.0103,
+            "thirdQualified": 0.0038
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.02645,
+          "byBucket": {
+            "first": 0.00265,
+            "second": 0.02195,
+            "thirdQualified": 0.00185
+          }
+        },
+        {
+          "points": 4,
+          "gd": 2,
+          "total": 0.0125,
+          "byBucket": {
+            "second": 0.0057,
+            "thirdQualified": 0.0068
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.0267,
+          "byBucket": {
+            "first": 0.00005,
+            "second": 0.01105,
+            "thirdQualified": 0.0156
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.12405000000000001,
+          "byBucket": {
+            "first": 0.00005,
+            "second": 0.038,
+            "thirdQualified": 0.0859,
+            "thirdEliminated": 0.0001
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.0303,
+          "byBucket": {
+            "second": 0.0057,
+            "thirdQualified": 0.02455,
+            "thirdEliminated": 0.00005
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.01585,
+          "byBucket": {
+            "second": 0.00295,
+            "thirdQualified": 0.0128,
+            "thirdEliminated": 0.0001
+          }
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "total": 0.016550000000000002,
+          "byBucket": {
+            "second": 0.00005,
+            "thirdQualified": 0.016,
+            "thirdEliminated": 0.0004,
+            "fourth": 0.0001
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.043,
+          "byBucket": {
+            "second": 0.0014,
+            "thirdQualified": 0.0381,
+            "thirdEliminated": 0.00335,
+            "fourth": 0.00015
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.13545000000000001,
+          "byBucket": {
+            "second": 0.0012,
+            "thirdQualified": 0.0947,
+            "thirdEliminated": 0.0366,
+            "fourth": 0.00295
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.06755,
+          "byBucket": {
+            "second": 0.00005,
+            "thirdQualified": 0.02525,
+            "thirdEliminated": 0.04025,
+            "fourth": 0.002
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.039900000000000005,
+          "byBucket": {
+            "thirdQualified": 0.00795,
+            "thirdEliminated": 0.0309,
+            "fourth": 0.00105
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.0213,
+          "byBucket": {
+            "thirdQualified": 0.0031,
+            "thirdEliminated": 0.0177,
+            "fourth": 0.0005
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.04405,
+          "byBucket": {
+            "second": 0.0008,
+            "thirdQualified": 0.00165,
+            "thirdEliminated": 0.03365,
+            "fourth": 0.00795
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.06570000000000001,
+          "byBucket": {
+            "thirdQualified": 0.00005,
+            "thirdEliminated": 0.0264,
+            "fourth": 0.03925
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.02975,
+          "byBucket": {
+            "thirdEliminated": 0.00845,
+            "fourth": 0.0213
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.01805,
+          "byBucket": {
+            "thirdEliminated": 0.0035,
+            "fourth": 0.01455
+          }
+        },
+        {
+          "points": 0,
+          "gd": -3,
+          "total": 0.0239,
+          "byBucket": {
+            "fourth": 0.0239
+          }
+        },
+        {
+          "points": 0,
+          "gd": -4,
+          "total": 0.01405,
+          "byBucket": {
+            "fourth": 0.01405
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.14315,
+          "byBucket": {
+            "first": 0.02285,
+            "second": 0.03135,
+            "thirdQualified": 0.024450000000000006,
+            "thirdEliminated": 0.027800000000000002,
+            "fourth": 0.0367
+          }
+        }
+      ],
+      "pGroupWinner": 0.04875,
+      "pRunnerUp": 0.18805,
+      "pRoundOf32": 0.6063,
       "qualifies": true,
       "matchId": "M87",
       "pWin": 0.825880364243297,
@@ -1210,14 +3975,14 @@
       "worldRank": 30,
       "fifaRank": 28,
       "positionProbabilities": [
-        0.06175,
-        0.32555,
-        0.3648,
-        0.2479
+        0.06265,
+        0.32595,
+        0.3542,
+        0.2572
       ],
-      "pFinish3rd": 0.3648,
-      "pThird": 0.2116,
-      "pQualifyGiven3rd": 0.5800438596491229,
+      "pFinish3rd": 0.3542,
+      "pThird": 0.21844999999999992,
+      "pQualifyGiven3rd": 0.6167419536984752,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -1225,95 +3990,448 @@
         {
           "points": 3,
           "gd": -1,
-          "pct": 0.18510252475938066
+          "pct": 0.18535976708720367
         },
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.14911424187473843
+          "pct": 0.15139331762096214
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.05440089273259868
-        },
-        {
-          "points": 3,
-          "gd": -2,
-          "pct": 0.044357650997349694
+          "pct": 0.06571468182448356
         },
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.04073092481517645
+          "pct": 0.049632607791487586
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "pct": 0.043809787882989046
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.11661319570372436
+          "pct": 0.10980174684597259
         }
       ],
-      "qualifies": false,
-      "matchId": null,
-      "pWin": null,
-      "opponent": null
-    },
-    {
-      "name": "Uzbekistan",
-      "code": "UZ",
-      "group": "K",
-      "elo": 1714,
-      "worldRank": 36,
-      "fifaRank": 50,
-      "positionProbabilities": [
-        0.03035,
-        0.11925,
-        0.4744,
-        0.376
-      ],
-      "pFinish3rd": 0.4744,
-      "pThird": 0.25634999999999997,
-      "pQualifyGiven3rd": 0.540366779089376,
-      "points": 3,
-      "gd": -1,
-      "gf": 5,
-      "thirdPlaceScenarios": [
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 2,
+            "pct": 0.0205
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04245000000000001
+          }
+        ],
+        "second": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.07785
+          },
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.06595
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.0305
+          },
+          {
+            "points": 6,
+            "gd": 2,
+            "pct": 0.018
+          },
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.0176
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.01605
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.01325
+          },
+          {
+            "points": 6,
+            "gd": -1,
+            "pct": 0.0106
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.07799999999999997
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.06685
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0546
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0237
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.0179
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0158
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.03960000000000002
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.03475
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.02465
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0211
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.01705
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.01365
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.031
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.06365
+          },
+          {
+            "points": 0,
+            "gd": -3,
+            "pct": 0.03745
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.02555
+          },
+          {
+            "points": 0,
+            "gd": -4,
+            "pct": 0.01805
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.0154
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.01515
+          },
+          {
+            "points": 0,
+            "gd": -5,
+            "pct": 0.0118
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.01045
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.01025
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04085000000000002
+          }
+        ]
+      },
+      "pooledScenarios": [
         {
-          "points": 3,
+          "points": 7,
+          "gd": 2,
+          "total": 0.03045,
+          "byBucket": {
+            "first": 0.0205,
+            "second": 0.00995
+          }
+        },
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.02115,
+          "byBucket": {
+            "first": 0.00305,
+            "second": 0.018,
+            "thirdQualified": 0.0001
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.07519999999999999,
+          "byBucket": {
+            "first": 0.0067,
+            "second": 0.06595,
+            "thirdQualified": 0.00255
+          }
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "total": 0.0192,
+          "byBucket": {
+            "first": 0.0008,
+            "second": 0.0176,
+            "thirdQualified": 0.0008
+          }
+        },
+        {
+          "points": 6,
           "gd": -1,
-          "pct": 0.1485450152326925
+          "total": 0.01145,
+          "byBucket": {
+            "first": 0.0006,
+            "second": 0.0106,
+            "thirdQualified": 0.00025
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.03585,
+          "byBucket": {
+            "first": 0.00455,
+            "second": 0.0305,
+            "thirdQualified": 0.0008
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.018349999999999998,
+          "byBucket": {
+            "first": 0.00025,
+            "second": 0.01325,
+            "thirdQualified": 0.00485
+          }
         },
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.14045593024477362
-        },
-        {
-          "points": 3,
-          "gd": 0,
-          "pct": 0.04842945687572224
+          "total": 0.13269999999999998,
+          "byBucket": {
+            "first": 0.00015,
+            "second": 0.07785,
+            "thirdQualified": 0.0546,
+            "thirdEliminated": 0.00005,
+            "fourth": 0.00005
+          }
         },
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.04223132682004412
-        },
-        {
-          "points": 3,
-          "gd": -2,
-          "pct": 0.04002521273242988
+          "total": 0.0341,
+          "byBucket": {
+            "second": 0.01605,
+            "thirdQualified": 0.0179,
+            "thirdEliminated": 0.0001,
+            "fourth": 0.00005
+          }
         },
         {
           "points": 4,
           "gd": -2,
-          "pct": 0.02132576951360437
+          "total": 0.015399999999999999,
+          "byBucket": {
+            "second": 0.00725,
+            "thirdQualified": 0.008,
+            "thirdEliminated": 0.0001,
+            "fourth": 0.00005
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.0314,
+          "byBucket": {
+            "first": 0.00005,
+            "second": 0.00505,
+            "thirdQualified": 0.0237,
+            "thirdEliminated": 0.00195,
+            "fourth": 0.00065
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.1115,
+          "byBucket": {
+            "second": 0.00955,
+            "thirdQualified": 0.06685,
+            "thirdEliminated": 0.02465,
+            "fourth": 0.01045
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.0476,
+          "byBucket": {
+            "second": 0.00045,
+            "thirdQualified": 0.0158,
+            "thirdEliminated": 0.0211,
+            "fourth": 0.01025
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.02445,
+          "byBucket": {
+            "second": 0.00015,
+            "thirdQualified": 0.00405,
+            "thirdEliminated": 0.01365,
+            "fourth": 0.0066
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.01185,
+          "byBucket": {
+            "thirdQualified": 0.00105,
+            "thirdEliminated": 0.00695,
+            "fourth": 0.00385
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.05345,
+          "byBucket": {
+            "second": 0.0026,
+            "thirdQualified": 0.0007,
+            "thirdEliminated": 0.03475,
+            "fourth": 0.0154
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.0807,
+          "byBucket": {
+            "thirdEliminated": 0.01705,
+            "fourth": 0.06365
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.02975,
+          "byBucket": {
+            "thirdEliminated": 0.0042,
+            "fourth": 0.02555
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.016,
+          "byBucket": {
+            "thirdEliminated": 0.00085,
+            "fourth": 0.01515
+          }
+        },
+        {
+          "points": 0,
+          "gd": -3,
+          "total": 0.03745,
+          "byBucket": {
+            "fourth": 0.03745
+          }
+        },
+        {
+          "points": 0,
+          "gd": -4,
+          "total": 0.01805,
+          "byBucket": {
+            "fourth": 0.01805
+          }
+        },
+        {
+          "points": 0,
+          "gd": -5,
+          "total": 0.0118,
+          "byBucket": {
+            "fourth": 0.0118
+          }
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.09759428511398259
+          "total": 0.13215000000000005,
+          "byBucket": {
+            "first": 0.026300000000000007,
+            "second": 0.043000000000000003,
+            "thirdQualified": 0.016450000000000003,
+            "thirdEliminated": 0.016800000000000006,
+            "fourth": 0.029600000000000005
+          }
         }
       ],
+      "pGroupWinner": 0.06295,
+      "pRunnerUp": 0.3278,
+      "pRoundOf32": 0.6092,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1324,17 +4442,17 @@
       "code": "CZ",
       "group": "A",
       "elo": 1676.442161180716,
-      "worldRank": 33,
+      "worldRank": 32,
       "fifaRank": 41,
       "positionProbabilities": [
-        0.0042,
-        0.05105,
-        0.7299,
-        0.21485
+        0.0047,
+        0.0464,
+        0.732,
+        0.2169
       ],
-      "pFinish3rd": 0.7299,
-      "pThird": 0.394,
-      "pQualifyGiven3rd": 0.5397999725989862,
+      "pFinish3rd": 0.732,
+      "pThird": 0.39975,
+      "pQualifyGiven3rd": 0.5461065573770492,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -1342,44 +4460,820 @@
         {
           "points": 3,
           "gd": -1,
-          "pct": 0.21363885839736552
+          "pct": 0.22303549233531278
         },
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.112307903402854
+          "pct": 0.11103438751553651
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.0699780461031833
-        },
-        {
-          "points": 3,
-          "gd": 1,
-          "pct": 0.035057628979143794
+          "pct": 0.06794641624085071
         },
         {
           "points": 3,
           "gd": -2,
-          "pct": 0.03313666300768386
+          "pct": 0.03528518160475072
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "pct": 0.034870874188647975
         },
         {
           "points": 4,
           "gd": 1,
-          "pct": 0.020032930845225023
+          "pct": 0.021543985637342906
         },
         {
           "points": 3,
           "gd": 2,
-          "pct": 0.014887486278814487
+          "pct": 0.014362657091561936
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.041575192096597144
+          "pct": 0.04398563734290846
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.0055000000000000005
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.01455
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0118
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.019400000000000004
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.1615
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0804
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0492
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.02555
+          },
+          {
+            "points": 3,
+            "gd": 1,
+            "pct": 0.02525
+          },
+          {
+            "points": 4,
+            "gd": 1,
+            "pct": 0.0156
+          },
+          {
+            "points": 3,
+            "gd": 2,
+            "pct": 0.0104
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.03185000000000002
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.08015
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0793
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.04805
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.03365
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.0304
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.02065
+          },
+          {
+            "points": 3,
+            "gd": -4,
+            "pct": 0.0126
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.019549999999999998
+          }
+        ],
+        "fourth": [
+          {
+            "points": 0,
+            "gd": -3,
+            "pct": 0.07675
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.05225
+          },
+          {
+            "points": 0,
+            "gd": -4,
+            "pct": 0.02755
+          },
+          {
+            "points": 0,
+            "gd": -5,
+            "pct": 0.0144
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.01265
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.0118
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.02925
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.021150000000000002,
+          "byBucket": {
+            "first": 0.00125,
+            "second": 0.01455,
+            "thirdQualified": 0.00535
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.019049999999999997,
+          "byBucket": {
+            "second": 0.00345,
+            "thirdQualified": 0.0156
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.0922,
+          "byBucket": {
+            "second": 0.0118,
+            "thirdQualified": 0.0804
+          }
+        },
+        {
+          "points": 3,
+          "gd": 2,
+          "total": 0.01085,
+          "byBucket": {
+            "second": 0.00025,
+            "thirdQualified": 0.0104,
+            "thirdEliminated": 0.0002
+          }
+        },
+        {
+          "points": 3,
+          "gd": 1,
+          "total": 0.027450000000000002,
+          "byBucket": {
+            "second": 0.00095,
+            "thirdQualified": 0.02525,
+            "thirdEliminated": 0.00125
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.0555,
+          "byBucket": {
+            "second": 0.00165,
+            "thirdQualified": 0.0492,
+            "thirdEliminated": 0.00465
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.2457,
+          "byBucket": {
+            "second": 0.00315,
+            "thirdQualified": 0.1615,
+            "thirdEliminated": 0.0793,
+            "fourth": 0.00175
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.07545,
+          "byBucket": {
+            "second": 0.00025,
+            "thirdQualified": 0.02555,
+            "thirdEliminated": 0.04805,
+            "fourth": 0.0016
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.0407,
+          "byBucket": {
+            "second": 0.00005,
+            "thirdQualified": 0.0087,
+            "thirdEliminated": 0.0304,
+            "fourth": 0.00155
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.01575,
+          "byBucket": {
+            "thirdQualified": 0.00235,
+            "thirdEliminated": 0.0126,
+            "fourth": 0.0008
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.03715,
+          "byBucket": {
+            "thirdQualified": 0.0015,
+            "thirdEliminated": 0.03365,
+            "fourth": 0.002
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.1324,
+          "byBucket": {
+            "thirdEliminated": 0.08015,
+            "fourth": 0.05225
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.0333,
+          "byBucket": {
+            "thirdEliminated": 0.02065,
+            "fourth": 0.01265
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.01655,
+          "byBucket": {
+            "thirdEliminated": 0.00475,
+            "fourth": 0.0118
+          }
+        },
+        {
+          "points": 0,
+          "gd": -3,
+          "total": 0.07675,
+          "byBucket": {
+            "fourth": 0.07675
+          }
+        },
+        {
+          "points": 0,
+          "gd": -4,
+          "total": 0.02755,
+          "byBucket": {
+            "fourth": 0.02755
+          }
+        },
+        {
+          "points": 0,
+          "gd": -5,
+          "total": 0.0144,
+          "byBucket": {
+            "fourth": 0.0144
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.0581,
+          "byBucket": {
+            "first": 0.00425,
+            "second": 0.009649999999999999,
+            "thirdQualified": 0.013949999999999997,
+            "thirdEliminated": 0.008700000000000001,
+            "fourth": 0.02155
+          }
+        }
+      ],
+      "pGroupWinner": 0.0055,
+      "pRunnerUp": 0.04575,
+      "pRoundOf32": 0.451,
+      "qualifies": false,
+      "matchId": null,
+      "pWin": null,
+      "opponent": null
+    },
+    {
+      "name": "Uzbekistan",
+      "code": "UZ",
+      "group": "K",
+      "elo": 1714,
+      "worldRank": 34,
+      "fifaRank": 50,
+      "positionProbabilities": [
+        0.0301,
+        0.1207,
+        0.47085,
+        0.37835
+      ],
+      "pFinish3rd": 0.47085,
+      "pThird": 0.256,
+      "pQualifyGiven3rd": 0.5436975682276733,
+      "points": 3,
+      "gd": -1,
+      "gf": 4,
+      "thirdPlaceScenarios": [
+        {
+          "points": 3,
+          "gd": -1,
+          "pct": 0.15369978858350952
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "pct": 0.12758985200845666
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "pct": 0.047674418604651166
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "pct": 0.044186046511627906
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "pct": 0.04334038054968288
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "pct": 0.022727272727272728
+        },
+        {
+          "points": null,
+          "gd": null,
+          "pct": 0.10200845665961947
+        }
+      ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.03
+          }
+        ],
+        "second": [
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.03325
+          },
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0222
+          },
+          {
+            "points": 5,
+            "gd": 1,
+            "pct": 0.01455
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04685000000000003
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0727
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.06035
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.02255
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0209
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.0205
+          },
+          {
+            "points": 4,
+            "gd": -2,
+            "pct": 0.01075
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.04825000000000001
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.03555
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.03355
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.03215
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.02905
+          },
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.02515
+          },
+          {
+            "points": 3,
+            "gd": -4,
+            "pct": 0.01775
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.043800000000000006
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -2,
+            "pct": 0.077
+          },
+          {
+            "points": 0,
+            "gd": -3,
+            "pct": 0.0606
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.04185
+          },
+          {
+            "points": 0,
+            "gd": -4,
+            "pct": 0.0367
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.03015
+          },
+          {
+            "points": 0,
+            "gd": -5,
+            "pct": 0.0244
+          },
+          {
+            "points": 2,
+            "gd": -1,
+            "pct": 0.01665
+          },
+          {
+            "points": 0,
+            "gd": -6,
+            "pct": 0.0155
+          },
+          {
+            "points": 1,
+            "gd": -5,
+            "pct": 0.01535
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.061950000000000005
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 7,
+          "gd": 2,
+          "total": 0.01225,
+          "byBucket": {
+            "first": 0.0099,
+            "second": 0.00235
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.02935,
+          "byBucket": {
+            "first": 0.00425,
+            "second": 0.0222,
+            "thirdQualified": 0.0029
+          }
+        },
+        {
+          "points": 5,
+          "gd": 1,
+          "total": 0.018500000000000003,
+          "byBucket": {
+            "first": 0.0032,
+            "second": 0.01455,
+            "thirdQualified": 0.00075
+          }
+        },
+        {
+          "points": 4,
+          "gd": 1,
+          "total": 0.012900000000000002,
+          "byBucket": {
+            "first": 0.0001,
+            "second": 0.00655,
+            "thirdQualified": 0.00625
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.09399999999999999,
+          "byBucket": {
+            "first": 0.0002,
+            "second": 0.03325,
+            "thirdQualified": 0.06035,
+            "thirdEliminated": 0.00005,
+            "fourth": 0.00015
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.02735,
+          "byBucket": {
+            "second": 0.0065,
+            "thirdQualified": 0.0205,
+            "thirdEliminated": 0.0002,
+            "fourth": 0.00015
+          }
+        },
+        {
+          "points": 4,
+          "gd": -2,
+          "total": 0.0133,
+          "byBucket": {
+            "second": 0.0022,
+            "thirdQualified": 0.01075,
+            "thirdEliminated": 0.00025,
+            "fourth": 0.0001
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.02755,
+          "byBucket": {
+            "second": 0.00155,
+            "thirdQualified": 0.02255,
+            "thirdEliminated": 0.00285,
+            "fourth": 0.0006
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.11555,
+          "byBucket": {
+            "second": 0.00115,
+            "thirdQualified": 0.0727,
+            "thirdEliminated": 0.03215,
+            "fourth": 0.00955
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.06165000000000001,
+          "byBucket": {
+            "second": 0.00005,
+            "thirdQualified": 0.0209,
+            "thirdEliminated": 0.03355,
+            "fourth": 0.00715
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.0406,
+          "byBucket": {
+            "second": 0.00005,
+            "thirdQualified": 0.00675,
+            "thirdEliminated": 0.02905,
+            "fourth": 0.00475
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.0235,
+          "byBucket": {
+            "thirdQualified": 0.0021,
+            "thirdEliminated": 0.01775,
+            "fourth": 0.00365
+          }
+        },
+        {
+          "points": 2,
+          "gd": -1,
+          "total": 0.054599999999999996,
+          "byBucket": {
+            "second": 0.0008,
+            "thirdQualified": 0.0016,
+            "thirdEliminated": 0.03555,
+            "fourth": 0.01665
+          }
+        },
+        {
+          "points": 2,
+          "gd": -2,
+          "total": 0.012300000000000002,
+          "byBucket": {
+            "thirdEliminated": 0.0079,
+            "fourth": 0.0044
+          }
+        },
+        {
+          "points": 1,
+          "gd": -2,
+          "total": 0.10214999999999999,
+          "byBucket": {
+            "thirdEliminated": 0.02515,
+            "fourth": 0.077
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.050749999999999997,
+          "byBucket": {
+            "thirdEliminated": 0.0089,
+            "fourth": 0.04185
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.033549999999999996,
+          "byBucket": {
+            "thirdEliminated": 0.0034,
+            "fourth": 0.03015
+          }
+        },
+        {
+          "points": 1,
+          "gd": -5,
+          "total": 0.016050000000000002,
+          "byBucket": {
+            "thirdEliminated": 0.0007,
+            "fourth": 0.01535
+          }
+        },
+        {
+          "points": 0,
+          "gd": -3,
+          "total": 0.0606,
+          "byBucket": {
+            "fourth": 0.0606
+          }
+        },
+        {
+          "points": 0,
+          "gd": -4,
+          "total": 0.0367,
+          "byBucket": {
+            "fourth": 0.0367
+          }
+        },
+        {
+          "points": 0,
+          "gd": -5,
+          "total": 0.0244,
+          "byBucket": {
+            "fourth": 0.0244
+          }
+        },
+        {
+          "points": 0,
+          "gd": -6,
+          "total": 0.0155,
+          "byBucket": {
+            "fourth": 0.0155
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.11690000000000002,
+          "byBucket": {
+            "first": 0.012350000000000002,
+            "second": 0.025650000000000003,
+            "thirdQualified": 0.027900000000000008,
+            "thirdEliminated": 0.019549999999999998,
+            "fourth": 0.031450000000000006
+          }
+        }
+      ],
+      "pGroupWinner": 0.03,
+      "pRunnerUp": 0.11685,
+      "pRoundOf32": 0.40285,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1390,17 +5284,17 @@
       "code": "TR",
       "group": "D",
       "elo": 1818.6847975838562,
-      "worldRank": 28,
+      "worldRank": 29,
       "fifaRank": 22,
       "positionProbabilities": [
-        0.0186,
-        0.1326,
-        0.55465,
-        0.29415
+        0.01855,
+        0.13285,
+        0.55515,
+        0.29345
       ],
-      "pFinish3rd": 0.55465,
-      "pThird": 0.28369999999999995,
-      "pQualifyGiven3rd": 0.5114937347877039,
+      "pFinish3rd": 0.55515,
+      "pThird": 0.29550000000000004,
+      "pQualifyGiven3rd": 0.5322885706565793,
       "points": 3,
       "gd": -2,
       "gf": 3,
@@ -1408,39 +5302,353 @@
         {
           "points": 4,
           "gd": -1,
-          "pct": 0.2095705075819486
+          "pct": 0.206021620655767
         },
         {
           "points": 3,
           "gd": -2,
-          "pct": 0.12367202397166982
-        },
-        {
-          "points": 6,
-          "gd": 0,
-          "pct": 0.041859620448560786
+          "pct": 0.1269543464665416
         },
         {
           "points": 3,
           "gd": -1,
-          "pct": 0.039044765277399425
+          "pct": 0.042705262217457345
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "pct": 0.04216921290092022
         },
         {
           "points": 4,
           "gd": 0,
-          "pct": 0.030509397984200482
+          "pct": 0.033235057625301524
         },
         {
           "points": 3,
           "gd": 0,
-          "pct": 0.024425678743303366
+          "pct": 0.024836951666219957
         },
         {
           "points": null,
           "gd": null,
-          "pct": 0.046127304095160256
+          "pct": 0.05208612525685697
         }
       ],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.0101
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.007200000000000001
+          }
+        ],
+        "second": [
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.05945
+          },
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.03095
+          },
+          {
+            "points": 6,
+            "gd": 1,
+            "pct": 0.0172
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.02495
+          }
+        ],
+        "thirdQualified": [
+          {
+            "points": 4,
+            "gd": -1,
+            "pct": 0.1153
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.07105
+          },
+          {
+            "points": 3,
+            "gd": -1,
+            "pct": 0.0239
+          },
+          {
+            "points": 6,
+            "gd": 0,
+            "pct": 0.0236
+          },
+          {
+            "points": 4,
+            "gd": 0,
+            "pct": 0.0186
+          },
+          {
+            "points": 3,
+            "gd": 0,
+            "pct": 0.0139
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.029150000000000002
+          }
+        ],
+        "thirdEliminated": [
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.12165
+          },
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.0506
+          },
+          {
+            "points": 2,
+            "gd": -2,
+            "pct": 0.04575
+          },
+          {
+            "points": 3,
+            "gd": -3,
+            "pct": 0.01885
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.0273
+          }
+        ],
+        "fourth": [
+          {
+            "points": 1,
+            "gd": -3,
+            "pct": 0.0898
+          },
+          {
+            "points": 0,
+            "gd": -4,
+            "pct": 0.086
+          },
+          {
+            "points": 3,
+            "gd": -2,
+            "pct": 0.0228
+          },
+          {
+            "points": 0,
+            "gd": -5,
+            "pct": 0.02095
+          },
+          {
+            "points": 1,
+            "gd": -4,
+            "pct": 0.01695
+          },
+          {
+            "points": 0,
+            "gd": -6,
+            "pct": 0.0108
+          },
+          {
+            "points": 2,
+            "gd": -2,
+            "pct": 0.0107
+          },
+          {
+            "points": null,
+            "gd": null,
+            "pct": 0.032499999999999994
+          }
+        ]
+      },
+      "pooledScenarios": [
+        {
+          "points": 6,
+          "gd": 2,
+          "total": 0.0123,
+          "byBucket": {
+            "first": 0.00255,
+            "second": 0.00865,
+            "thirdQualified": 0.0011
+          }
+        },
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 0.02465,
+          "byBucket": {
+            "first": 0.00225,
+            "second": 0.0172,
+            "thirdQualified": 0.0052
+          }
+        },
+        {
+          "points": 6,
+          "gd": 0,
+          "total": 0.09315,
+          "byBucket": {
+            "first": 0.0101,
+            "second": 0.05945,
+            "thirdQualified": 0.0236
+          }
+        },
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 0.02335,
+          "byBucket": {
+            "second": 0.00475,
+            "thirdQualified": 0.0186
+          }
+        },
+        {
+          "points": 4,
+          "gd": -1,
+          "total": 0.14695,
+          "byBucket": {
+            "second": 0.03095,
+            "thirdQualified": 0.1153,
+            "thirdEliminated": 0.00055,
+            "fourth": 0.00015
+          }
+        },
+        {
+          "points": 3,
+          "gd": 0,
+          "total": 0.01665,
+          "byBucket": {
+            "second": 0.0011,
+            "thirdQualified": 0.0139,
+            "thirdEliminated": 0.00125,
+            "fourth": 0.0004
+          }
+        },
+        {
+          "points": 3,
+          "gd": -1,
+          "total": 0.035750000000000004,
+          "byBucket": {
+            "second": 0.00025,
+            "thirdQualified": 0.0239,
+            "thirdEliminated": 0.0093,
+            "fourth": 0.0023
+          }
+        },
+        {
+          "points": 3,
+          "gd": -2,
+          "total": 0.21644999999999998,
+          "byBucket": {
+            "second": 0.00095,
+            "thirdQualified": 0.07105,
+            "thirdEliminated": 0.12165,
+            "fourth": 0.0228
+          }
+        },
+        {
+          "points": 3,
+          "gd": -3,
+          "total": 0.033249999999999995,
+          "byBucket": {
+            "thirdQualified": 0.0055,
+            "thirdEliminated": 0.01885,
+            "fourth": 0.0089
+          }
+        },
+        {
+          "points": 3,
+          "gd": -4,
+          "total": 0.012,
+          "byBucket": {
+            "thirdQualified": 0.0012,
+            "thirdEliminated": 0.00705,
+            "fourth": 0.00375
+          }
+        },
+        {
+          "points": 2,
+          "gd": -2,
+          "total": 0.05665,
+          "byBucket": {
+            "thirdQualified": 0.0002,
+            "thirdEliminated": 0.04575,
+            "fourth": 0.0107
+          }
+        },
+        {
+          "points": 1,
+          "gd": -3,
+          "total": 0.1404,
+          "byBucket": {
+            "thirdEliminated": 0.0506,
+            "fourth": 0.0898
+          }
+        },
+        {
+          "points": 1,
+          "gd": -4,
+          "total": 0.0217,
+          "byBucket": {
+            "thirdEliminated": 0.00475,
+            "fourth": 0.01695
+          }
+        },
+        {
+          "points": 0,
+          "gd": -4,
+          "total": 0.086,
+          "byBucket": {
+            "fourth": 0.086
+          }
+        },
+        {
+          "points": 0,
+          "gd": -5,
+          "total": 0.02095,
+          "byBucket": {
+            "fourth": 0.02095
+          }
+        },
+        {
+          "points": 0,
+          "gd": -6,
+          "total": 0.0108,
+          "byBucket": {
+            "fourth": 0.0108
+          }
+        },
+        {
+          "points": null,
+          "gd": null,
+          "total": 0.049,
+          "byBucket": {
+            "first": 0.0024000000000000002,
+            "second": 0.009250000000000003,
+            "thirdQualified": 0.01595,
+            "thirdEliminated": 0.0044,
+            "fourth": 0.016999999999999998
+          }
+        }
+      ],
+      "pGroupWinner": 0.0173,
+      "pRunnerUp": 0.13255,
+      "pRoundOf32": 0.44535,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1461,22 +5669,16 @@
       "group": "B"
     },
     {
-      "name": "Iran",
-      "code": "IR",
-      "elo": 1772,
-      "group": "G"
-    },
-    {
       "name": "Scotland",
       "code": "SQ",
       "elo": 1800.5723331130648,
       "group": "C"
     },
     {
-      "name": "Cape Verde",
-      "code": "CV",
-      "elo": 1619.8989102864355,
-      "group": "H"
+      "name": "Ecuador",
+      "code": "EC",
+      "elo": 1865.820302029701,
+      "group": "E"
     },
     {
       "name": "Senegal",
@@ -1485,10 +5687,16 @@
       "group": "I"
     },
     {
-      "name": "Ecuador",
-      "code": "EC",
-      "elo": 1865.820302029701,
-      "group": "E"
+      "name": "Cape Verde",
+      "code": "CV",
+      "elo": 1619.8989102864355,
+      "group": "H"
+    },
+    {
+      "name": "Egypt",
+      "code": "EG",
+      "elo": 1696,
+      "group": "G"
     },
     {
       "name": "Panama",
@@ -1582,16 +5790,16 @@
         "elo": 2063
       },
       "away": {
-        "name": "Iran",
-        "code": "IR",
-        "elo": 1772
+        "name": "Scotland",
+        "code": "SQ",
+        "elo": 1800.5723331130648
       },
       "winner": {
         "name": "France",
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.851640479358933
+      "pWin": 0.828790478953682
     },
     {
       "id": "M78",
@@ -1620,16 +5828,16 @@
         "elo": 1889.4573978462747
       },
       "away": {
-        "name": "Scotland",
-        "code": "SQ",
-        "elo": 1800.5723331130648
+        "name": "Ecuador",
+        "code": "EC",
+        "elo": 1865.820302029701
       },
       "winner": {
         "name": "Mexico",
         "code": "MX",
         "elo": 1889.4573978462747
       },
-      "pWin": 0.6632724271690299
+      "pWin": 0.5709824324533513
     },
     {
       "id": "M80",
@@ -1639,16 +5847,16 @@
         "elo": 2024
       },
       "away": {
-        "name": "Cape Verde",
-        "code": "CV",
-        "elo": 1619.8989102864355
+        "name": "Senegal",
+        "code": "SN",
+        "elo": 1860
       },
       "winner": {
         "name": "England",
         "code": "EN",
         "elo": 2024
       },
-      "pWin": 0.9195721016788532
+      "pWin": 0.7286483583829344
     },
     {
       "id": "M81",
@@ -1674,19 +5882,19 @@
       "home": {
         "name": "Belgium",
         "code": "BE",
-        "elo": 1870.8124742623972
+        "elo": 1894
       },
       "away": {
-        "name": "Senegal",
-        "code": "SN",
-        "elo": 1860
+        "name": "Cape Verde",
+        "code": "CV",
+        "elo": 1619.8989102864355
       },
       "winner": {
         "name": "Belgium",
         "code": "BE",
-        "elo": 1870.8124742623972
+        "elo": 1894
       },
-      "pWin": 0.5162480980495596
+      "pWin": 0.838427933989191
     },
     {
       "id": "M83",
@@ -1734,16 +5942,16 @@
         "elo": 1851.6382652308498
       },
       "away": {
-        "name": "Ecuador",
-        "code": "EC",
-        "elo": 1865.820302029701
+        "name": "Egypt",
+        "code": "EG",
+        "elo": 1696
       },
       "winner": {
-        "name": "Ecuador",
-        "code": "EC",
-        "elo": 1865.820302029701
+        "name": "Switzerland",
+        "code": "CH",
+        "elo": 1851.6382652308498
       },
-      "pWin": 0.5213028054323066
+      "pWin": 0.7184721926929076
     },
     {
       "id": "M86",
@@ -1791,16 +5999,16 @@
         "elo": 1869.3152024161438
       },
       "away": {
-        "name": "Egypt",
-        "code": "EG",
-        "elo": 1719.1875257376028
+        "name": "Iran",
+        "code": "IR",
+        "elo": 1772
       },
       "winner": {
         "name": "Australia",
         "code": "AU",
         "elo": 1869.3152024161438
       },
-      "pWin": 0.711652337616
+      "pWin": 0.6420867513719016
     }
   ],
   "r16": [
@@ -1909,14 +6117,14 @@
       "away": {
         "name": "Belgium",
         "code": "BE",
-        "elo": 1870.8124742623972
+        "elo": 1894
       },
       "winner": {
         "name": "Belgium",
         "code": "BE",
-        "elo": 1870.8124742623972
+        "elo": 1894
       },
-      "pWin": 0.5153166677013173
+      "pWin": 0.5499341000379648
     },
     {
       "id": "M95",
@@ -1940,9 +6148,9 @@
     {
       "id": "M96",
       "home": {
-        "name": "Ecuador",
-        "code": "EC",
-        "elo": 1865.820302029701
+        "name": "Switzerland",
+        "code": "CH",
+        "elo": 1851.6382652308498
       },
       "away": {
         "name": "Portugal",
@@ -1954,7 +6162,7 @@
         "code": "PT",
         "elo": 1989
       },
-      "pWin": 0.6770616802664317
+      "pWin": 0.6955165880278261
     }
   ],
   "qf": [
@@ -1987,14 +6195,14 @@
       "away": {
         "name": "Belgium",
         "code": "BE",
-        "elo": 1870.8124742623972
+        "elo": 1894
       },
       "winner": {
         "name": "Spain",
         "code": "ES",
         "elo": 2115.1010897135648
       },
-      "pWin": 0.8129726611908321
+      "pWin": 0.7912424262516742
     },
     {
       "id": "M99",

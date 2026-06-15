@@ -10,6 +10,10 @@
   const scenarioModalBackdrop = document.getElementById('scenario-modal-backdrop');
   const scenarioModal = document.getElementById('scenario-modal');
   const scenarioModalClose = document.getElementById('scenario-modal-close');
+  const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
+  const scenarioModalFlow = document.getElementById('scenario-modal-flow');
+  let scenarioFlowSide = null;
+  let scenarioFlowKey = null;
 
   let data = null;
   let selectedTeam = null; // team name, or null
@@ -157,56 +161,36 @@
     thirdsTableBody.innerHTML = rows;
   }
 
-  // Renders the "how might team X qualify as a top-8 third" popup, given an
-  // allThirds entry. Shows the top 5 (points, gd) scenarios (each as a
-  // fraction of all sims where the team finished 3rd, per
-  // thirdPlaceScenarios), plus "Others", then a note about the remaining
-  // probability of not qualifying at all.
+  // Opens the "road to the Last 32" Sankey popup.
+  // Uses the shared scenarioFlow.js renderer (window.ScenarioFlow).
   function openScenarioModal(team) {
-    const scenarios = team.thirdPlaceScenarios || [];
-    const titleEl = scenarioModal.querySelector('.modal-title');
-    const subtitleEl = scenarioModal.querySelector('.modal-subtitle');
-    const bodyEl = document.getElementById('scenario-modal-body');
-
-    titleEl.innerHTML = `${teamButton(team)}`;
-    subtitleEl.textContent = `If ${team.name} finish 3rd in Group ${team.group}, here's how they'd most likely make the top 8 and reach the Last 32.`;
-
-    if (scenarios.length === 0) {
-      bodyEl.innerHTML = `<p class="scenario-not-qualify">Not enough simulation data for this team.</p>`;
-    } else {
-      let rows = '';
-      for (const s of scenarios) {
-        const isOthers = s.points === null;
-        const label = isOthers
-          ? `<span class="scenario-others">Other records</span>`
-          : `${s.points} pt${s.points === 1 ? '' : 's'}, GD ${s.gd >= 0 ? '+' : ''}${s.gd}`;
-        const pct = Math.round(s.pct * 100);
-        rows += `<div class="scenario-row">
-          <span class="scenario-label">${label}</span>
-          <div class="scenario-bar-wrap">
-            <div class="scenario-bar-track"><div class="scenario-bar-fill${isOthers ? ' scenario-others-fill' : ''}" style="width:${Math.max(pct, 2)}%"></div></div>
-            <span class="scenario-pct">${pct}%</span>
-          </div>
-        </div>`;
-      }
-
-      const pQualify = Math.round((team.pQualifyGiven3rd || 0) * 100);
-      const pNotQualify = 100 - pQualify;
-      rows += `<p class="scenario-not-qualify">
-        Percentages are a share of all simulations where ${team.name} finish 3rd in Group ${team.group}.
-        Altogether these scenarios make up the ${pQualify}% chance of qualifying shown in the table.
-        The remaining ${pNotQualify}% of the time, ${team.name} finish 3rd but don't make the top 8.
-      </p>`;
-
-      bodyEl.innerHTML = rows;
-    }
-
+    if (!team.pooledScenarios || team.pooledScenarios.length === 0) return;
+    scenarioFlowSide = null;
+    scenarioFlowKey = null;
+    scenarioModal.querySelector('.modal-title').innerHTML = teamButton(team);
+    window.ScenarioFlow.renderGauge(scenarioModalGauge, team);
+    renderModalFlow(team);
     scenarioModalBackdrop.hidden = false;
+  }
+
+  function renderModalFlow(team) {
+    window.ScenarioFlow.renderFlow(
+      scenarioModalFlow, team,
+      { selectedSide: scenarioFlowSide, selectedKey: scenarioFlowKey },
+      (side, key) => {
+        scenarioFlowSide = side;
+        scenarioFlowKey = key;
+        renderModalFlow(team);
+      }
+    );
   }
 
   function closeScenarioModal() {
     scenarioModalBackdrop.hidden = true;
+    scenarioFlowSide = null;
+    scenarioFlowKey = null;
   }
+
 
   function renderGroups() {
     groupsGrid.innerHTML = '';

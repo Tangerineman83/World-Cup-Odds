@@ -962,6 +962,10 @@ td.col-team .code {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
+.modal-wide {
+  max-width: 42em;
+}
+
 .modal-close {
   position: absolute;
   top: 0.6rem;
@@ -988,80 +992,6 @@ td.col-team .code {
   gap: 0.4rem;
 }
 
-.modal-subtitle {
-  margin: 0 0 0.9rem;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
-.scenario-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.scenario-row:last-child {
-  border-bottom: none;
-}
-
-.scenario-label {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-}
-
-.scenario-label .scenario-others {
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.scenario-bar-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  justify-content: flex-end;
-}
-
-.scenario-bar-track {
-  flex: 1;
-  max-width: 8em;
-  height: 0.5rem;
-  background: var(--surface);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.scenario-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
-}
-
-.scenario-bar-fill.scenario-others-fill {
-  background: var(--text-faint);
-}
-
-.scenario-pct {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 700;
-  min-width: 3.2em;
-  text-align: right;
-}
-
-.scenario-not-qualify {
-  margin-top: 0.9rem;
-  padding-top: 0.7rem;
-  border-top: 1px dashed var(--border);
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
 /* Team detail (predictions.html "road to the Last 32") ------------------ */
 
 .team-detail-hint {
@@ -1069,61 +999,6 @@ td.col-team .code {
   color: var(--text-faint);
   font-size: 0.82rem;
   margin: 0.6rem 0 0;
-}
-
-.team-detail {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem;
-  margin-top: 1.25rem;
-}
-
-.team-detail[hidden] {
-  display: none;
-}
-
-.team-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.team-detail-header h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-
-.team-detail-header h2 .flag-icon {
-  width: 1.4em;
-  height: 1.4em;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.team-detail-header h2 .code {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-faint);
-  font-weight: 400;
-}
-
-.team-detail-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1.6rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-}
-
-.team-detail-close:hover {
-  color: var(--text);
 }
 
 /* Qualification gauge */
@@ -1209,7 +1084,7 @@ td.col-team .code {
 
 .flow-node {
   cursor: pointer;
-  transition: filter 0.15s ease;
+  transition: filter 0.15s ease, opacity 0.15s ease;
 }
 
 .flow-node:hover, .flow-ribbon:hover {
@@ -1238,9 +1113,14 @@ td.col-team .code {
 
 .flow-target-label {
   fill: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-family: var(--font-body);
   cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.flow-label-dimmed {
+  opacity: 0.35;
 }
 
 .flow-target-pct {
@@ -1251,41 +1131,11 @@ td.col-team .code {
 
 /* Scenario breakdown (shared with thirds-table modal styling) */
 
-.team-detail-scenarios {
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
-}
-
-.scenario-prompt {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  text-align: center;
-  margin: 0.5rem 0;
-}
-
-.scenario-heading {
-  margin: 0 0 0.2rem;
-  font-size: 1rem;
-}
-
-.scenario-heading-pct {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: 0.85rem;
-}
-
-.scenario-subtitle {
-  margin: 0 0 0.75rem;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
-
 @media (max-width: 700px) {
   .gauge-pct {
     font-size: 1.8rem;
   }
-  .team-detail {
+  .modal-wide {
     padding: 1rem 0.85rem;
   }
 }

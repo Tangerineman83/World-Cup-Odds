@@ -72,20 +72,16 @@
       <p class="team-detail-hint">Tap a team for their road to the Last 32.</p>
     </section>
 
-    <section id="team-detail" class="team-detail" hidden>
-      <div class="team-detail-header">
-        <h2 id="team-detail-title"></h2>
-        <button id="team-detail-close" class="team-detail-close" aria-label="Close">&times;</button>
+    <div id="scenario-modal-backdrop" class="modal-backdrop" hidden>
+      <div class="modal modal-wide" id="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
+        <button class="modal-close" id="scenario-modal-close" aria-label="Close">&times;</button>
+        <h3 id="scenario-modal-title" class="modal-title"></h3>
+        <div class="team-detail-gauge" id="scenario-modal-gauge"></div>
+        <div class="team-detail-flow-wrap">
+          <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
       </div>
-
-      <div class="team-detail-gauge" id="team-detail-gauge"></div>
-
-      <div class="team-detail-flow-wrap">
-        <svg id="team-detail-flow" class="team-detail-flow" viewBox="0 0 600 320" preserveAspectRatio="xMidYMid meet"></svg>
-      </div>
-
-      <div class="team-detail-scenarios" id="team-detail-scenarios"></div>
-    </section>
+    </div>
 
     <footer class="footnote">
       <p>
@@ -109,6 +105,7 @@
     </footer>
   </div>
 
+<script src="scenarioFlow.js"></script>
 <script src="predictions.js"></script>
 </body>
 </html>

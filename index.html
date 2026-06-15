@@ -115,14 +115,17 @@
   </div>
 
   <div id="scenario-modal-backdrop" class="modal-backdrop" hidden>
-    <div class="modal" id="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
+    <div class="modal modal-wide" id="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
       <button class="modal-close" id="scenario-modal-close" aria-label="Close">&times;</button>
       <h3 id="scenario-modal-title" class="modal-title"></h3>
-      <p class="modal-subtitle"></p>
-      <div class="modal-body" id="scenario-modal-body"></div>
+      <div class="team-detail-gauge" id="scenario-modal-gauge"></div>
+      <div class="team-detail-flow-wrap">
+        <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
     </div>
   </div>
 
+<script src="scenarioFlow.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
