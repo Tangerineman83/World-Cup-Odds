@@ -1,0 +1,58 @@
+// Official FIFA/Coca-Cola Men's World Ranking, as of the 11 June 2026 update
+// (the last update before the World Cup - the next is scheduled for
+// 20 July 2026, after the tournament, so this is a stable snapshot for the
+// whole tournament). Source: FIFA / reporting via The Sporting News.
+//
+// Keyed by the same team names used throughout this app (scripts/sim/tournament.js).
+const FIFA_RANK = {
+  France: 1,
+  Spain: 2,
+  Argentina: 3,
+  England: 4,
+  Portugal: 5,
+  Brazil: 6,
+  Netherlands: 7,
+  Morocco: 8,
+  Belgium: 9,
+  Germany: 10,
+  Croatia: 11,
+  Colombia: 13,
+  Senegal: 14,
+  Mexico: 15,
+  USA: 16,
+  Uruguay: 17,
+  Japan: 18,
+  Switzerland: 19,
+  Iran: 21,
+  Turkiye: 22,
+  Ecuador: 23,
+  Austria: 24,
+  'South Korea': 25,
+  Australia: 27,
+  Algeria: 28,
+  Egypt: 29,
+  Canada: 30,
+  Norway: 31,
+  Panama: 33,
+  'Ivory Coast': 34,
+  Sweden: 38,
+  Paraguay: 40,
+  Czechia: 41,
+  Scotland: 43,
+  Tunisia: 44,
+  'Congo DR': 46,
+  Uzbekistan: 50,
+  Qatar: 55,
+  Iraq: 57,
+  'South Africa': 60,
+  'Saudi Arabia': 61,
+  Jordan: 63,
+  'Bosnia-Herzegovina': 65,
+  'Cape Verde': 69,
+  Ghana: 74,
+  Curacao: 82,
+  Haiti: 83,
+  'New Zealand': 85,
+};
+
+module.exports = { FIFA_RANK };
