@@ -125,6 +125,14 @@ to a floor of ~12% for lopsided matchups.
 **Group stage.** Each group is a full round-robin. Standings use points, then goal
 difference, then goals scored; goal differences are sampled from Poisson
 distributions calibrated to each match's win probability (for tiebreak purposes only).
+If points/GD/goals-scored are all still tied, we fall back to FIFA World Ranking
+(lower rank wins) as a final tiebreak. FIFA's actual tiebreak order also includes
+head-to-head results (above goal difference) and a disciplinary "team conduct" score
+(between goals-scored and FIFA ranking) - neither is modelled, since we have no
+data source for head-to-head-specific stats or card counts, but both are rare
+deciders (most ties resolve by goal difference or goals scored). The same
+points -> GD -> goals -> FIFA-ranking order is used for ranking the 12 third-placed
+teams against each other, matching the official 2026 third-place tiebreak criteria.
 
 **Round of 32.** Top 2 from each group plus the 8 best third-placed teams advance.
 The bracket uses the **official FIFA Round of 32 structure** (Matches 73-88, per the
