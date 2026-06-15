@@ -52,7 +52,7 @@
     // hide the broken-image icon and fall back to the placeholder background
     // (this.outerHTML swap to a plain span keeps layout/spacing identical).
     const flagHtml = flag
-      ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="lazy" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
+      ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="eager" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
       : `<span class="flag-icon"></span>`;
     return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}<span class="code">${team.code || ''}</span></button>`;
   }

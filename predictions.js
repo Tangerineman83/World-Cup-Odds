@@ -17,8 +17,7 @@
   let selectedFlowKey = null;
 
   const PCT_KEYS = new Set([
-    'pGroupWinner', 'pRunnerUp', 'pRoundOf32', 'pRoundOf16',
-    'pQuarterFinal', 'pSemiFinal', 'pFinal', 'pChampion',
+    'pRoundOf16', 'pQuarterFinal', 'pSemiFinal', 'pFinal', 'pChampion',
   ]);
 
   const { fmtPct, flagImgHtml } = window.ScenarioFlow;
@@ -34,11 +33,6 @@
   function render() {
     if (!currentData) return;
     const rows = [...currentData.teams];
-
-    // World ranking (1 = strongest) based on rating, computed once across
-    // the full unsorted list so it doesn't change as the table is re-sorted.
-    const byRating = [...currentData.teams].sort((a, b) => b.eloRating - a.eloRating);
-    const rankByName = new Map(byRating.map((t, i) => [t.name, i + 1]));
 
     rows.sort((a, b) => {
       let av = a[sortKey];
@@ -67,20 +61,11 @@
       tdGroup.className = 'col-num';
       tdGroup.textContent = row.group;
 
-      const tdRank = document.createElement('td');
-      tdRank.className = 'col-num';
-      tdRank.textContent = '#' + rankByName.get(row.name);
-      tdRank.title = `Rating: ${Math.round(row.eloRating)}`;
-
       const tdFifa = document.createElement('td');
       tdFifa.className = 'col-num';
       tdFifa.textContent = row.fifaRank != null ? '#' + row.fifaRank : '—';
       tdFifa.title = 'Official FIFA World Ranking (11 June 2026)';
 
-      // Rating: current (adjusted-for-tournament-performance) rating, with
-      // the change from the pre-tournament rating shown as a signed point
-      // value + directional arrow. Small changes (rounding noise / no
-      // results yet) show neither.
       const tdRating = document.createElement('td');
       tdRating.className = 'col-num col-rating';
       if (row.eloRating != null) {
@@ -94,18 +79,15 @@
         }
         tdRating.innerHTML = `${Math.round(row.eloRating)}${changeHtml ? ' ' + changeHtml : ''}`;
         tdRating.title = row.eloBaseline != null
-          ? `Pre-tournament rating: ${Math.round(row.eloBaseline)}. Adjusted for tournament performance so far: ${Math.round(row.eloRating)} (${change >= 0 ? '+' : ''}${change.toFixed(1)}).`
-          : `Adjusted for tournament performance so far: ${Math.round(row.eloRating)}.`;
+          ? `Pre-tournament: ${Math.round(row.eloBaseline)}. Current: ${Math.round(row.eloRating)} (${change >= 0 ? '+' : ''}${change.toFixed(1)}).`
+          : `Current rating: ${Math.round(row.eloRating)}.`;
       } else {
         tdRating.textContent = '—';
       }
 
-      tr.append(tdRank, tdTeam, tdGroup, tdFifa, tdRating);
+      tr.append(tdTeam, tdGroup, tdFifa, tdRating);
 
       const stageCols = [
-        ['pGroupWinner', '--accent'],
-        ['pRunnerUp', '--accent'],
-        ['pRoundOf32', '--host'],
         ['pRoundOf16', '--host'],
         ['pQuarterFinal', '--host'],
         ['pSemiFinal', '--pos'],
@@ -150,7 +132,7 @@
       renderMeta();
       render();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="14" class="error-row">Couldn't load predictions.json: ${e.message}. Run <code>node scripts/sim/runSimulation.js</code> and commit the result.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="error-row">Couldn't load predictions.json: ${e.message}. Run <code>node scripts/sim/runSimulation.js</code> and commit the result.</td></tr>`;
     }
   }
 

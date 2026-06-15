@@ -35,7 +35,7 @@
     const flag = flagUrl(code, height);
     if (!flag) return `<span class="flag-icon"></span>`;
     const retina = flagUrl(code, height * 2);
-    return `<img class="flag-icon" src="${flag}" srcset="${retina} 2x" alt="" loading="lazy" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`;
+    return `<img class="flag-icon" src="${flag}" srcset="${retina} 2x" alt="" loading="eager" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`;
   }
 
   // The 5 mutually-exclusive group-stage outcome buckets, left-to-right
@@ -83,10 +83,10 @@
     `;
   }
 
-  // Right-side node colour: a muted neutral for normal (points,gd) nodes,
-  // distinct colour for "Other".
-  const RIGHT_NODE_COLOR = '#7c8db5';
-  const RIGHT_OTHER_COLOR = '#475174';
+  // Node colours: pts/GD nodes on the left use a neutral slate, outcome
+  // nodes on the right use each bucket's own colour (OUTCOME_BUCKETS[].color).
+  const PTS_NODE_COLOR = '#7c8db5';
+  const OTHER_NODE_COLOR = '#475174';
 
   // Renders the two-sided flow diagram into svgEl.
   //   team: a predictions.json/scenario.json team entry (needs
@@ -97,20 +97,25 @@
   //   onSelect(side, key): called when a node/ribbon is clicked; pass
   //     null/null to clear selection.
   function renderFlow(svgEl, team, state, onSelect) {
-    const W = 640, H = 360;
-    const leftX = 140, rightX = 520;
+    const W = 680, H = 360;
+    const leftX = 120, rightX = 540;
     const nodeWidth = 12;
     const topMargin = 32, bottomMargin = 10;
     const usableH = H - topMargin - bottomMargin;
 
-    const leftNodes = OUTCOME_BUCKETS.map((b) => ({ ...b, side: 'left', key: b.key, pct: bucketTotal(team, b.key) }));
+    // LEFT side: pts/GD combos from pooledScenarios (best to worst, Other last)
     const pooled = team.pooledScenarios || [];
-    const rightNodes = pooled.map((e) => {
+    const leftNodes = pooled.map((e) => {
       const isOther = e.points === null;
       const key = isOther ? 'other' : `${e.points},${e.gd}`;
       const label = isOther ? 'Other' : `${e.points}pt${e.points === 1 ? '' : 's'}, GD ${e.gd >= 0 ? '+' : ''}${e.gd}`;
-      return { side: 'right', key, label, color: isOther ? RIGHT_OTHER_COLOR : RIGHT_NODE_COLOR, pct: e.total, byBucket: e.byBucket };
+      return { side: 'left', key, label, color: PTS_NODE_COLOR, isOther, pct: e.total, byBucket: e.byBucket };
     });
+
+    // RIGHT side: outcome buckets (1st / 2nd / 3rd-through / 3rd-out / 4th)
+    const rightNodes = OUTCOME_BUCKETS.map((b) => ({
+      ...b, side: 'right', key: b.key, pct: bucketTotal(team, b.key),
+    }));
 
     const leftTotal = leftNodes.reduce((sum, n) => sum + n.pct, 0) || 1;
     const rightTotal = rightNodes.reduce((sum, n) => sum + n.pct, 0) || 1;
@@ -126,35 +131,40 @@
       });
     }
 
-    const leftLaidOut = layout(leftNodes, leftTotal, 6);
-    const rightLaidOut = layout(rightNodes, rightTotal, Math.max(1.5, Math.min(5, 240 / Math.max(rightNodes.length, 1))));
+    const leftGap = Math.max(1.5, Math.min(5, 240 / Math.max(leftNodes.length, 1)));
+    const leftLaidOut = layout(leftNodes, leftTotal, leftGap);
+    const rightLaidOut = layout(rightNodes, rightTotal, 6);
 
     const leftByKey = new Map(leftLaidOut.map((n) => [n.key, n]));
     const rightByKey = new Map(rightLaidOut.map((n) => [n.key, n]));
 
-    // Ribbons: one per non-zero byBucket entry on each right node, ordered
-    // by left-bucket order (OUTCOME_BUCKETS order) for a given right node,
-    // and by right-node order for a given left bucket - so ribbons from/to
-    // the same node stack without crossing.
-    const leftCursor = new Map(leftLaidOut.map((n) => [n.key, n.y0]));
+    // Ribbon stacking: outer loop = left (pts/GD) nodes (determines right-cursor
+    // position per right node), inner loop = right (outcome bucket) nodes in order.
+    // For each pts/GD node, iterate over outcome buckets in display order,
+    // allocating a slice of the pts/GD node proportional to that bucket's
+    // contribution, and a slice of the bucket node proportional to the same.
+    // This ensures no crossing within either node's ribbon stack.
+    const rightCursors = new Map(rightLaidOut.map((n) => [n.key, n.y0]));
     const ribbons = [];
-    for (const right of rightLaidOut) {
-      let rightCursor = right.y0;
+    for (const left of leftLaidOut) {
+      let leftCursor = left.y0;
       for (const bucket of OUTCOME_BUCKETS) {
-        const p = (right.byBucket || {})[bucket.key];
+        const p = (left.byBucket || {})[bucket.key];
         if (!p) continue;
-        const left = leftByKey.get(bucket.key);
-        if (!left) continue;
-        const leftTotalH = left.y1 - left.y0;
-        const h = leftTotalH * (p / left.pct); // this ribbon's share of the left node's height
-        const ly0 = leftCursor.get(bucket.key);
-        const ly1 = ly0 + h;
-        leftCursor.set(bucket.key, ly1);
-        const ry0 = rightCursor;
-        const ry1 = rightCursor + (right.y1 - right.y0) * (p / right.pct);
-        rightCursor = ry1;
+        const right = rightByKey.get(bucket.key);
+        if (!right) continue;
+
+        const ly0 = leftCursor;
+        const ly1 = leftCursor + (left.y1 - left.y0) * (p / left.pct);
+        leftCursor = ly1;
+
+        const rightTotalH = right.y1 - right.y0;
+        const ry0 = rightCursors.get(bucket.key);
+        const ry1 = ry0 + rightTotalH * (p / right.pct);
+        rightCursors.set(bucket.key, ry1);
+
         ribbons.push({
-          leftKey: bucket.key, rightKey: right.key, pct: p,
+          leftKey: left.key, rightKey: bucket.key, pct: p,
           ly0, ly1, ry0, ry1, color: bucket.color,
         });
       }
@@ -168,55 +178,57 @@
 
     function ribbonOpacity(r) {
       if (!selKey) return 0.45;
-      const matches = (selSide === 'left' && r.leftKey === selKey) || (selSide === 'right' && r.rightKey === selKey);
+      const matches = (selSide === 'left' && r.leftKey === selKey) ||
+                      (selSide === 'right' && r.rightKey === selKey);
       return matches ? 0.85 : 0.08;
     }
 
     function nodeIsDimmed(side, key) {
       if (!selKey) return false;
       if (selSide === side) return key !== selKey;
-      // Dim nodes on the OTHER side that have no ribbon connecting to the
-      // selected node.
-      return !ribbons.some((r) => (selSide === 'left' ? r.leftKey === selKey && r.rightKey === key : r.rightKey === selKey && r.leftKey === key));
+      return !ribbons.some((r) =>
+        selSide === 'left' ? r.leftKey === selKey && r.rightKey === key
+                           : r.rightKey === selKey && r.leftKey === key
+      );
     }
 
-    // Ribbons (drawn first, so nodes sit on top)
+    // Ribbons (drawn first so nodes sit on top)
     for (const r of ribbons) {
       const path = `M ${leftX} ${r.ly0}
         C ${midX} ${r.ly0}, ${midX} ${r.ry0}, ${rightX} ${r.ry0}
         L ${rightX} ${r.ry1}
-        C ${midX} ${r.ry1}, ${midX} ${r.ly1}, ${leftX} ${r.ly1}
-        Z`;
-      const title = `${OUTCOME_BUCKETS.find((b) => b.key === r.leftKey).shortLabel} -> ${(rightByKey.get(r.rightKey) || {}).label || ''}: ${fmtPct(r.pct)}`;
-      svg += `<path d="${path}" fill="${r.color}" opacity="${ribbonOpacity(r)}" class="flow-ribbon" data-side="left" data-key="${r.leftKey}" data-right-key="${r.rightKey}"><title>${title}</title></path>`;
+        C ${midX} ${r.ry1}, ${midX} ${r.ly1}, ${leftX} ${r.ly1} Z`;
+      const leftLabel = (leftByKey.get(r.leftKey) || {}).label || '';
+      const rightLabel = OUTCOME_BUCKETS.find((b) => b.key === r.rightKey).shortLabel;
+      const title = `${leftLabel} \u2192 ${rightLabel}: ${fmtPct(r.pct)}`;
+      svg += `<path d="${path}" fill="${r.color}" opacity="${ribbonOpacity(r)}" class="flow-ribbon" data-side="left" data-key="${r.leftKey}"><title>${title}</title></path>`;
     }
 
-    // Left nodes + labels (labels to the left of the nodes)
+    // Left nodes (pts/GD) - labels to the left
     for (const n of leftLaidOut) {
       if (n.pct <= 0) continue;
       const dimmed = nodeIsDimmed('left', n.key);
       const isSelected = selSide === 'left' && selKey === n.key;
-      svg += `<rect x="${leftX - nodeWidth}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-side="left" data-key="${n.key}"></rect>`;
+      const nodeColor = n.isOther ? OTHER_NODE_COLOR : PTS_NODE_COLOR;
+      svg += `<rect x="${leftX - nodeWidth}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${nodeColor}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-side="left" data-key="${n.key}"></rect>`;
       const midY = (n.y0 + n.y1) / 2;
-      const labelX = leftX - nodeWidth - 8;
-      svg += `<text x="${labelX}" y="${midY + 4}" text-anchor="end" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-side="left" data-key="${n.key}"><tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan> ${n.shortLabel}</text>`;
+      svg += `<text x="${leftX - nodeWidth - 8}" y="${midY + 4}" text-anchor="end" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-side="left" data-key="${n.key}"><tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan> ${n.label}</text>`;
     }
 
-    // Right nodes + labels (labels to the right of the nodes)
+    // Right nodes (outcome buckets) - labels to the right
     for (const n of rightLaidOut) {
       if (n.pct <= 0) continue;
       const dimmed = nodeIsDimmed('right', n.key);
       const isSelected = selSide === 'right' && selKey === n.key;
       svg += `<rect x="${rightX}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-side="right" data-key="${n.key}"></rect>`;
       const midY = (n.y0 + n.y1) / 2;
-      const labelX = rightX + nodeWidth + 8;
-      svg += `<text x="${labelX}" y="${midY + 4}" text-anchor="start" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-side="right" data-key="${n.key}">${n.label} <tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan></text>`;
+      svg += `<text x="${rightX + nodeWidth + 8}" y="${midY + 4}" text-anchor="start" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-side="right" data-key="${n.key}">${n.shortLabel} <tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan></text>`;
     }
 
-    // Source/team label above the left column
+    // Column headers
     svg += `<text x="${leftX - nodeWidth / 2}" y="${topMargin - 14}" text-anchor="middle" class="flow-source-label">${team.name}</text>`;
-    svg += `<text x="${leftX - nodeWidth / 2}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">Group stage outcome</text>`;
-    svg += `<text x="${rightX + nodeWidth / 2}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">Points / GD</text>`;
+    svg += `<text x="${leftX - nodeWidth / 2}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">Points / GD</text>`;
+    svg += `<text x="${rightX + nodeWidth / 2}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">Group finish</text>`;
 
     svgEl.innerHTML = svg;
     svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -233,6 +245,5 @@
       });
     });
   }
-
   window.ScenarioFlow = { fmtPct, flagImgHtml, OUTCOME_BUCKETS, sumPct, bucketTotal, renderGauge, renderFlow };
 })();
