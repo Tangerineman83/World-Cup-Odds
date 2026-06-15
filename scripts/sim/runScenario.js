@@ -16,6 +16,7 @@ const { GROUPS } = require('./tournament');
 const { computeMostLikelyScenario } = require('./mostLikely');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { computeCurrentRatings } = require('./eloBaseline');
+const { FIFA_RANK } = require('../fifaRankings');
 
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario.json');
 
@@ -42,6 +43,21 @@ function cleanMatch(m, codeOf) {
     winner: cleanTeam(m.winner, codeOf),
     pWin: m.pWin,
   };
+}
+
+// Ranks third-placed teams by points -> GD -> goals scored -> FIFA World
+// Ranking, matching the official 2026 third-place tiebreak criteria (see
+// scripts/sim/simulateTournament.js::pickBestThirds, which uses the same
+// order to pick the qualifying 8). Used here to order the remaining 4
+// (eliminated) thirds for display, so the full 12-team table reads as one
+// continuous ranking with the "8 go through" line marking the cutoff.
+function compareThirds(a, b) {
+  if (b.points !== a.points) return b.points - a.points;
+  if (b.gd !== a.gd) return b.gd - a.gd;
+  if (b.gf !== a.gf) return b.gf - a.gf;
+  const rankA = FIFA_RANK[a.name] != null ? FIFA_RANK[a.name] : Infinity;
+  const rankB = FIFA_RANK[b.name] != null ? FIFA_RANK[b.name] : Infinity;
+  return rankA - rankB;
 }
 
 (async () => {
@@ -147,6 +163,7 @@ function cleanMatch(m, codeOf) {
       group: letter,
       elo: team.elo,
       worldRank: worldRankByName.get(name),
+      fifaRank: FIFA_RANK[name] != null ? FIFA_RANK[name] : null,
       positionProbabilities: g.positionProbabilities[name],
       pThird,
       points: stats ? stats.points : null,
@@ -176,10 +193,12 @@ function cleanMatch(m, codeOf) {
   // M82, M85, M87 - numeric order happens to match this case, but compare
   // numerically rather than as strings to be safe).
   qualifying.sort((a, b) => parseInt(a.matchId.slice(1), 10) - parseInt(b.matchId.slice(1), 10));
-  // Sort eliminated thirds by pThird descending (falling back to Elo if
-  // pThird is unavailable).
+  // Sort eliminated thirds by the same points -> GD -> GF -> FIFA-rank order
+  // used to decide qualification, so the full list reads as one continuous
+  // ranking (the "8 go through" line is purely a cutoff marker, not a
+  // change in sort criteria). Falls back to Elo if stats are unavailable.
   eliminated.sort((a, b) => {
-    if (a.pThird != null && b.pThird != null) return b.pThird - a.pThird;
+    if (a.points != null && b.points != null) return compareThirds(a, b);
     return teamsByName.get(b.name).elo - teamsByName.get(a.name).elo;
   });
 
