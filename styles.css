@@ -692,6 +692,15 @@ tbody td {
 
 tbody tr:hover { background: var(--surface-raised); }
 
+tr.team-row {
+  cursor: pointer;
+}
+
+tr.team-row-selected {
+  background: var(--surface-raised);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 td.col-team {
   font-weight: 600;
   min-width: 8em;
@@ -1051,4 +1060,232 @@ td.col-team .code {
   font-size: 0.82rem;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+/* Team detail (predictions.html "road to the Last 32") ------------------ */
+
+.team-detail-hint {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  margin: 0.6rem 0 0;
+}
+
+.team-detail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.team-detail[hidden] {
+  display: none;
+}
+
+.team-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.team-detail-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.team-detail-header h2 .flag-icon {
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.team-detail-header h2 .code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.team-detail-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.team-detail-close:hover {
+  color: var(--text);
+}
+
+/* Qualification gauge */
+
+.team-detail-gauge {
+  margin-bottom: 1.25rem;
+}
+
+.gauge-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.gauge-pct {
+  font-size: 2.2rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.gauge-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.gauge-bar {
+  display: flex;
+  height: 0.6rem;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.gauge-seg-direct {
+  background: #4ade80;
+}
+
+.gauge-seg-wildcard {
+  background: #5eead4;
+}
+
+.gauge-sub {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-wrap: wrap;
+}
+
+.gauge-dot {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  margin-right: 0.35em;
+}
+
+.gauge-dot-direct { background: #4ade80; }
+.gauge-dot-wildcard { background: #5eead4; }
+
+/* Flow diagram */
+
+.team-detail-flow-wrap {
+  width: 100%;
+  overflow: visible;
+  margin-bottom: 1rem;
+}
+
+.team-detail-flow {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.flow-ribbon {
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.flow-node {
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.flow-node:hover, .flow-ribbon:hover {
+  filter: brightness(1.2);
+}
+
+.flow-node-selected {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.flow-source-label {
+  fill: var(--text);
+  font-size: 13px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  cursor: default;
+}
+
+.flow-source-sublabel {
+  fill: var(--text-faint);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  cursor: default;
+}
+
+.flow-target-label {
+  fill: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.flow-target-pct {
+  fill: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* Scenario breakdown (shared with thirds-table modal styling) */
+
+.team-detail-scenarios {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.scenario-prompt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.scenario-heading {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+}
+
+.scenario-heading-pct {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.scenario-subtitle {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .gauge-pct {
+    font-size: 1.8rem;
+  }
+  .team-detail {
+    padding: 1rem 0.85rem;
+  }
 }

@@ -69,6 +69,22 @@
           <tr><td colspan="14" class="loading-row">Loading…</td></tr>
         </tbody>
       </table>
+      <p class="team-detail-hint">Tap a team for their road to the Last 32.</p>
+    </section>
+
+    <section id="team-detail" class="team-detail" hidden>
+      <div class="team-detail-header">
+        <h2 id="team-detail-title"></h2>
+        <button id="team-detail-close" class="team-detail-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="team-detail-gauge" id="team-detail-gauge"></div>
+
+      <div class="team-detail-flow-wrap">
+        <svg id="team-detail-flow" class="team-detail-flow" viewBox="0 0 600 320" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+
+      <div class="team-detail-scenarios" id="team-detail-scenarios"></div>
     </section>
 
     <footer class="footnote">

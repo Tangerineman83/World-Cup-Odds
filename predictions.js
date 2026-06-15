@@ -3,10 +3,18 @@
   const metaUpdated = document.getElementById('meta-updated');
   const metaSims = document.getElementById('meta-sims');
   const table = document.getElementById('predictions-table');
+  const teamDetail = document.getElementById('team-detail');
+  const teamDetailTitle = document.getElementById('team-detail-title');
+  const teamDetailClose = document.getElementById('team-detail-close');
+  const teamDetailGauge = document.getElementById('team-detail-gauge');
+  const teamDetailFlow = document.getElementById('team-detail-flow');
+  const teamDetailScenarios = document.getElementById('team-detail-scenarios');
 
   let currentData = null;
   let sortKey = 'pChampion';
   let sortDir = 'desc';
+  let selectedTeamName = null;
+  let selectedBucket = null; // which flow segment's scenarios are shown
 
   const PCT_KEYS = new Set([
     'pGroupWinner', 'pRunnerUp', 'pRoundOf32', 'pRoundOf16',
@@ -50,6 +58,9 @@
     tbody.innerHTML = '';
     for (const row of rows) {
       const tr = document.createElement('tr');
+      tr.dataset.team = row.name;
+      tr.classList.add('team-row');
+      if (row.name === selectedTeamName) tr.classList.add('team-row-selected');
 
       const FLAG_CODE_OVERRIDES = { EN: 'gb-eng', SQ: 'gb-sct', WL: 'gb-wls', NI: 'gb-nir' };
       function flagUrl(code, height) {
@@ -169,6 +180,226 @@
       render();
     });
   });
+
+  tbody.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr.team-row');
+    if (!tr || !tr.dataset.team) return;
+    const name = tr.dataset.team;
+    if (selectedTeamName === name) {
+      closeTeamDetail();
+    } else {
+      selectedTeamName = name;
+      selectedBucket = null;
+      render();
+      openTeamDetail(name);
+    }
+  });
+
+  teamDetailClose.addEventListener('click', closeTeamDetail);
+
+  function closeTeamDetail() {
+    selectedTeamName = null;
+    selectedBucket = null;
+    teamDetail.hidden = true;
+    render();
+  }
+
+  const FLAG_CODE_OVERRIDES = { EN: 'gb-eng', SQ: 'gb-sct', WL: 'gb-wls', NI: 'gb-nir' };
+  function flagUrl(code, height) {
+    if (!code) return null;
+    const c = FLAG_CODE_OVERRIDES[code] || code.toLowerCase();
+    return `https://flagcdn.com/h${height}/${c}.png`;
+  }
+
+  // The 5 mutually-exclusive group-stage outcome buckets, in display order
+  // (best to worst), matching outcomeScenarios in predictions.json.
+  const OUTCOME_BUCKETS = [
+    { key: 'first', label: '1st in group', shortLabel: '1st', color: '#4ade80', desc: 'Automatic advance' },
+    { key: 'second', label: '2nd in group', shortLabel: '2nd', color: '#86efac', desc: 'Automatic advance' },
+    { key: 'thirdQualified', label: '3rd, advance as a wildcard', shortLabel: '3rd (through)', color: '#5eead4', desc: 'Advance via top-8 third' },
+    { key: 'thirdEliminated', label: '3rd, eliminated', shortLabel: '3rd (out)', color: '#94a3b8', desc: 'Misses out on tiebreaks' },
+    { key: 'fourth', label: '4th in group', shortLabel: '4th', color: '#64748b', desc: 'Eliminated' },
+  ];
+
+  function sumPct(scenarios) {
+    return (scenarios || []).reduce((sum, e) => sum + e.pct, 0);
+  }
+
+  function bucketTotal(team, key) {
+    return sumPct((team.outcomeScenarios || {})[key]);
+  }
+
+  // Renders the qualification gauge: a segmented horizontal bar showing
+  // P(Last 32) split into "as group winner/runner-up" vs "as a top-8 third",
+  // with the headline % and a sub-breakdown.
+  function renderGauge(team) {
+    const pWinnerOrRunnerUp = team.pGroupWinner + team.pRunnerUp;
+    const pThird = bucketTotal(team, 'thirdQualified');
+    const pAdvance = team.pRoundOf32;
+    const pWinnerOrRunnerUpShare = pAdvance > 0 ? (pWinnerOrRunnerUp / pAdvance) * 100 : 0;
+    const pThirdShare = pAdvance > 0 ? (pThird / pAdvance) * 100 : 0;
+
+    teamDetailGauge.innerHTML = `
+      <div class="gauge-headline">
+        <span class="gauge-pct">${fmtPct(pAdvance)}</span>
+        <span class="gauge-label">&nbsp;chance of reaching the Last 32</span>
+      </div>
+      <div class="gauge-bar">
+        <div class="gauge-seg gauge-seg-direct" style="width:${pWinnerOrRunnerUpShare}%" title="As group winner or runner-up: ${fmtPct(pWinnerOrRunnerUp)}"></div>
+        <div class="gauge-seg gauge-seg-wildcard" style="width:${pThirdShare}%" title="As a top-8 third-placed team: ${fmtPct(pThird)}"></div>
+      </div>
+      <div class="gauge-sub">
+        <span><span class="gauge-dot gauge-dot-direct"></span>1st or 2nd: ${fmtPct(pWinnerOrRunnerUp)}</span>
+        <span><span class="gauge-dot gauge-dot-wildcard"></span>Wildcard 3rd: ${fmtPct(pThird)}</span>
+      </div>
+    `;
+  }
+
+  // Renders the outcome flow diagram: a single source node (100% of sims)
+  // flowing into 5 target nodes (the OUTCOME_BUCKETS), with ribbon
+  // thickness proportional to each bucket's probability. Clicking a ribbon
+  // or target node selects that bucket and shows its scenario breakdown
+  // below (see renderScenarios).
+  function renderFlow(team) {
+    const W = 640, H = 320;
+    const sourceX = 90, targetX = 430;
+    const nodeWidth = 14;
+    const topMargin = 32, bottomMargin = 10;
+    const usableH = H - topMargin - bottomMargin;
+
+    const buckets = OUTCOME_BUCKETS.map((b) => ({ ...b, pct: bucketTotal(team, b.key) }));
+    const total = buckets.reduce((sum, b) => sum + b.pct, 0) || 1;
+
+    // Source node spans the full height (100%).
+    const sourceY0 = topMargin, sourceY1 = topMargin + usableH;
+
+    // Target nodes stacked with small gaps, heights proportional to pct.
+    const gap = 6;
+    const totalGap = gap * (buckets.length - 1);
+    let y = topMargin;
+    const targets = buckets.map((b) => {
+      const h = Math.max((b.pct / total) * (usableH - totalGap), b.pct > 0 ? 2 : 0);
+      const seg = { ...b, y0: y, y1: y + h };
+      y += h + gap;
+      return seg;
+    });
+
+    // Ribbons: cubic bezier from a slice of the source node to each target
+    // node, stacked in source order matching target order (so ribbons don't
+    // cross).
+    let sy = sourceY0;
+    const ribbons = targets.map((t) => {
+      const h = t.y1 - t.y0;
+      const ribbon = {
+        ...t,
+        sy0: sy,
+        sy1: sy + h,
+      };
+      sy += h;
+      return ribbon;
+    });
+
+    const midX = (sourceX + targetX) / 2;
+    let svg = '';
+
+    // Source node + label (label sits above the node, centred, to avoid
+    // needing wide left margin for long team names)
+    svg += `<rect x="${sourceX - nodeWidth}" y="${sourceY0}" width="${nodeWidth}" height="${sourceY1 - sourceY0}" fill="#5b6890" rx="2"></rect>`;
+    svg += `<text x="${sourceX - nodeWidth / 2}" y="${sourceY0 - 14}" text-anchor="middle" class="flow-source-label">${team.name}</text>`;
+    svg += `<text x="${sourceX - nodeWidth / 2}" y="${sourceY0 - 1}" text-anchor="middle" class="flow-source-sublabel">100% of sims</text>`;
+
+    for (const r of ribbons) {
+      if (r.pct <= 0) continue;
+      const isSelected = selectedBucket === r.key;
+      const opacity = selectedBucket == null ? 0.55 : (isSelected ? 0.85 : 0.18);
+      const path = `M ${sourceX} ${r.sy0}
+        C ${midX} ${r.sy0}, ${midX} ${r.y0}, ${targetX} ${r.y0}
+        L ${targetX} ${r.y1}
+        C ${midX} ${r.y1}, ${midX} ${r.sy1}, ${sourceX} ${r.sy1}
+        Z`;
+      svg += `<path d="${path}" fill="${r.color}" opacity="${opacity}" class="flow-ribbon" data-bucket="${r.key}"></path>`;
+    }
+
+    for (const t of targets) {
+      if (t.pct <= 0) continue;
+      const isSelected = selectedBucket === t.key;
+      svg += `<rect x="${targetX}" y="${t.y0}" width="${nodeWidth}" height="${t.y1 - t.y0}" fill="${t.color}" rx="2" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-bucket="${t.key}"></rect>`;
+      const midY = (t.y0 + t.y1) / 2;
+      const pctLabel = fmtPct(t.pct);
+      const labelX = targetX + nodeWidth + 8;
+      svg += `<text x="${labelX}" y="${midY + 4}" text-anchor="start" class="flow-target-label" data-bucket="${t.key}">${t.shortLabel} <tspan class="flow-target-pct">${pctLabel}</tspan></text>`;
+    }
+
+    teamDetailFlow.innerHTML = svg;
+    teamDetailFlow.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    teamDetailFlow.querySelectorAll('[data-bucket]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.bucket;
+        selectedBucket = selectedBucket === key ? null : key;
+        renderFlow(team);
+        renderScenarios(team);
+      });
+    });
+  }
+
+  // Renders the (points, gd) scenario breakdown for the currently-selected
+  // bucket (or a prompt if none selected).
+  function renderScenarios(team) {
+    if (!selectedBucket) {
+      teamDetailScenarios.innerHTML = `<p class="scenario-prompt">Tap a segment above to see the most likely points/goal-difference records behind it.</p>`;
+      return;
+    }
+
+    const bucketDef = OUTCOME_BUCKETS.find((b) => b.key === selectedBucket);
+    const scenarios = (team.outcomeScenarios || {})[selectedBucket] || [];
+    const bucketPct = bucketTotal(team, selectedBucket);
+
+    if (scenarios.length === 0 || bucketPct === 0) {
+      teamDetailScenarios.innerHTML = `<p class="scenario-prompt">${team.name} essentially never finish this way - not enough simulations to break down.</p>`;
+      return;
+    }
+
+    let rows = '';
+    for (const s of scenarios) {
+      const isOthers = s.points === null;
+      const label = isOthers
+        ? `<span class="scenario-others">Other records</span>`
+        : `${s.points} pt${s.points === 1 ? '' : 's'}, GD ${s.gd >= 0 ? '+' : ''}${s.gd}`;
+      // Within-bucket share: this combo's probability relative to the
+      // bucket's own total, so the bars sum to ~100% for this bucket.
+      const withinBucketPct = bucketPct > 0 ? Math.round((s.pct / bucketPct) * 100) : 0;
+      rows += `<div class="scenario-row">
+        <span class="scenario-label">${label}</span>
+        <div class="scenario-bar-wrap">
+          <div class="scenario-bar-track"><div class="scenario-bar-fill${isOthers ? ' scenario-others-fill' : ''}" style="width:${Math.max(withinBucketPct, 2)}%"></div></div>
+          <span class="scenario-pct">${withinBucketPct}%</span>
+        </div>
+      </div>`;
+    }
+
+    teamDetailScenarios.innerHTML = `
+      <h3 class="scenario-heading">${bucketDef.label} <span class="scenario-heading-pct">(${fmtPct(bucketPct)} overall)</span></h3>
+      <p class="scenario-subtitle">${bucketDef.desc} - most likely group-stage points/goal-difference records when this happens.</p>
+      ${rows}
+    `;
+  }
+
+  function openTeamDetail(name) {
+    const team = currentData.teams.find((t) => t.name === name);
+    if (!team) return;
+
+    const flag = flagUrl(team.code, 32);
+    const flagHtml = flag ? `<img class="flag-icon" src="${flag}" alt="">` : '';
+    teamDetailTitle.innerHTML = `${flagHtml}${team.name} <span class="code">${team.code || ''}</span>`;
+
+    renderGauge(team);
+    renderFlow(team);
+    renderScenarios(team);
+
+    teamDetail.hidden = false;
+    teamDetail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   load();
 })();
