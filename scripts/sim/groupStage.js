@@ -1,6 +1,7 @@
 const { matchProbabilities } = require('./eloModel');
 const { HOST_NATIONS } = require('./tournament');
 const { climateAdjustment, GROUP_VENUE } = require('./venues');
+const { FIFA_RANK } = require('../fifaRankings');
 
 // Plays a single match probabilistically given win/draw/loss probabilities
 // and a random number in [0,1). Returns 'home' | 'draw' | 'away'.
@@ -136,8 +137,15 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
     if (b.points !== a.points) return b.points - a.points;
     if (b.gd !== a.gd) return b.gd - a.gd;
     if (b.gf !== a.gf) return b.gf - a.gf;
-    // Final tiebreak: random (head-to-head/fair-play not modelled)
-    return Math.random() - 0.5;
+    // Final tiebreak: FIFA World Ranking (lower rank number = higher
+    // standing), per the 2026 regulations - head-to-head and disciplinary
+    // record (team conduct) are not modelled, but both sit ABOVE the FIFA
+    // ranking in FIFA's actual tiebreak order, so this is an approximation
+    // for the rare case all of points/GD/GF tie. Missing ranks (shouldn't
+    // happen for the 48 World Cup teams) sort last.
+    const rankA = FIFA_RANK[a.name] != null ? FIFA_RANK[a.name] : Infinity;
+    const rankB = FIFA_RANK[b.name] != null ? FIFA_RANK[b.name] : Infinity;
+    return rankA - rankB;
   });
 
   return standings;

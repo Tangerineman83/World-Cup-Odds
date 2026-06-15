@@ -1,6 +1,7 @@
 const { simulateGroup } = require('./groupStage');
 const { matchProbabilities } = require('./eloModel');
 const { assignThirdPlaceSlots } = require('./thirdPlace');
+const { FIFA_RANK } = require('../fifaRankings');
 const {
   GROUPS, HOST_NATIONS, ROUND_OF_32,
   ROUND_OF_16_PAIRS, QUARTER_FINAL_PAIRS, SEMI_FINAL_PAIRS,
@@ -38,14 +39,19 @@ function playKnockout(teamA, teamB, rand) {
 }
 
 // Picks the 8 best third-place teams from the 12 group thirds, ranked by
-// points -> gd -> gf -> random. Returns array of 8 team-stat objects
-// (ranked best to worst), each tagged with their group letter (.group).
+// points -> gd -> gf -> FIFA World Ranking (per the 2026 regulations'
+// official third-place tiebreak order; disciplinary "team conduct" record
+// sits between gf and FIFA ranking but isn't modelled - see note in
+// groupStage.js). Returns array of 8 team-stat objects (ranked best to
+// worst), each tagged with their group letter (.group).
 function pickBestThirds(thirdPlaceRows) {
   const ranked = [...thirdPlaceRows].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     if (b.gd !== a.gd) return b.gd - a.gd;
     if (b.gf !== a.gf) return b.gf - a.gf;
-    return Math.random() - 0.5;
+    const rankA = FIFA_RANK[a.name] != null ? FIFA_RANK[a.name] : Infinity;
+    const rankB = FIFA_RANK[b.name] != null ? FIFA_RANK[b.name] : Infinity;
+    return rankA - rankB;
   });
   return ranked.slice(0, 8);
 }
