@@ -260,12 +260,13 @@ html, body {
 }
 
 @media (max-width: 700px) {
-  .pp-summary { display: none; }
-}
-
-.elo-col {
-  width: 2.4em;
-  text-align: right;
+  .pp-summary {
+    display: block;
+    font-size: 0.56rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .elo-num {
@@ -562,7 +563,6 @@ html, body {
   .group-card-header h3 { font-size: 0.9rem; }
   .group-table { font-size: 0.78rem; }
   .group-table td { padding: 0.45rem 0.55rem; }
-  .elo-col { width: 2.2em; }
   .masthead-top h1 { font-size: 1.5rem; }
   .confidence-ring { width: 32px; height: 32px; }
 }
@@ -739,6 +739,16 @@ td.col-team .code {
   border-left: 2px solid var(--border);
 }
 
+.change-up {
+  color: var(--pos);
+  font-size: 0.75em;
+}
+
+.change-down {
+  color: var(--neg);
+  font-size: 0.75em;
+}
+
 /* =====================================================================
    Best of the third-placed teams (index.html)
    ===================================================================== */
@@ -761,31 +771,72 @@ td.col-team .code {
 
 .thirds-table {
   width: 100%;
+  table-layout: fixed;
+}
+
+.thirds-table .team-cell {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Team column: allow team name to wrap onto a second line (e.g.
+   "Bosnia-Herzegovina") rather than forcing the table wider. */
+.thirds-table .col-team .team-cell {
+  white-space: normal;
+}
+
+/* "Plays X" column: keep on one line, truncating the opponent's name with
+   an ellipsis if it doesn't fit, rather than wrapping/widening the table. */
+.thirds-table .third-fixture .team-cell {
+  white-space: nowrap;
+}
+
+.thirds-table th.col-team,
+.thirds-table td.col-team {
+  width: 42%;
 }
 
 .thirds-table th.col-thirdpct,
 .thirds-table td.col-thirdpct {
   text-align: left;
-  min-width: 13em;
+  width: 50%;
 }
 
-.thirds-table td.col-team {
-  min-width: 11em;
+.thirds-table th.col-num,
+.thirds-table td.col-num {
+  width: 3.2em;
 }
 
 .third-fixture {
   display: flex;
   align-items: center;
-  gap: 0.5em;
-  flex-wrap: wrap;
+  gap: 0.35em;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.third-fixture .team-cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.third-fixture .team-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.third-fixture .team-cell .code {
+  display: none;
 }
 
 .third-fixture-label {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--text-faint);
+  flex: 0 0 auto;
 }
 
 .third-fixture-pct {
@@ -835,10 +886,11 @@ td.col-team .code {
 
 @media (max-width: 700px) {
   .thirds-table td, .thirds-table th {
-    padding: 0.5rem 0.6rem;
+    padding: 0.45rem 0.4rem;
+    font-size: 0.82rem;
   }
-  .third-pct-bar {
-    width: 40%;
-    max-width: 6em;
+  .thirds-table .flag-icon {
+    width: 1.1em;
+    height: 1.1em;
   }
 }

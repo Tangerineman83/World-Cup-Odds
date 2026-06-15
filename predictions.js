@@ -75,7 +75,40 @@
       tdRank.textContent = '#' + rankByName.get(row.name);
       tdRank.title = `Rating: ${Math.round(row.eloRating)}`;
 
-      tr.append(tdTeam, tdGroup, tdRank);
+      const tdFifa = document.createElement('td');
+      tdFifa.className = 'col-num';
+      tdFifa.textContent = row.fifaRank != null ? '#' + row.fifaRank : '—';
+      tdFifa.title = 'Official FIFA World Ranking (11 June 2026)';
+
+      const tdPreTournament = document.createElement('td');
+      tdPreTournament.className = 'col-num';
+      tdPreTournament.textContent = row.eloBaseline != null ? Math.round(row.eloBaseline) : '—';
+      tdPreTournament.title = "This team's rating before the tournament started";
+
+      const tdAdjusted = document.createElement('td');
+      tdAdjusted.className = 'col-num';
+      if (row.eloRating != null) {
+        const change = row.eloChange;
+        // Small changes (rounding noise / no results yet) show no arrow.
+        const ARROW_THRESHOLD = 2;
+        let arrow = '';
+        let arrowClass = '';
+        if (change != null && change >= ARROW_THRESHOLD) {
+          arrow = ' \u25B2'; // ▲
+          arrowClass = 'change-up';
+        } else if (change != null && change <= -ARROW_THRESHOLD) {
+          arrow = ' \u25BC'; // ▼
+          arrowClass = 'change-down';
+        }
+        tdAdjusted.innerHTML = `${Math.round(row.eloRating)}${arrow ? `<span class="${arrowClass}">${arrow}</span>` : ''}`;
+        tdAdjusted.title = change != null
+          ? `Adjusted for tournament performance: ${change >= 0 ? '+' : ''}${change.toFixed(1)} from pre-tournament rating`
+          : "Adjusted for tournament performance so far";
+      } else {
+        tdAdjusted.textContent = '—';
+      }
+
+      tr.append(tdTeam, tdGroup, tdRank, tdFifa, tdPreTournament, tdAdjusted);
 
       const stageCols = [
         ['pGroupWinner', '--accent'],
@@ -125,7 +158,7 @@
       renderMeta();
       render();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="11" class="error-row">Couldn't load predictions.json: ${e.message}. Run <code>node scripts/sim/runSimulation.js</code> and commit the result.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="14" class="error-row">Couldn't load predictions.json: ${e.message}. Run <code>node scripts/sim/runSimulation.js</code> and commit the result.</td></tr>`;
     }
   }
 

@@ -122,31 +122,25 @@
     thirds.forEach((team, i) => {
       let lastCol;
       if (team.qualifies && team.opponent) {
-        // pWin is the HOME team's (the group winner's) win probability for
-        // this match, so the third-placed team's own chance is 1 - pWin.
-        const ourPct = team.pWin != null ? Math.round((1 - team.pWin) * 100) : null;
         lastCol = `
           <div class="third-fixture">
             <span class="third-fixture-label">Plays</span>
             ${teamButton(team.opponent)}
-            ${ourPct != null ? `<span class="third-fixture-pct" title="${team.name}'s chance of winning this Last 32 match">${ourPct}%</span>` : ''}
           </div>`;
       } else {
-        const pct = team.pThird != null ? Math.round(team.pThird * 100) : null;
-        lastCol = `<span class="third-out">Out${pct != null ? ` &middot; came close: ${pct}%` : ''}</span>`;
+        lastCol = `<span class="third-out">Out</span>`;
       }
 
       rows += `<tr data-team="${team.name}" class="${team.qualifies ? 'third-qualifies' : 'third-eliminated'}">
         <td class="col-team">${teamButton(team)}</td>
         <td class="col-num">${team.group}</td>
-        <td class="col-num"><span class="elo-num" title="Ranked by chance of winning the tournament (rating: ${Math.round(team.elo)})">#${team.worldRank}</span></td>
         <td class="col-thirdpct">${lastCol}</td>
       </tr>`;
 
       // Divider after the 8th team: 8 of 12 thirds advance to the Last 32.
       if (i === 7 && thirds.length > 8) {
         rows += `<tr class="thirds-divider-row" aria-hidden="true">
-          <td colspan="4"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
+          <td colspan="3"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
         </tr>`;
       }
     });
@@ -156,7 +150,6 @@
 
   function renderGroups() {
     groupsGrid.innerHTML = '';
-    const ranks = rankByName();
     for (const letter of GROUP_ORDER) {
       const g = data.groups[letter];
       const card = document.createElement('div');
@@ -174,7 +167,6 @@
 
         const posProbs = team.positionProbabilities || [0, 0, 0, 0];
         const posBarHtml = positionProbBar(posProbs);
-        const rank = ranks.get(team.name);
 
         rows += `<tr class="${rowClass}" data-team="${team.name}">
           <td class="pos-col">${posLabel}</td>
@@ -182,7 +174,6 @@
             ${teamButton(team)}
             ${posBarHtml}
           </td>
-          <td class="elo-col"><span class="elo-num" title="Ranked by chance of winning the tournament (rating: ${Math.round(team.elo)})">#${rank}</span></td>
         </tr>`;
       });
 
