@@ -19,7 +19,6 @@ const {
   FINAL_PAIR, THIRD_PLACE_PAIR,
 } = require('./tournament');
 const { simulateGroup } = require('./groupStage');
-const { pickBestThirds } = require('./simulateTournament');
 const { assignThirdPlaceSlots } = require('./thirdPlace');
 
 function mulberry32(seed) {
@@ -133,12 +132,15 @@ function chalkWinner(teamA, teamB) {
   return { winner, pWin: pWinOverall };
 }
 
-// Main entry point. teamsByName: Map of team name -> { name, elo }.
-// knownByGroup: optional Map of group letter -> array of completed fixtures
-// (see resultsSource.js), passed through to modalGroupOrdering/simulateGroup
-// so completed group-stage results are used directly rather than simulated.
-function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
-  const groupResults = {}; // letter -> { order, probability, positionProbabilities, fourth }
+// Phase 1: computes the modal group-stage results for all 12 groups (no
+// bracket yet - that needs the third-place ranking, computed externally in
+// runScenario.js using predictions.json's full-simulation probabilities).
+// teamsByName: Map of team name -> { name, elo }. knownByGroup: optional Map
+// of group letter -> array of completed fixtures (see resultsSource.js).
+// Returns { letter -> { order, probability, positionProbabilities,
+// thirdPlaceStats, fourth } }.
+function computeGroupResults(teamsByName, knownByGroup = new Map()) {
+  const groupResults = {};
 
   for (const [letter, names] of Object.entries(GROUPS)) {
     const teams = names.map((name) => ({ name, elo: teamsByName.get(name).elo }));
@@ -148,35 +150,28 @@ function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
     });
   }
 
-  const winners = {};
-  const runnersUp = {};
-  const thirdsForRanking = [];
-
   for (const [letter, result] of Object.entries(groupResults)) {
-    const [first, second, third, fourth] = result.order;
-    winners[letter] = { name: first, elo: teamsByName.get(first).elo, group: letter };
-    runnersUp[letter] = { name: second, elo: teamsByName.get(second).elo, group: letter };
-
-    const thirdTeam = { name: third, elo: teamsByName.get(third).elo, group: letter };
-    // Cross-group third-place ranking uses the real points/GD/GF from this
-    // group's modal scenario (the same stats simulateTournament.js uses for
-    // the actual probability calculations), via the official FIFA tiebreak
-    // order (points -> GD -> GF) in pickBestThirds. Falls back to an
-    // Elo-based proxy only if stats are unexpectedly unavailable (e.g. a
-    // group with fewer than 20000 distinct simulation outcomes - shouldn't
-    // happen in practice).
-    const thirdStats = result.thirdPlaceStats && result.thirdPlaceStats[third];
-    if (thirdStats) {
-      thirdsForRanking.push({ ...thirdTeam, points: thirdStats.points, gd: thirdStats.gd, gf: thirdStats.gf });
-    } else {
-      thirdsForRanking.push({ ...thirdTeam, points: thirdTeam.elo, gd: 0, gf: 0 });
-    }
-
+    const [, , , fourth] = result.order;
     groupResults[letter].fourth = fourth;
   }
 
-  const bestThirds = pickBestThirds(thirdsForRanking)
-    .map((t) => ({ name: t.name, elo: t.elo, group: t.group }));
+  return groupResults;
+}
+
+// Phase 2: builds the chalk bracket (R32 onward) given group results and a
+// pre-determined list of the 8 qualifying third-placed teams (bestThirds -
+// each { name, elo, group }, ranked best-to-worst - used for Annex-C-style
+// slot assignment via assignThirdPlaceSlots). teamsByName: Map of team name
+// -> { name, elo }, used to look up winners'/runners-up' elo.
+function buildBracket(groupResults, bestThirds, teamsByName) {
+  const winners = {};
+  const runnersUp = {};
+
+  for (const [letter, result] of Object.entries(groupResults)) {
+    const [first, second] = result.order;
+    winners[letter] = { name: first, elo: teamsByName.get(first).elo, group: letter };
+    runnersUp[letter] = { name: second, elo: teamsByName.get(second).elo, group: letter };
+  }
 
   const thirdAssignment = assignThirdPlaceSlots(bestThirds); // matchId -> team
 
@@ -243,4 +238,4 @@ function computeMostLikelyScenario(teamsByName, knownByGroup = new Map()) {
   };
 }
 
-module.exports = { computeMostLikelyScenario, modalGroupOrdering, chalkWinner };
+module.exports = { computeGroupResults, buildBracket, modalGroupOrdering, chalkWinner };
