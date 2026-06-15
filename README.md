@@ -177,6 +177,23 @@ win/draw/loss), and We is the pre-match expected result (including home advantag
 where applicable). See `scripts/sim/eloUpdate.js` for the formula and
 `scripts/sim/eloBaseline.js` for how it's applied to the baseline.
 
+**Home advantage decay schedule.** The three co-hosts (USA, Canada, Mexico) get a
++100 Elo home-advantage boost (`HOME_ADVANTAGE` in `scripts/sim/eloModel.js`,
+eloratings.net's convention) in matches at home - but this boost is scaled down
+over the tournament via `HOME_ADVANTAGE_SCHEDULE` in `scripts/sim/tournament.js`:
+100% for a host's 1st group match, 75% for their 2nd, 50% for their 3rd, and a flat
+25% (`KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER`) for any knockout match they reach. The
+rationale: the "extra" boost beyond what's already reflected in a host's Elo is
+likely strongest for the tournament-opening atmosphere and fades as the tournament
+progresses - this is a judgement call, not derived from data. For real played
+results (`applyResultsToElo` in `scripts/sim/eloUpdate.js`), the match number is
+the chronological count of that host's group matches processed so far. For
+simulated/unplayed group fixtures (`groupStage.js`), since unplayed fixtures
+aren't dated, each of a host's remaining fixtures uses the AVERAGE of the
+schedule's not-yet-used entries (e.g. if they've played 1 of 3, both remaining
+fixtures use avg(75%, 50%) = 62.5%) - an approximation that favours simplicity
+over precise fixture ordering.
+
 **In-tournament delta multiplier (1.5x).** Every in-tournament result's Elo delta
 (as computed by the formula above) is multiplied by
 `IN_TOURNAMENT_DELTA_MULTIPLIER = 1.5` (in `scripts/sim/eloUpdate.js`), applied
