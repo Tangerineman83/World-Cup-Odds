@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { ELO_TO_NAME } = require('../countryMap');
 const { GROUPS } = require('./tournament');
-const { computeMostLikelyScenario } = require('./mostLikely');
+const { computeGroupResults, buildBracket } = require('./mostLikely');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { computeCurrentRatings } = require('./eloBaseline');
 const { FIFA_RANK } = require('../fifaRankings');
@@ -45,21 +45,6 @@ function cleanMatch(m, codeOf) {
   };
 }
 
-// Ranks third-placed teams by points -> GD -> goals scored -> FIFA World
-// Ranking, matching the official 2026 third-place tiebreak criteria (see
-// scripts/sim/simulateTournament.js::pickBestThirds, which uses the same
-// order to pick the qualifying 8). Used here to order the remaining 4
-// (eliminated) thirds for display, so the full 12-team table reads as one
-// continuous ranking with the "8 go through" line marking the cutoff.
-function compareThirds(a, b) {
-  if (b.points !== a.points) return b.points - a.points;
-  if (b.gd !== a.gd) return b.gd - a.gd;
-  if (b.gf !== a.gf) return b.gf - a.gf;
-  const rankA = FIFA_RANK[a.name] != null ? FIFA_RANK[a.name] : Infinity;
-  const rankB = FIFA_RANK[b.name] != null ? FIFA_RANK[b.name] : Infinity;
-  return rankA - rankB;
-}
-
 (async () => {
   const allTeams = Object.values(GROUPS).flat();
   const codeOf = NAME_TO_CODE;
@@ -78,9 +63,6 @@ function compareThirds(a, b) {
   } else {
     console.log('  No completed results found (results.json empty or all placeholders) - using baseline ratings as-is.');
   }
-
-  console.log('Computing most-likely scenario...');
-  const scenario = computeMostLikelyScenario(teamsByName, knownByGroup);
 
   // World ranking shown alongside each team in scenario.json: ranked by
   // chance of winning the tournament (pChampion, from predictions.json) where
@@ -102,6 +84,58 @@ function compareThirds(a, b) {
   } catch (e) {
     console.log('predictions.json not found/unreadable - world ranking will fall back to Elo for this run.');
   }
+
+  console.log('Computing group results...');
+  const groupResults = computeGroupResults(teamsByName, knownByGroup);
+
+  // Third-place ranking: for each group, take the modal-scenario's 3rd-placed
+  // team as that group's representative (consistent with the `groups` table
+  // below, which shows the modal 1st-4th order), then rank these 12 teams by
+  // P(qualify as a top-8 third | finish 3rd in their group) - computed from
+  // predictions.json's full 20,000-simulation run, which already determines
+  // (for each simulation) the actual top-8-of-12 thirds via the official
+  // points -> GD -> goals -> FIFA-ranking tiebreak order (see
+  // simulateTournament.js::pickBestThirds/resolveRoundOf32 - "ignoring cards"
+  // is a deliberate simplification, noted in methodology below).
+  //   P(finish 3rd) = positionProbabilities[2] for that team in their group
+  //   P(qualify AND finish 3rd) = pThird = pRoundOf32 - pGroupWinner - pRunnerUp
+  //   P(qualify | finish 3rd) = P(qualify AND finish 3rd) / P(finish 3rd)
+  // The 8 teams with the highest conditional probability qualify; this
+  // ordering then drives bracket slot assignment (buildBracket below), so
+  // onward knockout projections are consistent with this ranking.
+  const thirdPlaceCandidates = Object.entries(groupResults).map(([letter, result]) => {
+    const name = result.order[2];
+    const pFinish3rd = result.positionProbabilities[name][2];
+    const pred = predictionsByName.get(name);
+    const pThird = pred ? Math.max(0, pred.pRoundOf32 - pred.pGroupWinner - pred.pRunnerUp) : 0;
+    const pQualifyGiven3rd = pFinish3rd > 0 ? pThird / pFinish3rd : 0;
+    const stats = result.thirdPlaceStats && result.thirdPlaceStats[name];
+    return {
+      name,
+      group: letter,
+      elo: teamsByName.get(name).elo,
+      pFinish3rd,
+      pThird,
+      pQualifyGiven3rd,
+      points: stats ? stats.points : null,
+      gd: stats ? stats.gd : null,
+      gf: stats ? stats.gf : null,
+    };
+  });
+
+  // Rank all 12 by P(qualify | finish 3rd) descending; ties (e.g. both 0,
+  // for teams essentially never finishing 3rd) fall back to pThird then Elo.
+  thirdPlaceCandidates.sort((a, b) => {
+    if (b.pQualifyGiven3rd !== a.pQualifyGiven3rd) return b.pQualifyGiven3rd - a.pQualifyGiven3rd;
+    if (b.pThird !== a.pThird) return b.pThird - a.pThird;
+    return b.elo - a.elo;
+  });
+
+  const bestThirds = thirdPlaceCandidates.slice(0, 8)
+    .map((t) => ({ name: t.name, elo: t.elo, group: t.group }));
+
+  console.log('Building bracket...');
+  const scenario = buildBracket(groupResults, bestThirds, teamsByName);
 
   const eloRank = [...allTeams].sort((a, b) => teamsByName.get(b).elo - teamsByName.get(a).elo);
   const eloRankByName = new Map(eloRank.map((name, i) => [name, i + 1]));
@@ -128,21 +162,18 @@ function compareThirds(a, b) {
     };
   }
 
-  // allThirds: all 12 third-placed teams (one per group).
+  // allThirds: all 12 third-placed teams (one per group, the modal-scenario
+  // 3rd-placed team from each group's `order`), in ONE continuous ranking by
+  // P(qualify as a top-8 third | finish 3rd) descending - see
+  // thirdPlaceCandidates above. The cutoff (qualifying vs eliminated) falls
+  // after the 8th row.
   //
-  // The 8 that qualify (per bestThirds/the bracket) are listed FIRST, sorted
-  // by their Round-of-32 match id (M74 < M77 < M79 < M80 < M81 < M82 < M85 <
-  // M87) - i.e. the same order/grouping the knockout bracket below will show
-  // them in - each annotated with `opponent` (the group winner they're
-  // paired against in that match) and `matchId`/`pWin` for that fixture.
-  // This is the bridge between the group-stage section and the knockout
-  // section: "8th in this list plays the winner of Group X in match Y".
-  //
-  // The remaining 4 (eliminated) are listed after, sorted by pThird
-  // descending (probability of advancing to the Last 32 via the third-place
-  // route specifically: finishing 3rd in their group AND being one of the 8
-  // best thirds, derived from predictions.json as
-  // pRoundOf32 - pGroupWinner - pRunnerUp) - i.e. "how close did they come".
+  // The 8 qualifying teams are each annotated with `opponent` (the group
+  // winner they're paired against) and `matchId`/`pWin` for that fixture -
+  // wherever assignThirdPlaceSlots actually placed them. Because R32 slot
+  // eligibility is constrained per-slot (Annex-C-style - not every slot
+  // accepts thirds from every group), `matchId`s won't necessarily run
+  // M74->M87 in the same order as this ranking.
   const bestThirdNames = new Set(scenario.bestThirds.map((t) => t.name));
   const r32OpponentByThird = new Map();
   for (const m of scenario.r32) {
@@ -151,26 +182,21 @@ function compareThirds(a, b) {
     }
   }
 
-  const allThirdsRaw = Object.entries(scenario.groups).map(([letter, g]) => {
-    const name = g.order[2];
-    const team = teamsByName.get(name);
-    const pred = predictionsByName.get(name);
-    const pThird = pred ? Math.max(0, pred.pRoundOf32 - pred.pGroupWinner - pred.pRunnerUp) : null;
-    const stats = g.thirdPlaceStats && g.thirdPlaceStats[name]; // modal {points, gd, gf} for the 3rd-placed team
-    return {
-      name,
-      code: codeOf[name] || null,
-      group: letter,
-      elo: team.elo,
-      worldRank: worldRankByName.get(name),
-      fifaRank: FIFA_RANK[name] != null ? FIFA_RANK[name] : null,
-      positionProbabilities: g.positionProbabilities[name],
-      pThird,
-      points: stats ? stats.points : null,
-      gd: stats ? stats.gd : null,
-      gf: stats ? stats.gf : null,
-    };
-  });
+  const allThirdsRaw = thirdPlaceCandidates.map((t) => ({
+    name: t.name,
+    code: codeOf[t.name] || null,
+    group: t.group,
+    elo: t.elo,
+    worldRank: worldRankByName.get(t.name),
+    fifaRank: FIFA_RANK[t.name] != null ? FIFA_RANK[t.name] : null,
+    positionProbabilities: groupResults[t.group].positionProbabilities[t.name],
+    pFinish3rd: t.pFinish3rd,
+    pThird: t.pThird,
+    pQualifyGiven3rd: t.pQualifyGiven3rd,
+    points: t.points,
+    gd: t.gd,
+    gf: t.gf,
+  }));
 
   const qualifying = [];
   const eliminated = [];
@@ -189,19 +215,13 @@ function compareThirds(a, b) {
     }
   }
 
-  // Sort qualifying thirds by their R32 match id (M74, M77, M79, M80, M81,
-  // M82, M85, M87 - numeric order happens to match this case, but compare
-  // numerically rather than as strings to be safe).
-  qualifying.sort((a, b) => parseInt(a.matchId.slice(1), 10) - parseInt(b.matchId.slice(1), 10));
-  // Sort eliminated thirds by the same points -> GD -> GF -> FIFA-rank order
-  // used to decide qualification, so the full list reads as one continuous
-  // ranking (the "8 go through" line is purely a cutoff marker, not a
-  // change in sort criteria). Falls back to Elo if stats are unavailable.
-  eliminated.sort((a, b) => {
-    if (a.points != null && b.points != null) return compareThirds(a, b);
-    return teamsByName.get(b.name).elo - teamsByName.get(a.name).elo;
-  });
-
+  // qualifying and eliminated both inherit pQualifyGiven3rd-descending order
+  // from allThirdsRaw (no re-sort) - allThirds is therefore one continuous
+  // ranking from most to least likely to be a top-8 third (given finishing
+  // 3rd), with the cutoff line after the 8th row. Each qualifying team's
+  // `matchId`/`opponent` reflect wherever assignThirdPlaceSlots actually
+  // placed them (constrained by Annex-C-style group eligibility per slot),
+  // which won't necessarily run M74->M87 in the same order as this ranking.
   const allThirds = [...qualifying, ...eliminated];
 
   const output = {
@@ -213,8 +233,8 @@ function compareThirds(a, b) {
         ? 'Each team\'s worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions.json) - i.e. the rank matches the same model used for the odds table, not raw rating.'
         : 'predictions.json was unavailable when this was generated, so worldRank falls back to a simple rank by rating - regenerate after running runSimulation.js for a pChampion-based rank.',
       groupOrdering: 'modal (most frequent) full 1st-4th ordering across 20,000 group simulations per group',
-      thirdPlaceRanking: "thirds are ranked by points, then goal difference, then goals scored (each team's real simulated stats from their group's modal scenario) - matching the official 2026 tiebreak order. If all three are still tied, we use FIFA World Ranking as a final tiebreak (FIFA's actual order also includes head-to-head results and a disciplinary 'team conduct' record above FIFA ranking, neither of which we model - both are rare deciders in practice). Bracket slot assignment (which qualifying third plays which group winner) is an approximation of FIFA's official Annex C lookup table.",
-      allThirds: 'allThirds lists all 12 third-placed teams. The first 8 are the qualifying thirds per bestThirds/the bracket, ordered by their Round-of-32 match id (M74, M77, M79, M80, M81, M82, M85, M87) - matching the order/grouping shown in the knockout bracket below - each with `opponent`/`matchId`/`pWin` for that fixture. The remaining 4 (eliminated in this scenario) are ordered by pThird descending (probability of advancing via the third-place route specifically, derived from predictions.json as pRoundOf32 - pGroupWinner - pRunnerUp).',
+      thirdPlaceRanking: "the 12 third-placed teams (one per group, from the modal group scenario) are ranked by P(qualify as a top-8 third | finish 3rd in their group) - computed from the full 20,000-simulation run (predictions.json), where each simulation independently determines its own top-8-of-12 thirds using the official tiebreak order (points -> goal difference -> goals scored -> FIFA World Ranking). 'Ignoring cards' is deliberate: FIFA's real order also includes head-to-head results (above goal difference) and a disciplinary 'team conduct' score (between goals-scored and FIFA ranking) - neither is modelled, since we have no data source for card counts, but both are rare deciders in practice. points/gd/gf/fifaRank are included per team for reference (their modal-scenario stats and FIFA World Ranking) but are NOT the basis for this ranking - pQualifyGiven3rd is. Bracket slot assignment (which qualifying third plays which group winner) is an approximation of FIFA's official Annex C lookup table.",
+      allThirds: 'allThirds lists all 12 third-placed teams (one per group, modal scenario), in one continuous ranking by pQualifyGiven3rd (P(qualify | finish 3rd)) descending - see thirdPlaceRanking. The first 8 (qualifies: true) are the qualifying thirds per bestThirds/the bracket, each with `opponent`/`matchId`/`pWin` for their assigned Round-of-32 fixture (matchIds may not run M74->M87 in ranking order, since slot eligibility is constrained per Annex C). The remaining 4 (qualifies: false) continue the same ranking - i.e. "how close did they come".',
       bracketStructure: 'official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 "3rd-placed" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup',
       knockouts: 'chalk bracket - at each match, the team with the higher combined win+penalty probability advances',
       liveResults: resultsCount > 0
