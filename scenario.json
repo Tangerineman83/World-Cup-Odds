@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-15T16:57:15.276Z",
-  "resultsApplied": 12,
+  "generatedAt": "2026-06-15T17:05:04.105Z",
+  "resultsApplied": 8,
   "methodology": {
     "ratingSource": "Ratings are computed deterministically from a frozen pre-tournament Elo snapshot (elo_baseline.json, fetched 2026-06-11) plus every played result in results.json, applied in date order via the standard World Cup Elo formula (K=60, goal-difference weighted), with each in-tournament result's rating change multiplied by 1.5x (on the basis that current tournament form is more representative of a team's true strength than their pre-tournament rating alone). No live fetch is used, so there is no possibility of double-counting against eloratings.net's own updates. Run scripts/sim/compareToLive.js periodically to check this against live eloratings.net values (noting ours will diverge somewhat by design, due to the multiplier).",
     "worldRank": "Each team's worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions.json) - i.e. the rank matches the same model used for the odds table, not raw rating.",
@@ -9,7 +9,7 @@
     "allThirds": "allThirds lists all 12 third-placed teams. The first 8 are the qualifying thirds per bestThirds/the bracket, ordered by their Round-of-32 match id (M74, M77, M79, M80, M81, M82, M85, M87) - matching the order/grouping shown in the knockout bracket below - each with `opponent`/`matchId`/`pWin` for that fixture. The remaining 4 (eliminated in this scenario) are ordered by pThird descending (probability of advancing via the third-place route specifically, derived from predictions.json as pRoundOf32 - pGroupWinner - pRunnerUp).",
     "bracketStructure": "official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 \"3rd-placed\" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup",
     "knockouts": "chalk bracket - at each match, the team with the higher combined win+penalty probability advances",
-    "liveResults": "12 completed group-stage result(s) as of 2026-06-13 are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).",
+    "liveResults": "8 completed group-stage result(s) as of 2026-06-13 are applied directly (not simulated), and have updated each involved team's Elo rating using the standard World Cup Elo formula (K=60, goal-difference weighted, per eloratings.net's methodology).",
     "climateAdjustment": "group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team's acclimatisation to that group's representative host-city altitude/heat profile. This is a clearly-labelled methodological judgement, not a fitted parameter - treat it as directional, not precise. Not applied to knockout matches (venue depends on bracket outcome).",
     "note": "This is a single representative scenario, not a probability distribution. See predictions.html for per-team stage probabilities across 20,000 simulations."
   },
@@ -20,36 +20,36 @@
           "name": "Mexico",
           "code": "MX",
           "elo": 1889.4573978462747,
-          "worldRank": 8,
+          "worldRank": 7,
           "positionProbabilities": [
-            0.812,
-            0.1775,
-            0.0104,
-            0.0001
+            0.80925,
+            0.1796,
+            0.0111,
+            0.00005
           ]
         },
         {
           "name": "South Korea",
           "code": "KR",
           "elo": 1821.557838819284,
-          "worldRank": 20,
+          "worldRank": 22,
           "positionProbabilities": [
-            0.18485,
-            0.7672,
-            0.045,
-            0.00295
+            0.18765,
+            0.76385,
+            0.0453,
+            0.0032
           ]
         },
         {
           "name": "Czechia",
           "code": "CZ",
           "elo": 1676.442161180716,
-          "worldRank": 33,
+          "worldRank": 31,
           "positionProbabilities": [
             0.00275,
-            0.03795,
-            0.73335,
-            0.22595
+            0.0397,
+            0.74015,
+            0.2174
           ]
         },
         {
@@ -58,14 +58,14 @@
           "elo": 1502.5426021537253,
           "worldRank": 40,
           "positionProbabilities": [
-            0.0004,
-            0.01735,
-            0.21125,
-            0.771
+            0.00035,
+            0.01685,
+            0.20345,
+            0.77935
           ]
         }
       ],
-      "probability": 0.5942
+      "probability": 0.5958
     },
     "B": {
       "order": [
@@ -75,10 +75,10 @@
           "elo": 1851.6382652308498,
           "worldRank": 21,
           "positionProbabilities": [
-            0.42815,
-            0.2793,
-            0.23515,
-            0.0574
+            0.42385,
+            0.28525,
+            0.23815,
+            0.05275
           ]
         },
         {
@@ -87,10 +87,10 @@
           "elo": 1739.1712802262746,
           "worldRank": 10,
           "positionProbabilities": [
-            0.427,
-            0.33285,
-            0.20515,
-            0.035
+            0.43055,
+            0.33105,
+            0.20325,
+            0.03515
           ]
         },
         {
@@ -99,10 +99,10 @@
           "elo": 1643.8287197737254,
           "worldRank": 34,
           "positionProbabilities": [
-            0.12865,
-            0.3074,
-            0.3557,
-            0.20825
+            0.12975,
+            0.3001,
+            0.3587,
+            0.21145
           ]
         },
         {
@@ -111,14 +111,14 @@
           "elo": 1460.3617347691502,
           "worldRank": 41,
           "positionProbabilities": [
-            0.0162,
-            0.08045,
-            0.204,
-            0.69935
+            0.01585,
+            0.0836,
+            0.1999,
+            0.70065
           ]
         }
       ],
-      "probability": 0.17455
+      "probability": 0.17425
     },
     "C": {
       "order": [
@@ -128,34 +128,34 @@
           "elo": 1971.2072894647563,
           "worldRank": 9,
           "positionProbabilities": [
-            0.50455,
-            0.33615,
-            0.1561,
-            0.0032
+            0.50535,
+            0.3295,
+            0.16245,
+            0.0027
           ]
         },
         {
           "name": "Morocco",
           "code": "MA",
           "elo": 1846.7927105352437,
-          "worldRank": 22,
+          "worldRank": 20,
           "positionProbabilities": [
-            0.277,
-            0.3745,
-            0.31505,
-            0.03345
+            0.2816,
+            0.3717,
+            0.31745,
+            0.02925
           ]
         },
         {
           "name": "Scotland",
           "code": "SQ",
           "elo": 1800.5723331130648,
-          "worldRank": 25,
+          "worldRank": 24,
           "positionProbabilities": [
-            0.21835,
-            0.28545,
-            0.48885,
-            0.00735
+            0.21285,
+            0.2948,
+            0.48635,
+            0.006
           ]
         },
         {
@@ -164,14 +164,14 @@
           "elo": 1529.4276668869352,
           "worldRank": 42,
           "positionProbabilities": [
-            0.0001,
-            0.0039,
-            0.04,
-            0.956
+            0.0002,
+            0.004,
+            0.03375,
+            0.96205
           ]
         }
       ],
-      "probability": 0.28825
+      "probability": 0.2846
     },
     "D": {
       "order": [
@@ -179,12 +179,12 @@
           "name": "USA",
           "code": "US",
           "elo": 1836.6897625310455,
-          "worldRank": 5,
+          "worldRank": 4,
           "positionProbabilities": [
-            0.6406,
-            0.27715,
-            0.07985,
-            0.0024
+            0.633,
+            0.28225,
+            0.0817,
+            0.00305
           ]
         },
         {
@@ -193,144 +193,144 @@
           "elo": 1869.3152024161438,
           "worldRank": 18,
           "positionProbabilities": [
-            0.3397,
-            0.5548,
-            0.0968,
-            0.0087
+            0.3476,
+            0.54665,
+            0.0988,
+            0.00695
           ]
         },
         {
           "name": "Turkiye",
           "code": "TR",
           "elo": 1818.6847975838562,
-          "worldRank": 28,
+          "worldRank": 26,
           "positionProbabilities": [
-            0.01385,
-            0.1121,
-            0.5661,
-            0.30795
+            0.0134,
+            0.11115,
+            0.56345,
+            0.312
           ]
         },
         {
           "name": "Paraguay",
           "code": "PY",
           "elo": 1723.3102374689545,
-          "worldRank": 35,
+          "worldRank": 37,
           "positionProbabilities": [
-            0.00585,
-            0.05595,
-            0.25725,
-            0.68095
+            0.006,
+            0.05995,
+            0.25605,
+            0.678
           ]
         }
       ],
-      "probability": 0.37465
+      "probability": 0.37145
     },
     "E": {
       "order": [
         {
           "name": "Germany",
           "code": "DE",
-          "elo": 1942.2937493534787,
-          "worldRank": 12,
+          "elo": 1932,
+          "worldRank": 13,
           "positionProbabilities": [
-            0.6967,
-            0.1967,
-            0.10625,
-            0.00035
-          ]
-        },
-        {
-          "name": "Ivory Coast",
-          "code": "CI",
-          "elo": 1767.179697970299,
-          "worldRank": 26,
-          "positionProbabilities": [
-            0.2907,
-            0.57455,
-            0.1336,
-            0.00115
+            0.4574,
+            0.3922,
+            0.1433,
+            0.0071
           ]
         },
         {
           "name": "Ecuador",
           "code": "EC",
-          "elo": 1865.820302029701,
-          "worldRank": 23,
+          "elo": 1938,
+          "worldRank": 12,
           "positionProbabilities": [
-            0.0126,
-            0.22605,
-            0.73875,
-            0.0226
+            0.4643,
+            0.39035,
+            0.13725,
+            0.0081
+          ]
+        },
+        {
+          "name": "Ivory Coast",
+          "code": "CI",
+          "elo": 1695,
+          "worldRank": 29,
+          "positionProbabilities": [
+            0.0775,
+            0.20775,
+            0.59095,
+            0.1238
           ]
         },
         {
           "name": "Curacao",
           "code": "CW",
-          "elo": 1423.7062506465213,
+          "elo": 1434,
           "worldRank": 43,
           "positionProbabilities": [
-            0,
-            0.0027,
-            0.0214,
-            0.9759
+            0.0008,
+            0.0097,
+            0.1285,
+            0.861
           ]
         }
       ],
-      "probability": 0.5488
+      "probability": 0.2955
     },
     "F": {
       "order": [
         {
           "name": "Netherlands",
           "code": "NL",
-          "elo": 1942.5864869291288,
+          "elo": 1948,
           "worldRank": 11,
           "positionProbabilities": [
-            0.4113,
-            0.37775,
-            0.1956,
-            0.01535
+            0.47405,
+            0.37505,
+            0.121,
+            0.0299
           ]
         },
         {
           "name": "Japan",
           "code": "JP",
-          "elo": 1911.4135130708712,
-          "worldRank": 14,
+          "elo": 1906,
+          "worldRank": 15,
           "positionProbabilities": [
-            0.40205,
-            0.3895,
-            0.1967,
-            0.01175
+            0.4558,
+            0.3911,
+            0.12155,
+            0.03155
           ]
         },
         {
           "name": "Sweden",
           "code": "SE",
-          "elo": 1776.363929397476,
-          "worldRank": 27,
+          "elo": 1712,
+          "worldRank": 30,
           "positionProbabilities": [
-            0.1862,
-            0.2309,
-            0.578,
-            0.0049
+            0.0469,
+            0.1433,
+            0.4248,
+            0.385
           ]
         },
         {
           "name": "Tunisia",
           "code": "TN",
-          "elo": 1563.636070602524,
-          "worldRank": 38,
+          "elo": 1628,
+          "worldRank": 44,
           "positionProbabilities": [
-            0.00045,
-            0.00185,
-            0.0297,
-            0.968
+            0.02325,
+            0.09055,
+            0.33265,
+            0.55355
           ]
         }
       ],
-      "probability": 0.2968
+      "probability": 0.2061
     },
     "G": {
       "order": [
@@ -340,50 +340,50 @@
           "elo": 1894,
           "worldRank": 16,
           "positionProbabilities": [
-            0.62965,
-            0.2557,
-            0.09475,
-            0.0199
+            0.63445,
+            0.25305,
+            0.0928,
+            0.0197
           ]
         },
         {
           "name": "Iran",
           "code": "IR",
           "elo": 1772,
-          "worldRank": 29,
+          "worldRank": 28,
           "positionProbabilities": [
-            0.2364,
-            0.39655,
-            0.26535,
-            0.1017
+            0.23785,
+            0.39955,
+            0.26205,
+            0.10055
           ]
         },
         {
           "name": "Egypt",
           "code": "EG",
           "elo": 1696,
-          "worldRank": 39,
+          "worldRank": 33,
           "positionProbabilities": [
-            0.1146,
-            0.26335,
-            0.40275,
-            0.2193
+            0.1092,
+            0.26455,
+            0.40835,
+            0.2179
           ]
         },
         {
           "name": "New Zealand",
           "code": "NZ",
           "elo": 1562,
-          "worldRank": 44,
+          "worldRank": 38,
           "positionProbabilities": [
-            0.01935,
-            0.0844,
-            0.23715,
-            0.6591
+            0.0185,
+            0.08285,
+            0.2368,
+            0.66185
           ]
         }
       ],
-      "probability": 0.24935
+      "probability": 0.2488
     },
     "H": {
       "order": [
@@ -393,50 +393,50 @@
           "elo": 2157,
           "worldRank": 1,
           "positionProbabilities": [
-            0.8359,
-            0.15505,
-            0.0088,
-            0.00025
+            0.83725,
+            0.15335,
+            0.00925,
+            0.00015
           ]
         },
         {
           "name": "Uruguay",
           "code": "UY",
           "elo": 1892,
-          "worldRank": 17,
+          "worldRank": 19,
           "positionProbabilities": [
-            0.1583,
-            0.6999,
-            0.11675,
-            0.02505
+            0.1561,
+            0.70175,
+            0.11985,
+            0.0223
           ]
         },
         {
           "name": "Saudi Arabia",
           "code": "SA",
           "elo": 1576,
-          "worldRank": 46,
+          "worldRank": 45,
           "positionProbabilities": [
-            0.00245,
-            0.07215,
-            0.43535,
-            0.49005
+            0.00355,
+            0.07005,
+            0.43725,
+            0.48915
           ]
         },
         {
           "name": "Cape Verde",
           "code": "CV",
           "elo": 1578,
-          "worldRank": 45,
+          "worldRank": 39,
           "positionProbabilities": [
-            0.00335,
-            0.0729,
-            0.4391,
-            0.48465
+            0.0031,
+            0.07485,
+            0.43365,
+            0.4884
           ]
         }
       ],
-      "probability": 0.34955
+      "probability": 0.35275
     },
     "I": {
       "order": [
@@ -446,50 +446,50 @@
           "elo": 2063,
           "worldRank": 3,
           "positionProbabilities": [
-            0.66265,
-            0.24535,
-            0.08525,
-            0.00675
+            0.66195,
+            0.2415,
+            0.0904,
+            0.00615
           ]
         },
         {
           "name": "Norway",
           "code": "NO",
           "elo": 1914,
-          "worldRank": 13,
+          "worldRank": 14,
           "positionProbabilities": [
-            0.21225,
-            0.40705,
-            0.324,
-            0.0567
+            0.2056,
+            0.4086,
+            0.3271,
+            0.0587
           ]
         },
         {
           "name": "Senegal",
           "code": "SN",
           "elo": 1860,
-          "worldRank": 19,
+          "worldRank": 23,
           "positionProbabilities": [
-            0.12205,
-            0.3176,
-            0.44955,
-            0.1108
+            0.1305,
+            0.31985,
+            0.4459,
+            0.10375
           ]
         },
         {
           "name": "Iraq",
           "code": "IQ",
           "elo": 1607,
-          "worldRank": 47,
+          "worldRank": 46,
           "positionProbabilities": [
-            0.00305,
-            0.03,
-            0.1412,
-            0.82575
+            0.00195,
+            0.03005,
+            0.1366,
+            0.8314
           ]
         }
       ],
-      "probability": 0.304
+      "probability": 0.30295
     },
     "J": {
       "order": [
@@ -499,50 +499,50 @@
           "elo": 2115,
           "worldRank": 2,
           "positionProbabilities": [
-            0.84255,
-            0.12875,
-            0.0257,
-            0.003
+            0.84265,
+            0.12925,
+            0.02425,
+            0.00385
           ]
         },
         {
           "name": "Austria",
           "code": "AT",
           "elo": 1830,
-          "worldRank": 24,
+          "worldRank": 25,
           "positionProbabilities": [
-            0.08,
-            0.38475,
-            0.32585,
-            0.2094
+            0.08115,
+            0.38755,
+            0.3257,
+            0.2056
           ]
         },
         {
           "name": "Algeria",
           "code": "DZ",
           "elo": 1772,
-          "worldRank": 30,
+          "worldRank": 27,
           "positionProbabilities": [
-            0.0613,
-            0.33265,
-            0.3562,
-            0.24985
+            0.06045,
+            0.32745,
+            0.3632,
+            0.2489
           ]
         },
         {
           "name": "Jordan",
           "code": "JO",
           "elo": 1680,
-          "worldRank": 36,
+          "worldRank": 47,
           "positionProbabilities": [
-            0.01615,
-            0.15385,
-            0.29225,
-            0.53775
+            0.01575,
+            0.15575,
+            0.28685,
+            0.54165
           ]
         }
       ],
-      "probability": 0.23665
+      "probability": 0.2412
     },
     "K": {
       "order": [
@@ -552,50 +552,50 @@
           "elo": 1989,
           "worldRank": 6,
           "positionProbabilities": [
-            0.4964,
-            0.40215,
-            0.0845,
-            0.01695
+            0.5018,
+            0.39605,
+            0.08645,
+            0.0157
           ]
         },
         {
           "name": "Colombia",
           "code": "CO",
           "elo": 1982,
-          "worldRank": 7,
+          "worldRank": 8,
           "positionProbabilities": [
-            0.46525,
-            0.42125,
-            0.0963,
-            0.0172
+            0.4597,
+            0.425,
+            0.09735,
+            0.01795
           ]
         },
         {
           "name": "Uzbekistan",
           "code": "UZ",
           "elo": 1714,
-          "worldRank": 32,
+          "worldRank": 35,
           "positionProbabilities": [
-            0.02765,
-            0.1167,
-            0.47635,
-            0.3793
+            0.02875,
+            0.11655,
+            0.4732,
+            0.3815
           ]
         },
         {
           "name": "Congo DR",
           "code": "CD",
           "elo": 1652,
-          "worldRank": 37,
+          "worldRank": 36,
           "positionProbabilities": [
-            0.0107,
-            0.0599,
-            0.34285,
-            0.58655
+            0.00975,
+            0.0624,
+            0.343,
+            0.58485
           ]
         }
       ],
-      "probability": 0.2408
+      "probability": 0.24135
     },
     "L": {
       "order": [
@@ -603,36 +603,36 @@
           "name": "England",
           "code": "EN",
           "elo": 2024,
-          "worldRank": 4,
+          "worldRank": 5,
           "positionProbabilities": [
-            0.6473,
-            0.28925,
-            0.06065,
-            0.0028
+            0.6469,
+            0.28975,
+            0.0608,
+            0.00255
           ]
         },
         {
           "name": "Croatia",
           "code": "HR",
           "elo": 1912,
-          "worldRank": 15,
+          "worldRank": 17,
           "positionProbabilities": [
-            0.305,
-            0.5021,
-            0.17815,
-            0.01475
+            0.30345,
+            0.5001,
+            0.1803,
+            0.01615
           ]
         },
         {
           "name": "Panama",
           "code": "PA",
           "elo": 1730,
-          "worldRank": 31,
+          "worldRank": 32,
           "positionProbabilities": [
-            0.047,
-            0.1919,
-            0.59635,
-            0.16475
+            0.0489,
+            0.1926,
+            0.5905,
+            0.168
           ]
         },
         {
@@ -641,14 +641,14 @@
           "elo": 1510,
           "worldRank": 48,
           "positionProbabilities": [
-            0.0007,
-            0.01675,
-            0.16485,
-            0.8177
+            0.00075,
+            0.01755,
+            0.1684,
+            0.8133
           ]
         }
       ],
-      "probability": 0.3842
+      "probability": 0.381
     }
   },
   "allThirds": [
@@ -658,44 +658,46 @@
       "group": "B",
       "elo": 1643.8287197737254,
       "worldRank": 34,
+      "fifaRank": 65,
       "positionProbabilities": [
-        0.12865,
-        0.3074,
-        0.3557,
-        0.20825
+        0.12975,
+        0.3001,
+        0.3587,
+        0.21145
       ],
-      "pThird": 0.2917500000000001,
+      "pThird": 0.2920000000000001,
       "points": 4,
       "gd": 0,
       "gf": 4,
       "qualifies": true,
       "matchId": "M74",
-      "pWin": 0.8572035850650381,
+      "pWin": 0.8494890045087415,
       "opponent": {
         "name": "Germany",
         "code": "DE",
-        "elo": 1942.2937493534787
+        "elo": 1932
       }
     },
     {
       "name": "Sweden",
       "code": "SE",
       "group": "F",
-      "elo": 1776.363929397476,
-      "worldRank": 27,
+      "elo": 1712,
+      "worldRank": 30,
+      "fifaRank": 38,
       "positionProbabilities": [
-        0.1862,
-        0.2309,
-        0.578,
-        0.0049
+        0.0469,
+        0.1433,
+        0.4248,
+        0.385
       ],
-      "pThird": 0.56595,
+      "pThird": 0.27025000000000005,
       "points": 3,
-      "gd": 2,
-      "gf": 7,
+      "gd": -1,
+      "gf": 5,
       "qualifies": true,
       "matchId": "M77",
-      "pWin": 0.8483112865812803,
+      "pWin": 0.8918453522893497,
       "opponent": {
         "name": "France",
         "code": "FR",
@@ -707,14 +709,15 @@
       "code": "SN",
       "group": "I",
       "elo": 1860,
-      "worldRank": 19,
+      "worldRank": 23,
+      "fifaRank": 14,
       "positionProbabilities": [
-        0.12205,
-        0.3176,
-        0.44955,
-        0.1108
+        0.1305,
+        0.31985,
+        0.4459,
+        0.10375
       ],
-      "pThird": 0.3186,
+      "pThird": 0.32965,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -728,24 +731,25 @@
       }
     },
     {
-      "name": "Uzbekistan",
-      "code": "UZ",
-      "group": "K",
-      "elo": 1714,
-      "worldRank": 32,
+      "name": "Algeria",
+      "code": "DZ",
+      "group": "J",
+      "elo": 1772,
+      "worldRank": 27,
+      "fifaRank": 28,
       "positionProbabilities": [
-        0.02765,
-        0.1167,
-        0.47635,
-        0.3793
+        0.06045,
+        0.32745,
+        0.3632,
+        0.2489
       ],
-      "pThird": 0.27349999999999997,
+      "pThird": 0.23650000000000004,
       "points": 3,
       "gd": -1,
-      "gf": 4,
+      "gf": 5,
       "qualifies": true,
       "matchId": "M80",
-      "pWin": 0.8654769865651433,
+      "pWin": 0.8198233012118049,
       "opponent": {
         "name": "England",
         "code": "EN",
@@ -753,24 +757,25 @@
       }
     },
     {
-      "name": "Algeria",
-      "code": "DZ",
-      "group": "J",
-      "elo": 1772,
-      "worldRank": 30,
+      "name": "Ivory Coast",
+      "code": "CI",
+      "group": "E",
+      "elo": 1695,
+      "worldRank": 29,
+      "fifaRank": 34,
       "positionProbabilities": [
-        0.0613,
-        0.33265,
-        0.3562,
-        0.24985
+        0.0775,
+        0.20775,
+        0.59095,
+        0.1238
       ],
-      "pThird": 0.21794999999999992,
+      "pThird": 0.41930000000000006,
       "points": 3,
       "gd": -1,
-      "gf": 5,
+      "gf": 4,
       "qualifies": true,
       "matchId": "M81",
-      "pWin": 0.7241596215057592,
+      "pWin": 0.8077570623753125,
       "opponent": {
         "name": "USA",
         "code": "US",
@@ -782,14 +787,15 @@
       "code": "CZ",
       "group": "A",
       "elo": 1676.442161180716,
-      "worldRank": 33,
+      "worldRank": 31,
+      "fifaRank": 41,
       "positionProbabilities": [
         0.00275,
-        0.03795,
-        0.73335,
-        0.22595
+        0.0397,
+        0.74015,
+        0.2174
       ],
-      "pThird": 0.42175,
+      "pThird": 0.45344999999999996,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -807,17 +813,18 @@
       "code": "EG",
       "group": "G",
       "elo": 1696,
-      "worldRank": 39,
+      "worldRank": 33,
+      "fifaRank": 29,
       "positionProbabilities": [
-        0.1146,
-        0.26335,
-        0.40275,
-        0.2193
+        0.1092,
+        0.26455,
+        0.40835,
+        0.2179
       ],
-      "pThird": 0.27730000000000005,
+      "pThird": 0.28490000000000004,
       "points": 3,
       "gd": -1,
-      "gf": 5,
+      "gf": 4,
       "qualifies": true,
       "matchId": "M85",
       "pWin": 0.7184721926929076,
@@ -832,14 +839,15 @@
       "code": "PA",
       "group": "L",
       "elo": 1730,
-      "worldRank": 31,
+      "worldRank": 32,
+      "fifaRank": 33,
       "positionProbabilities": [
-        0.047,
-        0.1919,
-        0.59635,
-        0.16475
+        0.0489,
+        0.1926,
+        0.5905,
+        0.168
       ],
-      "pThird": 0.3788,
+      "pThird": 0.40680000000000005,
       "points": 3,
       "gd": -1,
       "gf": 4,
@@ -853,21 +861,44 @@
       }
     },
     {
-      "name": "Ecuador",
-      "code": "EC",
-      "group": "E",
-      "elo": 1865.820302029701,
-      "worldRank": 23,
+      "name": "Uzbekistan",
+      "code": "UZ",
+      "group": "K",
+      "elo": 1714,
+      "worldRank": 35,
+      "fifaRank": 50,
       "positionProbabilities": [
-        0.0126,
-        0.22605,
-        0.73875,
-        0.0226
+        0.02875,
+        0.11655,
+        0.4732,
+        0.3815
       ],
-      "pThird": 0.54045,
+      "pThird": 0.29095,
       "points": 3,
       "gd": -1,
-      "gf": 3,
+      "gf": 4,
+      "qualifies": false,
+      "matchId": null,
+      "pWin": null,
+      "opponent": null
+    },
+    {
+      "name": "Saudi Arabia",
+      "code": "SA",
+      "group": "H",
+      "elo": 1576,
+      "worldRank": 45,
+      "fifaRank": 61,
+      "positionProbabilities": [
+        0.00355,
+        0.07005,
+        0.43725,
+        0.48915
+      ],
+      "pThird": 0.22035,
+      "points": 3,
+      "gd": -1,
+      "gf": 4,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -878,14 +909,15 @@
       "code": "SQ",
       "group": "C",
       "elo": 1800.5723331130648,
-      "worldRank": 25,
+      "worldRank": 24,
+      "fifaRank": 43,
       "positionProbabilities": [
-        0.21835,
-        0.28545,
-        0.48885,
-        0.00735
+        0.21285,
+        0.2948,
+        0.48635,
+        0.006
       ],
-      "pThird": 0.37010000000000004,
+      "pThird": 0.39309999999999995,
       "points": 3,
       "gd": -1,
       "gf": 3,
@@ -899,38 +931,18 @@
       "code": "TR",
       "group": "D",
       "elo": 1818.6847975838562,
-      "worldRank": 28,
+      "worldRank": 26,
+      "fifaRank": 22,
       "positionProbabilities": [
-        0.01385,
-        0.1121,
-        0.5661,
-        0.30795
+        0.0134,
+        0.11115,
+        0.56345,
+        0.312
       ],
-      "pThird": 0.30674999999999997,
+      "pThird": 0.32355,
       "points": 3,
       "gd": -2,
       "gf": 3,
-      "qualifies": false,
-      "matchId": null,
-      "pWin": null,
-      "opponent": null
-    },
-    {
-      "name": "Saudi Arabia",
-      "code": "SA",
-      "group": "H",
-      "elo": 1576,
-      "worldRank": 46,
-      "positionProbabilities": [
-        0.00245,
-        0.07215,
-        0.43535,
-        0.49005
-      ],
-      "pThird": 0.1977,
-      "points": 3,
-      "gd": -1,
-      "gf": 4,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -945,22 +957,16 @@
       "group": "B"
     },
     {
-      "name": "Sweden",
-      "code": "SE",
-      "elo": 1776.363929397476,
-      "group": "F"
-    },
-    {
       "name": "Algeria",
       "code": "DZ",
       "elo": 1772,
       "group": "J"
     },
     {
-      "name": "Egypt",
-      "code": "EG",
-      "elo": 1696,
-      "group": "G"
+      "name": "Sweden",
+      "code": "SE",
+      "elo": 1712,
+      "group": "F"
     },
     {
       "name": "Senegal",
@@ -969,22 +975,28 @@
       "group": "I"
     },
     {
+      "name": "Egypt",
+      "code": "EG",
+      "elo": 1696,
+      "group": "G"
+    },
+    {
       "name": "Panama",
       "code": "PA",
       "elo": 1730,
       "group": "L"
     },
     {
+      "name": "Ivory Coast",
+      "code": "CI",
+      "elo": 1695,
+      "group": "E"
+    },
+    {
       "name": "Czechia",
       "code": "CZ",
       "elo": 1676.442161180716,
       "group": "A"
-    },
-    {
-      "name": "Uzbekistan",
-      "code": "UZ",
-      "elo": 1714,
-      "group": "K"
     }
   ],
   "r32": [
@@ -1012,7 +1024,7 @@
       "home": {
         "name": "Germany",
         "code": "DE",
-        "elo": 1942.2937493534787
+        "elo": 1932
       },
       "away": {
         "name": "Bosnia-Herzegovina",
@@ -1022,16 +1034,16 @@
       "winner": {
         "name": "Germany",
         "code": "DE",
-        "elo": 1942.2937493534787
+        "elo": 1932
       },
-      "pWin": 0.8572035850650381
+      "pWin": 0.8494890045087415
     },
     {
       "id": "M75",
       "home": {
         "name": "Netherlands",
         "code": "NL",
-        "elo": 1942.5864869291288
+        "elo": 1948
       },
       "away": {
         "name": "Morocco",
@@ -1041,9 +1053,9 @@
       "winner": {
         "name": "Netherlands",
         "code": "NL",
-        "elo": 1942.5864869291288
+        "elo": 1948
       },
-      "pWin": 0.639980629717282
+      "pWin": 0.6474511405075256
     },
     {
       "id": "M76",
@@ -1055,14 +1067,14 @@
       "away": {
         "name": "Japan",
         "code": "JP",
-        "elo": 1911.4135130708712
+        "elo": 1906
       },
       "winner": {
         "name": "Brazil",
         "code": "BR",
         "elo": 1971.2072894647563
       },
-      "pWin": 0.5888065642045788
+      "pWin": 0.5966494771555962
     },
     {
       "id": "M77",
@@ -1074,21 +1086,21 @@
       "away": {
         "name": "Sweden",
         "code": "SE",
-        "elo": 1776.363929397476
+        "elo": 1712
       },
       "winner": {
         "name": "France",
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.8483112865812803
+      "pWin": 0.8918453522893497
     },
     {
       "id": "M78",
       "home": {
-        "name": "Ivory Coast",
-        "code": "CI",
-        "elo": 1767.179697970299
+        "name": "Ecuador",
+        "code": "EC",
+        "elo": 1938
       },
       "away": {
         "name": "Norway",
@@ -1096,11 +1108,11 @@
         "elo": 1914
       },
       "winner": {
-        "name": "Norway",
-        "code": "NO",
-        "elo": 1914
+        "name": "Ecuador",
+        "code": "EC",
+        "elo": 1938
       },
-      "pWin": 0.7075166104399313
+      "pWin": 0.5359950269350422
     },
     {
       "id": "M79",
@@ -1129,16 +1141,16 @@
         "elo": 2024
       },
       "away": {
-        "name": "Uzbekistan",
-        "code": "UZ",
-        "elo": 1714
+        "name": "Algeria",
+        "code": "DZ",
+        "elo": 1772
       },
       "winner": {
         "name": "England",
         "code": "EN",
         "elo": 2024
       },
-      "pWin": 0.8654769865651433
+      "pWin": 0.8198233012118049
     },
     {
       "id": "M81",
@@ -1148,16 +1160,16 @@
         "elo": 1836.6897625310455
       },
       "away": {
-        "name": "Algeria",
-        "code": "DZ",
-        "elo": 1772
+        "name": "Ivory Coast",
+        "code": "CI",
+        "elo": 1695
       },
       "winner": {
         "name": "USA",
         "code": "US",
         "elo": 1836.6897625310455
       },
-      "pWin": 0.7241596215057592
+      "pWin": 0.8077570623753125
     },
     {
       "id": "M82",
@@ -1299,7 +1311,7 @@
       "home": {
         "name": "Germany",
         "code": "DE",
-        "elo": 1942.2937493534787
+        "elo": 1932
       },
       "away": {
         "name": "France",
@@ -1311,7 +1323,7 @@
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.6737883871615166
+      "pWin": 0.6873051920277198
     },
     {
       "id": "M90",
@@ -1323,14 +1335,14 @@
       "away": {
         "name": "Netherlands",
         "code": "NL",
-        "elo": 1942.5864869291288
+        "elo": 1948
       },
       "winner": {
         "name": "Netherlands",
         "code": "NL",
-        "elo": 1942.5864869291288
+        "elo": 1948
       },
-      "pWin": 0.6559868683183607
+      "pWin": 0.6630208647058655
     },
     {
       "id": "M91",
@@ -1340,16 +1352,16 @@
         "elo": 1971.2072894647563
       },
       "away": {
-        "name": "Norway",
-        "code": "NO",
-        "elo": 1914
+        "name": "Ecuador",
+        "code": "EC",
+        "elo": 1938
       },
       "winner": {
         "name": "Brazil",
         "code": "BR",
         "elo": 1971.2072894647563
       },
-      "pWin": 0.5850435261950057
+      "pWin": 0.5497100217271652
     },
     {
       "id": "M92",
@@ -1458,14 +1470,14 @@
       "away": {
         "name": "Netherlands",
         "code": "NL",
-        "elo": 1942.5864869291288
+        "elo": 1948
       },
       "winner": {
         "name": "France",
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.6733999422080138
+      "pWin": 0.6661772938260013
     },
     {
       "id": "M98",
