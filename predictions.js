@@ -10,7 +10,7 @@
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
 
   let currentData = null;
-  let sortKey = 'pChampion';
+  let sortKey = 'eloRating';
   let sortDir = 'desc';
   let selectedTeamName = null;
   let selectedFlowSide = null; // 'left' | 'right' | null
