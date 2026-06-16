@@ -169,12 +169,14 @@
     scenarioFlowKey = null;
     scenarioModal.querySelector('.modal-title').innerHTML = teamButton(team);
     // In index.html, the popup is opened from the thirds table where the
-    // "Chance" column shows P(qualify | finish 3rd), not the unconditional
-    // pRoundOf32. Pass this as the headline to avoid confusion between the
-    // two figures.
+    // "Chance" column shows P(qualify | finish 3rd). The gauge headline
+    // stays as the unconditional pRoundOf32 (matching what the chart's
+    // 1st+2nd+3rd-through bands sum to); the Chance-column figure is shown
+    // underneath as a short, plain-English note instead, so the two numbers
+    // don't look like they're meant to add up to each other.
     const gaugeContext = team.pQualifyGiven3rd != null ? {
       pct: team.pQualifyGiven3rd,
-      label: 'chance of qualifying as a top-8 third (if they finish 3rd)',
+      label: `is the table's "Chance" number. It only counts games where they finish 3rd.`,
     } : null;
     window.ScenarioFlow.renderGauge(scenarioModalGauge, team, gaugeContext);
     renderModalFlow(team);

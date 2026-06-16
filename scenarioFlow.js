@@ -61,12 +61,41 @@
 
   // Renders the qualification gauge into gaugeEl.
   //   team: predictions/scenario team object
-  //   gaugeContext (optional): if provided, overrides the headline with a
+  //   gaugeContext (optional): if provided, adds a secondary note showing a
   //     conditional probability — used by index.html's thirds-table popup
-  //     where the relevant figure is P(qualify | finish 3rd), not the
-  //     unconditional P(reach Last 32) shown on predictions.html. Avoids
-  //     a confusing mismatch with the "Chance" column in the thirds table.
-  //     Shape: { pct: number, label: string, sublabel: string }
+  //     to surface P(qualify | finish 3rd), which is what the "Chance"
+  //     column shows. The headline always stays as the unconditional
+  //     P(reach Last 32), since that's the figure the Sankey below
+  //     decomposes (1st + 2nd + 3rd-through bands sum to it) - showing a
+  //     different, conditional figure as the headline made it look like the
+  //     Sankey's bands didn't add up, when really they were answering a
+  //     different question.
+  //     Shape: { pct: number, label: string }
+  // Renders the qualification gauge into gaugeEl.
+  //   team: predictions/scenario team object
+  //   gaugeContext (optional): if provided, overrides the headline with a
+  //     conditional probability and adds a plain-language explainer note -
+  //     used by index.html's thirds-table popup, where the relevant number
+  //     is P(qualify | finish 3rd) (matching the "Chance" column), not the
+  //     unconditional P(reach Last 32) that the Sankey below decomposes.
+  //     Since these are different questions with different answers, the
+  //     note explains in plain terms why the Sankey's numbers are a
+  //     "bigger picture" rather than something that should add up to the
+  //     headline.
+  //     Shape: { pct: number, label: string }
+  // Renders the qualification gauge into gaugeEl.
+  //   team: predictions/scenario team object
+  //   gaugeContext (optional): if provided, adds a short, plain-English note
+  //     explaining a DIFFERENT, more specific probability — used by
+  //     index.html's thirds-table popup to surface P(qualify | finish 3rd),
+  //     which is what the "Chance" column shows there. The headline always
+  //     stays as the unconditional P(reach Last 32 by any route), since
+  //     that's the number the chart below it decomposes (the 1st + 2nd +
+  //     3rd-through bands sum exactly to it). The same chart is reused on
+  //     predictions.html for every team, so keeping one consistent
+  //     headline meaning across both pages avoids the chart and the
+  //     headline seeming to disagree.
+  //     Shape: { pct: number, label: string }
   function renderGauge(gaugeEl, team, gaugeContext) {
     const pWinnerOrRunnerUp = (team.pGroupWinner || 0) + (team.pRunnerUp || 0);
     const pThird = bucketTotal(team, 'thirdQualified');
@@ -74,18 +103,18 @@
     const pWinnerOrRunnerUpShare = pAdvance > 0 ? (pWinnerOrRunnerUp / pAdvance) * 100 : 0;
     const pThirdShare = pAdvance > 0 ? (pThird / pAdvance) * 100 : 0;
 
-    const headlinePct = gaugeContext ? gaugeContext.pct : pAdvance;
-    const headlineLabel = gaugeContext ? gaugeContext.label : 'chance of reaching the Last 32';
-    const sublabel = gaugeContext
-      ? `<div class="gauge-context-note">(Overall Last 32 chance via any route: ${fmtPct(pAdvance)} &mdash; 1st/2nd: ${fmtPct(pWinnerOrRunnerUp)}, Wildcard 3rd: ${fmtPct(pThird)})</div>`
+    // Plain-English explainer (written for an easy, "explain it to a child"
+    // reading level): two short sentences, each one simple idea, no jargon
+    // like "unconditional" or "conditional".
+    const explainerNote = gaugeContext
+      ? `<div class="gauge-context-note">${fmtPct(gaugeContext.pct)} ${gaugeContext.label} The number above is bigger. It counts every way through, not just this one.</div>`
       : '';
 
     gaugeEl.innerHTML = `
       <div class="gauge-headline">
-        <span class="gauge-pct">${fmtPct(headlinePct)}</span>
-        <span class="gauge-label">&nbsp;${headlineLabel}</span>
+        <span class="gauge-pct">${fmtPct(pAdvance)}</span>
+        <span class="gauge-label">&nbsp;chance of reaching the Last 32</span>
       </div>
-      ${sublabel || `
       <div class="gauge-bar">
         <div class="gauge-seg gauge-seg-direct" style="width:${pWinnerOrRunnerUpShare}%" title="As group winner or runner-up: ${fmtPct(pWinnerOrRunnerUp)}"></div>
         <div class="gauge-seg gauge-seg-wildcard" style="width:${pThirdShare}%" title="As a top-8 third-placed team: ${fmtPct(pThird)}"></div>
@@ -93,7 +122,8 @@
       <div class="gauge-sub">
         <span><span class="gauge-dot gauge-dot-direct"></span>1st or 2nd: ${fmtPct(pWinnerOrRunnerUp)}</span>
         <span><span class="gauge-dot gauge-dot-wildcard"></span>Wildcard 3rd: ${fmtPct(pThird)}</span>
-      </div>`}
+      </div>
+      ${explainerNote}
     `;
   }
 
