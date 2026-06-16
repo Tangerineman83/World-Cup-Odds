@@ -168,7 +168,15 @@
     scenarioFlowSide = null;
     scenarioFlowKey = null;
     scenarioModal.querySelector('.modal-title').innerHTML = teamButton(team);
-    window.ScenarioFlow.renderGauge(scenarioModalGauge, team);
+    // In index.html, the popup is opened from the thirds table where the
+    // "Chance" column shows P(qualify | finish 3rd), not the unconditional
+    // pRoundOf32. Pass this as the headline to avoid confusion between the
+    // two figures.
+    const gaugeContext = team.pQualifyGiven3rd != null ? {
+      pct: team.pQualifyGiven3rd,
+      label: 'chance of qualifying as a top-8 third (if they finish 3rd)',
+    } : null;
+    window.ScenarioFlow.renderGauge(scenarioModalGauge, team, gaugeContext);
     renderModalFlow(team);
     scenarioModalBackdrop.hidden = false;
   }

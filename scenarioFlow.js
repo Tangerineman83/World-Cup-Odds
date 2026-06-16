@@ -38,15 +38,17 @@
     return `<img class="flag-icon" src="${flag}" srcset="${retina} 2x" alt="" loading="eager" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`;
   }
 
-  // The 5 mutually-exclusive group-stage outcome buckets, left-to-right
-  // display order (best to worst), matching outcomeScenarios/
-  // pooledScenarios byBucket keys in predictions.json.
+  // The 5 mutually-exclusive group-stage outcome buckets, ordered best to
+  // worst. Colours follow a semantic scale: bright green (automatic advance)
+  // → teal (wildcard advance) → amber (partial success, eliminated) → red
+  // (fully eliminated). This makes qualifying vs eliminated paths immediately
+  // distinguishable without needing labels.
   const OUTCOME_BUCKETS = [
-    { key: 'first', label: '1st in group', shortLabel: '1st', color: '#4ade80', desc: 'Automatic advance' },
-    { key: 'second', label: '2nd in group', shortLabel: '2nd', color: '#86efac', desc: 'Automatic advance' },
-    { key: 'thirdQualified', label: '3rd, advance as a wildcard', shortLabel: '3rd (through)', color: '#5eead4', desc: 'Advance via top-8 third' },
-    { key: 'thirdEliminated', label: '3rd, eliminated', shortLabel: '3rd (out)', color: '#94a3b8', desc: 'Misses out on tiebreaks' },
-    { key: 'fourth', label: '4th in group', shortLabel: '4th', color: '#64748b', desc: 'Eliminated' },
+    { key: 'first',           label: '1st in group',                shortLabel: '1st',          color: '#4ade80', desc: 'Automatic advance' },
+    { key: 'second',          label: '2nd in group',                shortLabel: '2nd',          color: '#86efac', desc: 'Automatic advance' },
+    { key: 'thirdQualified',  label: '3rd, advance as a wildcard',  shortLabel: '3rd (through)', color: '#5eead4', desc: 'Advance via top-8 third' },
+    { key: 'thirdEliminated', label: '3rd, eliminated',             shortLabel: '3rd (out)',    color: '#fb923c', desc: 'Misses out on tiebreaks' },
+    { key: 'fourth',          label: '4th in group',                shortLabel: '4th',          color: '#f87171', desc: 'Eliminated' },
   ];
 
   function sumPct(scenarios) {
@@ -57,21 +59,33 @@
     return sumPct((team.outcomeScenarios || {})[key]);
   }
 
-  // Renders the qualification gauge into gaugeEl: a segmented horizontal bar
-  // showing P(Last 32) split into "1st/2nd" vs "wildcard 3rd", with the
-  // headline % and a sub-breakdown.
-  function renderGauge(gaugeEl, team) {
+  // Renders the qualification gauge into gaugeEl.
+  //   team: predictions/scenario team object
+  //   gaugeContext (optional): if provided, overrides the headline with a
+  //     conditional probability — used by index.html's thirds-table popup
+  //     where the relevant figure is P(qualify | finish 3rd), not the
+  //     unconditional P(reach Last 32) shown on predictions.html. Avoids
+  //     a confusing mismatch with the "Chance" column in the thirds table.
+  //     Shape: { pct: number, label: string, sublabel: string }
+  function renderGauge(gaugeEl, team, gaugeContext) {
     const pWinnerOrRunnerUp = (team.pGroupWinner || 0) + (team.pRunnerUp || 0);
     const pThird = bucketTotal(team, 'thirdQualified');
     const pAdvance = team.pRoundOf32 || 0;
     const pWinnerOrRunnerUpShare = pAdvance > 0 ? (pWinnerOrRunnerUp / pAdvance) * 100 : 0;
     const pThirdShare = pAdvance > 0 ? (pThird / pAdvance) * 100 : 0;
 
+    const headlinePct = gaugeContext ? gaugeContext.pct : pAdvance;
+    const headlineLabel = gaugeContext ? gaugeContext.label : 'chance of reaching the Last 32';
+    const sublabel = gaugeContext
+      ? `<div class="gauge-context-note">(Overall Last 32 chance via any route: ${fmtPct(pAdvance)} &mdash; 1st/2nd: ${fmtPct(pWinnerOrRunnerUp)}, Wildcard 3rd: ${fmtPct(pThird)})</div>`
+      : '';
+
     gaugeEl.innerHTML = `
       <div class="gauge-headline">
-        <span class="gauge-pct">${fmtPct(pAdvance)}</span>
-        <span class="gauge-label">&nbsp;chance of reaching the Last 32</span>
+        <span class="gauge-pct">${fmtPct(headlinePct)}</span>
+        <span class="gauge-label">&nbsp;${headlineLabel}</span>
       </div>
+      ${sublabel || `
       <div class="gauge-bar">
         <div class="gauge-seg gauge-seg-direct" style="width:${pWinnerOrRunnerUpShare}%" title="As group winner or runner-up: ${fmtPct(pWinnerOrRunnerUp)}"></div>
         <div class="gauge-seg gauge-seg-wildcard" style="width:${pThirdShare}%" title="As a top-8 third-placed team: ${fmtPct(pThird)}"></div>
@@ -79,7 +93,7 @@
       <div class="gauge-sub">
         <span><span class="gauge-dot gauge-dot-direct"></span>1st or 2nd: ${fmtPct(pWinnerOrRunnerUp)}</span>
         <span><span class="gauge-dot gauge-dot-wildcard"></span>Wildcard 3rd: ${fmtPct(pThird)}</span>
-      </div>
+      </div>`}
     `;
   }
 
@@ -192,6 +206,17 @@
       );
     }
 
+    // Define a linear gradient per outcome bucket (slate → bucket colour),
+    // used for ribbons flowing left-to-right. One gradient per unique bucket
+    // colour, identified by the bucket key.
+    const gradientDefs = OUTCOME_BUCKETS.map((b) =>
+      `<linearGradient id="flow-grad-${b.key}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="${PTS_NODE_COLOR}"/>
+        <stop offset="100%" stop-color="${b.color}"/>
+      </linearGradient>`
+    ).join('');
+    svg += `<defs>${gradientDefs}</defs>`;
+
     // Ribbons (drawn first so nodes sit on top)
     for (const r of ribbons) {
       const path = `M ${leftX} ${r.ly0}
@@ -201,7 +226,7 @@
       const leftLabel = (leftByKey.get(r.leftKey) || {}).label || '';
       const rightLabel = OUTCOME_BUCKETS.find((b) => b.key === r.rightKey).shortLabel;
       const title = `${leftLabel} \u2192 ${rightLabel}: ${fmtPct(r.pct)}`;
-      svg += `<path d="${path}" fill="${r.color}" opacity="${ribbonOpacity(r)}" class="flow-ribbon" data-side="left" data-key="${r.leftKey}"><title>${title}</title></path>`;
+      svg += `<path d="${path}" fill="url(#flow-grad-${r.rightKey})" opacity="${ribbonOpacity(r)}" class="flow-ribbon" data-side="left" data-key="${r.leftKey}"><title>${title}</title></path>`;
     }
 
     // Left nodes (pts/GD) - labels to the left
