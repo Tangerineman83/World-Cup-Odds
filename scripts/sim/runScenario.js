@@ -199,6 +199,8 @@ function cleanMatch(m, codeOf) {
     thirdPlaceScenarios: (predictionsByName.get(t.name) || {}).thirdPlaceScenarios || [],
     outcomeScenarios: (predictionsByName.get(t.name) || {}).outcomeScenarios || null,
     pooledScenarios: (predictionsByName.get(t.name) || {}).pooledScenarios || [],
+    currentStanding: (predictionsByName.get(t.name) || {}).currentStanding || null,
+    pointsNodes: (predictionsByName.get(t.name) || {}).pointsNodes || [],
     pGroupWinner: (predictionsByName.get(t.name) || {}).pGroupWinner,
     pRunnerUp: (predictionsByName.get(t.name) || {}).pRunnerUp,
     pRoundOf32: (predictionsByName.get(t.name) || {}).pRoundOf32,

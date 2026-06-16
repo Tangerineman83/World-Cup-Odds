@@ -47,7 +47,31 @@ function mulberry32(seed) {
     console.log('  No completed results found (results.json empty or all placeholders) - using baseline ratings as-is.');
   }
 
-  // Aggregation counters
+  // Each team's CURRENT group-stage standing from already-played matches
+  // only (knownByGroup) - points/gd/gf banked so far, not a simulated
+  // distribution. Used as the fixed starting node of the 4-column "road to
+  // the Last 32" Sankey (see buildPooledScenarios below): every team starts
+  // here, then the simulation fans out from this fixed point. Mirrors the
+  // exact points/gf/ga logic in groupStage.js's applyResult so this always
+  // agrees with what the engine itself would compute for the same fixtures.
+  const currentStanding = new Map(); // team -> { points, gd, gf, ga, played }
+  for (const name of allTeams) {
+    currentStanding.set(name, { points: 0, gd: 0, gf: 0, ga: 0, played: 0 });
+  }
+  for (const fixtures of knownByGroup.values()) {
+    for (const r of fixtures) {
+      const home = currentStanding.get(r.home);
+      const away = currentStanding.get(r.away);
+      if (!home || !away) continue; // defensive: unknown team name, skip
+      home.gf += r.homeGoals; home.ga += r.awayGoals; home.played += 1;
+      away.gf += r.awayGoals; away.ga += r.homeGoals; away.played += 1;
+      if (r.homeGoals > r.awayGoals) home.points += 3;
+      else if (r.homeGoals < r.awayGoals) away.points += 3;
+      else { home.points += 1; away.points += 1; }
+    }
+  }
+  for (const s of currentStanding.values()) s.gd = s.gf - s.ga;
+
   const stageCounts = new Map(); // team -> { groupWin, r16, qf, sf, final, champion }
   for (const name of allTeams) {
     stageCounts.set(name, { r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0, groupWinner: 0, runnerUp: 0 });
@@ -239,6 +263,41 @@ function mulberry32(seed) {
     }));
   }
 
+  // Builds the "final points total" breakdown for one team - the second
+  // column of the 4-column Sankey (current points -> final points -> final
+  // points+GD -> group finish). Every final points total a team could
+  // realistically reach has its own node (there are at most 9 possible
+  // values - 0,1,2,3,4,5,6,7,9 - from 3 group games, so no "Other" folding
+  // is needed here, unlike the points+GD breakdown). Each node's byGd gives
+  // the GD breakdown FOR THAT POINTS TOTAL (i.e. which third-column nodes it
+  // feeds into, and with what probability) - this is what makes the
+  // points -> points+GD ribbons possible. total = unconditional probability
+  // (fraction of N_SIMULATIONS) of finishing on exactly this many points;
+  // summing all nodes' totals gives 1.
+  function buildPointsNodes(name) {
+    const byPoints = new Map(); // points -> { total: count, byGd: Map(gd -> count) }
+    for (const bucket of OUTCOME_BUCKETS) {
+      const hist = outcomeHistograms.get(name).get(bucket);
+      for (const [key, count] of hist.entries()) {
+        const [points, gd] = key.split(',').map(Number);
+        if (!byPoints.has(points)) byPoints.set(points, { points, total: 0, byGd: new Map() });
+        const node = byPoints.get(points);
+        node.total += count;
+        node.byGd.set(gd, (node.byGd.get(gd) || 0) + count);
+      }
+    }
+
+    return [...byPoints.values()]
+      .map((node) => ({
+        points: node.points,
+        total: node.total / N_SIMULATIONS,
+        byGd: Object.fromEntries(
+          [...node.byGd.entries()].map(([gd, count]) => [String(gd), count / N_SIMULATIONS])
+        ),
+      }))
+      .sort((a, b) => b.points - a.points);
+  }
+
   // which expects pct relative to P(finish 3rd) (= pFinish3rd), i.e. "given
   // finish 3rd, what's the points/GD AND qualified breakdown" - entries sum
   // to pQualifyGiven3rd. Derived from the new '3rd_qualified' bucket
@@ -283,6 +342,8 @@ function mulberry32(seed) {
         fourth: buildOutcomeScenarios(name, '4th'),
       },
       pooledScenarios: buildPooledScenarios(name),
+      currentStanding: currentStanding.get(name),
+      pointsNodes: buildPointsNodes(name),
     };
   });
 
@@ -305,7 +366,9 @@ function mulberry32(seed) {
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
       thirdPlaceScenarios: 'For each team, thirdPlaceScenarios lists the most common (points, gd) combinations from simulations where that team finished 3rd in their group AND qualified as a top-8 third. The pct for each entry is a fraction of ALL simulations where the team finished 3rd (not just qualifying ones) - so the entries sum to pQualifyGiven3rd (in scenario.json allThirds), not to 1. The top 5 distinct (points, gd) combos are listed individually; any remainder is grouped into an "Others" entry (points: null, gd: null). The remaining gap to 1 (i.e. 1 - pQualifyGiven3rd) represents simulations where the team finished 3rd but did NOT qualify - not itemised here. Empty for teams that (almost) never finish 3rd.',
       outcomeScenarios: 'For each team, outcomeScenarios breaks the group stage down into 5 mutually exclusive outcome buckets: first, second, thirdQualified (finished 3rd AND advanced as a top-8 third), thirdEliminated (finished 3rd, did not advance), fourth. Each bucket lists every (points, gd) combination with unconditional probability >1% (a fraction of ALL simulations, not just this bucket), plus an "Others" entry (points/gd: null) for the remainder. Summing the entries for a bucket gives the overall probability of that bucket (matching positionProbabilities[0]/[1]/[3] for first/second/fourth, and pThird / (pFinish3rd - pThird) for the two third-place splits). Summing across all 5 buckets gives 1 (every simulation lands in exactly one bucket).',
-      pooledScenarios: 'pooledScenarios is the same underlying data as outcomeScenarios, pooled across all 5 buckets into a single list of (points, gd) outcomes for the whole group stage - used for the "right-hand side" of the team Sankey diagram. Each entry has points, gd (or both null for "Other"), total (unconditional probability, summing to 1 across all entries), and byBucket (a map of bucket name -> probability, giving the per-bucket contribution to this (points, gd) combo - i.e. the ribbons feeding this node from the left-hand outcome buckets). The >1% threshold is applied to each combo\\u2019s POOLED total (summed across buckets) before folding into "Other" - so a combo can appear here even if it was <1% (and thus inside "Others") within an individual outcomeScenarios bucket. Sorted by points descending then gd descending ("best to poorest"), with "Other" last.',
+      pooledScenarios: 'pooledScenarios is the same underlying data as outcomeScenarios, pooled across all 5 buckets into a single list of (points, gd) outcomes for the whole group stage - used as the third column of the team Sankey diagram. Each entry has points, gd (or both null for "Other"), total (unconditional probability, summing to 1 across all entries), and byBucket (a map of bucket name to probability, giving the per-bucket contribution to this (points, gd) combo - i.e. the ribbons feeding this node from the outcome buckets in the fourth column). The >1% threshold is applied to each combo\'s POOLED total (summed across buckets) before folding into "Other" - so a combo can appear here even if it was <1% (and thus inside "Others") within an individual outcomeScenarios bucket. Sorted by points descending then gd descending ("best to poorest"), with "Other" last.',
+      currentStanding: 'currentStanding is each team\'s ACTUAL group-stage record from matches already played (results.json), not a simulated figure - the fixed starting point (first column) of the team Sankey diagram. Shape: points, gd, gf, ga, played (how many of their 3 group games are in the books, 0-3). For a team with played: 0, this is always points: 0, gd: 0, gf: 0, ga: 0.',
+      pointsNodes: 'pointsNodes is the final-points-total breakdown for one team - the second column of the team Sankey diagram, sitting between currentStanding (fixed) and pooledScenarios (final points+gd). There are at most 9 reachable totals from 3 group games (0,1,2,3,4,5,6,7,9 - 8 points is impossible), so every reachable total gets its own node; no "Other" folding here. Each entry has points, total (unconditional probability of finishing on exactly this many points, summing to 1 across all entries), and byGd (a map of GD value to probability, giving this points total\'s breakdown by final goal difference - i.e. the ribbons feeding into pooledScenarios). Sorted by points descending.',
     },
     teams,
   };
