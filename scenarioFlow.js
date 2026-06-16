@@ -140,32 +140,56 @@
   //     (right).
   //   onSelect(side, key): called when a node/ribbon is clicked; pass
   //     null/null to clear selection.
+  // Renders the 4-column flow diagram into svgEl:
+  //   1. Current standing  - a single fixed node (points/gd banked so far
+  //      from matches already played; not simulated)
+  //   2. Final points      - the points total a team ends the group stage
+  //      on (pointsNodes)
+  //   3. Final points + GD - same total, broken down by goal difference
+  //      (pooledScenarios)
+  //   4. Group finish      - the 5 outcome buckets (OUTCOME_BUCKETS)
+  // Ribbons only ever connect ADJACENT columns. Clicking any node
+  // highlights every ribbon/node connected to it, in EVERY column (found
+  // by tracing forward/backward through the ribbon graph), not just the
+  // column next to it.
   function renderFlow(svgEl, team, state, onSelect) {
-    const W = 680, H = 360;
-    const leftX = 120, rightX = 540;
-    const nodeWidth = 12;
+    const W = 980, H = 380;
     const topMargin = 32, bottomMargin = 10;
     const usableH = H - topMargin - bottomMargin;
+    const nodeWidth = 10;
+    const colX = [200, 380, 560, 800]; // current | points | points+gd | outcome
 
-    // LEFT side: pts/GD combos from pooledScenarios (best to worst, Other last)
-    const pooled = team.pooledScenarios || [];
-    const leftNodes = pooled.map((e) => {
-      const isOther = e.points === null;
-      const key = isOther ? 'other' : `${e.points},${e.gd}`;
-      const label = isOther ? 'Other' : `${e.points}pt${e.points === 1 ? '' : 's'}, GD ${e.gd >= 0 ? '+' : ''}${e.gd}`;
-      return { side: 'left', key, label, color: PTS_NODE_COLOR, isOther, pct: e.total, byBucket: e.byBucket };
-    });
+    // ---- Column 1: current standing (single fixed node, pct = 1) ----
+    const cur = team.currentStanding || { points: 0, gd: 0, played: 0 };
+    const curLabel = cur.played > 0
+      ? `${cur.points}pt${cur.points === 1 ? '' : 's'}, GD ${cur.gd >= 0 ? '+' : ''}${cur.gd} so far`
+      : 'Not yet played';
+    const col1 = [{ key: 'current', label: curLabel, color: PTS_NODE_COLOR, pct: 1 }];
 
-    // RIGHT side: outcome buckets (1st / 2nd / 3rd-through / 3rd-out / 4th)
-    const rightNodes = OUTCOME_BUCKETS.map((b) => ({
-      ...b, side: 'right', key: b.key, pct: bucketTotal(team, b.key),
+    // ---- Column 2: final points totals ----
+    const pointsNodes = team.pointsNodes || [];
+    const col2 = pointsNodes.map((n) => ({
+      key: `pts:${n.points}`, label: `${n.points}pt${n.points === 1 ? '' : 's'}`,
+      color: PTS_NODE_COLOR, pct: n.total, byGd: n.byGd,
     }));
 
-    const leftTotal = leftNodes.reduce((sum, n) => sum + n.pct, 0) || 1;
-    const rightTotal = rightNodes.reduce((sum, n) => sum + n.pct, 0) || 1;
+    // ---- Column 3: final points + GD (pooledScenarios) ----
+    const pooled = team.pooledScenarios || [];
+    const col3 = pooled.map((e) => {
+      const isOther = e.points === null;
+      const key = isOther ? 'other' : `ptsgd:${e.points},${e.gd}`;
+      const label = isOther ? 'Other' : `${e.points}pt${e.points === 1 ? '' : 's'}, GD ${e.gd >= 0 ? '+' : ''}${e.gd}`;
+      return { key, label, color: isOther ? OTHER_NODE_COLOR : PTS_NODE_COLOR, isOther, pct: e.total, points: e.points, byBucket: e.byBucket };
+    });
 
-    function layout(nodes, total, gap) {
-      const totalGap = gap * (nodes.length - 1);
+    // ---- Column 4: outcome buckets ----
+    const col4 = OUTCOME_BUCKETS.map((b) => ({ ...b, key: b.key, pct: bucketTotal(team, b.key) }));
+
+    const columns = [col1, col2, col3, col4];
+
+    function layout(nodes, gap) {
+      const total = nodes.reduce((sum, n) => sum + n.pct, 0) || 1;
+      const totalGap = gap * Math.max(nodes.length - 1, 0);
       let y = topMargin;
       return nodes.map((n) => {
         const h = Math.max((n.pct / total) * (usableH - totalGap), n.pct > 0 ? 1.5 : 0);
@@ -175,70 +199,150 @@
       });
     }
 
-    const leftGap = Math.max(1.5, Math.min(5, 240 / Math.max(leftNodes.length, 1)));
-    const leftLaidOut = layout(leftNodes, leftTotal, leftGap);
-    const rightLaidOut = layout(rightNodes, rightTotal, 6);
+    const gaps = columns.map((nodes) => Math.max(1.5, Math.min(6, 260 / Math.max(nodes.length, 1))));
+    const laidOut = columns.map((nodes, i) => layout(nodes, gaps[i]));
+    const byKey = laidOut.map((nodes) => new Map(nodes.map((n) => [n.key, n])));
 
-    const leftByKey = new Map(leftLaidOut.map((n) => [n.key, n]));
-    const rightByKey = new Map(rightLaidOut.map((n) => [n.key, n]));
+    // ---- Ribbons: col1->col2, col2->col3, col3->col4 ----
+    // Each ribbon set uses the same "outer loop = source node, inner loop =
+    // matching target nodes in display order" stacking approach so ribbons
+    // never cross within a single node's stack.
+    const ribbonSets = []; // one array per adjacent column pair
 
-    // Ribbon stacking: outer loop = left (pts/GD) nodes (determines right-cursor
-    // position per right node), inner loop = right (outcome bucket) nodes in order.
-    // For each pts/GD node, iterate over outcome buckets in display order,
-    // allocating a slice of the pts/GD node proportional to that bucket's
-    // contribution, and a slice of the bucket node proportional to the same.
-    // This ensures no crossing within either node's ribbon stack.
-    const rightCursors = new Map(rightLaidOut.map((n) => [n.key, n.y0]));
-    const ribbons = [];
-    for (const left of leftLaidOut) {
-      let leftCursor = left.y0;
-      for (const bucket of OUTCOME_BUCKETS) {
-        const p = (left.byBucket || {})[bucket.key];
+    // col1 -> col2: the single current-standing node feeds every points
+    // node, sized by that points node's own probability (since col1 is
+    // 100% by definition, the split mirrors col2's own distribution).
+    {
+      const target = byKey[1];
+      const sourceNode = laidOut[0][0];
+      let sourceCursor = sourceNode.y0;
+      const targetCursors = new Map(laidOut[1].map((n) => [n.key, n.y0]));
+      const ribbons = [];
+      for (const t of laidOut[1]) {
+        const p = t.pct;
         if (!p) continue;
-        const right = rightByKey.get(bucket.key);
-        if (!right) continue;
+        const sy0 = sourceCursor;
+        const sy1 = sourceCursor + (sourceNode.y1 - sourceNode.y0) * p;
+        sourceCursor = sy1;
+        const ty0 = targetCursors.get(t.key);
+        const ty1 = ty0 + (t.y1 - t.y0); // whole node (1:1 - only one source)
+        targetCursors.set(t.key, ty1);
+        ribbons.push({ fromKey: sourceNode.key, toKey: t.key, pct: p, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1 });
+      }
+      ribbonSets.push(ribbons);
+    }
 
-        const ly0 = leftCursor;
-        const ly1 = leftCursor + (left.y1 - left.y0) * (p / left.pct);
-        leftCursor = ly1;
+    // col2 -> col3: each points node fans out into its GD breakdown
+    // (byGd), matched to col3 nodes by points+gd key.
+    {
+      const sourceCursors = new Map(laidOut[1].map((n) => [n.key, n.y0]));
+      const targetCursors = new Map(laidOut[2].map((n) => [n.key, n.y0]));
+      const ribbons = [];
+      for (const s of laidOut[1]) {
+        const gdEntries = Object.entries(s.byGd || {}).sort((a, b) => Number(b[0]) - Number(a[0]));
+        for (const [gdStr, p] of gdEntries) {
+          if (!p) continue;
+          const gd = Number(gdStr);
+          const pointsVal = Number(s.key.split(':')[1]);
+          // Find which col3 node this (points,gd) belongs to - either its
+          // own node, or "Other" if it was folded in there.
+          let targetKey = `ptsgd:${pointsVal},${gd}`;
+          if (!byKey[2].has(targetKey)) targetKey = 'other';
+          const t = byKey[2].get(targetKey);
+          if (!t) continue;
 
-        const rightTotalH = right.y1 - right.y0;
-        const ry0 = rightCursors.get(bucket.key);
-        const ry1 = ry0 + rightTotalH * (p / right.pct);
-        rightCursors.set(bucket.key, ry1);
+          const sy0 = sourceCursors.get(s.key);
+          const sy1 = sy0 + (s.y1 - s.y0) * (p / s.pct);
+          sourceCursors.set(s.key, sy1);
 
-        ribbons.push({
-          leftKey: left.key, rightKey: bucket.key, pct: p,
-          ly0, ly1, ry0, ry1, color: bucket.color,
-        });
+          const ty0 = targetCursors.get(t.key);
+          const ty1 = ty0 + (t.y1 - t.y0) * (p / t.pct);
+          targetCursors.set(t.key, ty1);
+
+          ribbons.push({ fromKey: s.key, toKey: t.key, pct: p, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1 });
+        }
+      }
+      ribbonSets.push(ribbons);
+    }
+
+    // col3 -> col4: each points+gd node fans out into outcome buckets
+    // (byBucket) - same logic as the old 2-column version.
+    {
+      const sourceCursors = new Map(laidOut[2].map((n) => [n.key, n.y0]));
+      const targetCursors = new Map(laidOut[3].map((n) => [n.key, n.y0]));
+      const ribbons = [];
+      for (const s of laidOut[2]) {
+        for (const bucket of OUTCOME_BUCKETS) {
+          const p = (s.byBucket || {})[bucket.key];
+          if (!p) continue;
+          const t = byKey[3].get(bucket.key);
+          if (!t) continue;
+
+          const sy0 = sourceCursors.get(s.key);
+          const sy1 = sy0 + (s.y1 - s.y0) * (p / s.pct);
+          sourceCursors.set(s.key, sy1);
+
+          const ty0 = targetCursors.get(t.key);
+          const ty1 = ty0 + (t.y1 - t.y0) * (p / t.pct);
+          targetCursors.set(t.key, ty1);
+
+          ribbons.push({ fromKey: s.key, toKey: bucket.key, pct: p, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1, bucketColor: bucket.color });
+        }
+      }
+      ribbonSets.push(ribbons);
+    }
+
+    // ---- Selection / highlight logic ----
+    // selKey identifies a node by its OWN key, unique only within its
+    // column - so we also track which column index it's in.
+    const selCol = state && state.selectedCol;
+    const selKey = state && state.selectedKey;
+
+    // Build adjacency (key -> connected keys in neighbouring columns) once,
+    // so highlighting can trace outward from any selected node in any
+    // column to every other column, not just the adjacent ones.
+    function neighboursOf(colIdx, key) {
+      const result = new Set();
+      if (colIdx > 0) {
+        for (const r of ribbonSets[colIdx - 1]) if (r.toKey === key) result.add(r.fromKey);
+      }
+      if (colIdx < columns.length - 1) {
+        for (const r of ribbonSets[colIdx] || []) if (r.fromKey === key) result.add(r.toKey);
+      }
+      return result;
+    }
+
+    // highlightSet[colIdx] = Set of keys in that column connected to the
+    // selection, found by breadth-first expansion outward in both
+    // directions from the selected node.
+    const highlightSets = columns.map(() => new Set());
+    if (selKey != null && selCol != null) {
+      highlightSets[selCol].add(selKey);
+      // Expand left from selCol
+      let frontier = new Set([selKey]);
+      for (let c = selCol; c > 0; c--) {
+        const prev = new Set();
+        for (const k of frontier) for (const r of ribbonSets[c - 1]) if (r.toKey === k) prev.add(r.fromKey);
+        for (const k of prev) highlightSets[c - 1].add(k);
+        frontier = prev;
+      }
+      // Expand right from selCol
+      frontier = new Set([selKey]);
+      for (let c = selCol; c < columns.length - 1; c++) {
+        const next = new Set();
+        for (const k of frontier) for (const r of ribbonSets[c]) if (r.fromKey === k) next.add(r.toKey);
+        for (const k of next) highlightSets[c + 1].add(k);
+        frontier = next;
       }
     }
 
-    const midX = (leftX + rightX) / 2;
+
     let svg = '';
 
-    const selSide = state && state.selectedSide;
-    const selKey = state && state.selectedKey;
-
-    function ribbonOpacity(r) {
-      if (!selKey) return 0.45;
-      const matches = (selSide === 'left' && r.leftKey === selKey) ||
-                      (selSide === 'right' && r.rightKey === selKey);
-      return matches ? 0.85 : 0.08;
-    }
-
-    function nodeIsDimmed(side, key) {
-      if (!selKey) return false;
-      if (selSide === side) return key !== selKey;
-      return !ribbons.some((r) =>
-        selSide === 'left' ? r.leftKey === selKey && r.rightKey === key
-                           : r.rightKey === selKey && r.leftKey === key
-      );
-    }
-
-    // Define a linear gradient per outcome bucket (slate → bucket colour),
-    // used for ribbons flowing left-to-right. One gradient per unique bucket
-    // colour, identified by the bucket key.
+    // Gradient defs: col3->col4 ribbons use a slate->bucket-colour
+    // gradient (as before); col1->col2 and col2->col3 ribbons use a flat
+    // slate fill (both ends are pts/gd nodes, so a gradient would be a
+    // no-op anyway).
     const gradientDefs = OUTCOME_BUCKETS.map((b) =>
       `<linearGradient id="flow-grad-${b.key}" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stop-color="${PTS_NODE_COLOR}"/>
@@ -247,55 +351,70 @@
     ).join('');
     svg += `<defs>${gradientDefs}</defs>`;
 
-    // Ribbons (drawn first so nodes sit on top)
-    for (const r of ribbons) {
-      const path = `M ${leftX} ${r.ly0}
-        C ${midX} ${r.ly0}, ${midX} ${r.ry0}, ${rightX} ${r.ry0}
-        L ${rightX} ${r.ry1}
-        C ${midX} ${r.ry1}, ${midX} ${r.ly1}, ${leftX} ${r.ly1} Z`;
-      const leftLabel = (leftByKey.get(r.leftKey) || {}).label || '';
-      const rightLabel = OUTCOME_BUCKETS.find((b) => b.key === r.rightKey).shortLabel;
-      const title = `${leftLabel} \u2192 ${rightLabel}: ${fmtPct(r.pct)}`;
-      svg += `<path d="${path}" fill="url(#flow-grad-${r.rightKey})" opacity="${ribbonOpacity(r)}" class="flow-ribbon" data-side="left" data-key="${r.leftKey}"><title>${title}</title></path>`;
+    function ribbonPath(x0, x1, r) {
+      const midX = (x0 + x1) / 2;
+      return `M ${x0} ${r.y0a}
+        C ${midX} ${r.y0a}, ${midX} ${r.y0b}, ${x1} ${r.y0b}
+        L ${x1} ${r.y1b}
+        C ${midX} ${r.y1b}, ${midX} ${r.y1a}, ${x0} ${r.y1a} Z`;
     }
 
-    // Left nodes (pts/GD) - labels to the left
-    for (const n of leftLaidOut) {
-      if (n.pct <= 0) continue;
-      const dimmed = nodeIsDimmed('left', n.key);
-      const isSelected = selSide === 'left' && selKey === n.key;
-      const nodeColor = n.isOther ? OTHER_NODE_COLOR : PTS_NODE_COLOR;
-      svg += `<rect x="${leftX - nodeWidth}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${nodeColor}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-side="left" data-key="${n.key}"></rect>`;
-      const midY = (n.y0 + n.y1) / 2;
-      svg += `<text x="${leftX - nodeWidth - 8}" y="${midY + 4}" text-anchor="end" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-side="left" data-key="${n.key}"><tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan> ${n.label}</text>`;
+    // Draw ribbons (3 sets), nodes, and labels for each column.
+    for (let c = 0; c < columns.length; c++) {
+      if (c < columns.length - 1) {
+        const x0 = colX[c], x1 = colX[c + 1];
+        const setIdx = c;
+        for (const r of ribbonSets[setIdx]) {
+          let opacity = 0.42;
+          if (selKey != null) {
+            const connected = highlightSets[c].has(r.fromKey) && highlightSets[c + 1].has(r.toKey);
+            opacity = connected ? 0.85 : 0.06;
+          }
+          const fill = (c === columns.length - 2) ? `url(#flow-grad-${r.toKey})` : PTS_NODE_COLOR;
+          svg += `<path d="${ribbonPath(x0, x1, r)}" fill="${fill}" opacity="${opacity}" class="flow-ribbon" data-col="${c}" data-key="${r.fromKey}"><title>${fmtPct(r.pct)}</title></path>`;
+        }
+      }
     }
 
-    // Right nodes (outcome buckets) - labels to the right
-    for (const n of rightLaidOut) {
-      if (n.pct <= 0) continue;
-      const dimmed = nodeIsDimmed('right', n.key);
-      const isSelected = selSide === 'right' && selKey === n.key;
-      svg += `<rect x="${rightX}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-side="right" data-key="${n.key}"></rect>`;
-      const midY = (n.y0 + n.y1) / 2;
-      svg += `<text x="${rightX + nodeWidth + 8}" y="${midY + 4}" text-anchor="start" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-side="right" data-key="${n.key}">${n.shortLabel} <tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan></text>`;
+    for (let c = 0; c < columns.length; c++) {
+      const x = colX[c];
+      for (const n of laidOut[c]) {
+        if (n.pct <= 0) continue;
+        const isSelected = selCol === c && selKey === n.key;
+        const dimmed = selKey != null && !highlightSets[c].has(n.key);
+        const fillColor = n.isOther ? OTHER_NODE_COLOR : n.color;
+        svg += `<rect x="${x - nodeWidth / 2}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${fillColor}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-col="${c}" data-key="${n.key}"></rect>`;
+        const midY = (n.y0 + n.y1) / 2;
+        const anchor = c === 0 ? 'end' : (c === columns.length - 1 ? 'start' : (c % 2 === 1 ? 'end' : 'start'));
+        const labelX = c === 0 ? x - nodeWidth / 2 - 8
+          : c === columns.length - 1 ? x + nodeWidth / 2 + 8
+          : (c === 1 ? x - nodeWidth / 2 - 8 : x + nodeWidth / 2 + 8);
+        const pctSpan = `<tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan>`;
+        const displayLabel = c === columns.length - 1 ? (n.shortLabel || n.label) : n.label;
+        const text = c === 0 ? displayLabel
+          : (c === 1 ? `${pctSpan} ${displayLabel}` : `${displayLabel} ${pctSpan}`);
+        svg += `<text x="${labelX}" y="${midY + 4}" text-anchor="${anchor}" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-col="${c}" data-key="${n.key}">${text}</text>`;
+      }
     }
 
     // Column headers
-    svg += `<text x="${leftX - nodeWidth / 2}" y="${topMargin - 14}" text-anchor="middle" class="flow-source-label">${team.name}</text>`;
-    svg += `<text x="${leftX - nodeWidth / 2}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">Points / GD</text>`;
-    svg += `<text x="${rightX + nodeWidth / 2}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">Group finish</text>`;
+    const headers = [team.name, 'Final points', 'Points / GD', 'Group finish'];
+    for (let c = 0; c < columns.length; c++) {
+      svg += `<text x="${colX[c]}" y="${topMargin - 14}" text-anchor="middle" class="flow-source-label">${c === 0 ? team.name : ''}</text>`;
+      svg += `<text x="${colX[c]}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">${headers[c]}</text>`;
+    }
 
     svgEl.innerHTML = svg;
     svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
     svgEl.querySelectorAll('[data-key]').forEach((el) => {
       el.addEventListener('click', () => {
-        const side = el.dataset.side;
+        const col = Number(el.dataset.col);
         const key = el.dataset.key;
-        if (selSide === side && selKey === key) {
+        if (selCol === col && selKey === key) {
           onSelect(null, null);
         } else {
-          onSelect(side, key);
+          onSelect(col, key);
         }
       });
     });

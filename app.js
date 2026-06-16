@@ -12,7 +12,7 @@
   const scenarioModalClose = document.getElementById('scenario-modal-close');
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
-  let scenarioFlowSide = null;
+  let scenarioFlowCol = null;
   let scenarioFlowKey = null;
 
   let data = null;
@@ -165,7 +165,7 @@
   // Uses the shared scenarioFlow.js renderer (window.ScenarioFlow).
   function openScenarioModal(team) {
     if (!team.pooledScenarios || team.pooledScenarios.length === 0) return;
-    scenarioFlowSide = null;
+    scenarioFlowCol = null;
     scenarioFlowKey = null;
     scenarioModal.querySelector('.modal-title').innerHTML = teamButton(team);
     // In index.html, the popup is opened from the thirds table where the
@@ -186,9 +186,9 @@
   function renderModalFlow(team) {
     window.ScenarioFlow.renderFlow(
       scenarioModalFlow, team,
-      { selectedSide: scenarioFlowSide, selectedKey: scenarioFlowKey },
-      (side, key) => {
-        scenarioFlowSide = side;
+      { selectedCol: scenarioFlowCol, selectedKey: scenarioFlowKey },
+      (col, key) => {
+        scenarioFlowCol = col;
         scenarioFlowKey = key;
         renderModalFlow(team);
       }
@@ -197,7 +197,7 @@
 
   function closeScenarioModal() {
     scenarioModalBackdrop.hidden = true;
-    scenarioFlowSide = null;
+    scenarioFlowCol = null;
     scenarioFlowKey = null;
   }
 

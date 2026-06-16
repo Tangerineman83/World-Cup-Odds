@@ -13,7 +13,7 @@
   let sortKey = 'eloRating';
   let sortDir = 'desc';
   let selectedTeamName = null;
-  let selectedFlowSide = null; // 'left' | 'right' | null
+  let selectedFlowCol = null; // column index (0-3) of the selected node, or null
   let selectedFlowKey = null;
 
   const PCT_KEYS = new Set([
@@ -169,7 +169,7 @@
   function closeScenarioModal() {
     scenarioModalBackdrop.hidden = true;
     selectedTeamName = null;
-    selectedFlowSide = null;
+    selectedFlowCol = null;
     selectedFlowKey = null;
     render();
   }
@@ -178,9 +178,9 @@
     window.ScenarioFlow.renderFlow(
       scenarioModalFlow,
       team,
-      { selectedSide: selectedFlowSide, selectedKey: selectedFlowKey },
-      (side, key) => {
-        selectedFlowSide = side;
+      { selectedCol: selectedFlowCol, selectedKey: selectedFlowKey },
+      (col, key) => {
+        selectedFlowCol = col;
         selectedFlowKey = key;
         renderModalFlow(team);
       }
@@ -191,7 +191,7 @@
     const team = currentData.teams.find((t) => t.name === name);
     if (!team) return;
 
-    selectedFlowSide = null;
+    selectedFlowCol = null;
     selectedFlowKey = null;
 
     const flagHtml = flagImgHtml(team.code, 32);
