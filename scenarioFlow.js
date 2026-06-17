@@ -130,7 +130,6 @@
   // Node colours: pts/GD nodes on the left use a neutral slate, outcome
   // nodes on the right use each bucket's own colour (OUTCOME_BUCKETS[].color).
   const PTS_NODE_COLOR = '#7c8db5';
-  const OTHER_NODE_COLOR = '#475174';
 
   // Renders the two-sided flow diagram into svgEl.
   //   team: a predictions.json/scenario.json team entry (needs
@@ -174,12 +173,16 @@
     }));
 
     // ---- Column 3: final points + GD (pooledScenarios) ----
+    // Every distinct combo gets its own node now - there's no "Other"
+    // catch-all. showLabel (from the data layer, true above 0.5%) controls
+    // whether the node's text label is drawn; the node and its ribbons are
+    // always drawn regardless, so thin slivers are still visible/hoverable,
+    // just without a label cluttering the column.
     const pooled = team.pooledScenarios || [];
     const col3 = pooled.map((e) => {
-      const isOther = e.points === null;
-      const key = isOther ? 'other' : `ptsgd:${e.points},${e.gd}`;
-      const label = isOther ? 'Other' : `${e.points}pt${e.points === 1 ? '' : 's'}, GD ${e.gd >= 0 ? '+' : ''}${e.gd}`;
-      return { key, label, color: isOther ? OTHER_NODE_COLOR : PTS_NODE_COLOR, isOther, pct: e.total, points: e.points, byBucket: e.byBucket };
+      const key = `ptsgd:${e.points},${e.gd}`;
+      const label = `${e.points}pt${e.points === 1 ? '' : 's'}, GD ${e.gd >= 0 ? '+' : ''}${e.gd}`;
+      return { key, label, color: PTS_NODE_COLOR, pct: e.total, points: e.points, byBucket: e.byBucket, showLabel: e.showLabel };
     });
 
     // ---- Column 4: outcome buckets ----
@@ -244,10 +247,10 @@
           if (!p) continue;
           const gd = Number(gdStr);
           const pointsVal = Number(s.key.split(':')[1]);
-          // Find which col3 node this (points,gd) belongs to - either its
-          // own node, or "Other" if it was folded in there.
-          let targetKey = `ptsgd:${pointsVal},${gd}`;
-          if (!byKey[2].has(targetKey)) targetKey = 'other';
+          // Find which col3 node this (points,gd) combo belongs to. Every
+          // combo now has its own node (no "Other" folding), so this
+          // should always resolve.
+          const targetKey = `ptsgd:${pointsVal},${gd}`;
           const t = byKey[2].get(targetKey);
           if (!t) continue;
 
@@ -376,15 +379,31 @@
       }
     }
 
+    // Minimum vertical gap (px) between two consecutive shown labels in the
+    // same column, to stop adjacent thin rows' text visually overlapping
+    // even when both individually clear the showLabel/0.5% threshold. Only
+    // matters for dense columns (col 3 on high-entropy teams); columns 1/2/4
+    // never have enough rows to trigger this.
+    const MIN_LABEL_GAP = 13;
+    let lastLabelY = columns.map(() => -Infinity);
+
     for (let c = 0; c < columns.length; c++) {
       const x = colX[c];
       for (const n of laidOut[c]) {
         if (n.pct <= 0) continue;
         const isSelected = selCol === c && selKey === n.key;
         const dimmed = selKey != null && !highlightSets[c].has(n.key);
-        const fillColor = n.isOther ? OTHER_NODE_COLOR : n.color;
-        svg += `<rect x="${x - nodeWidth / 2}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${fillColor}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-col="${c}" data-key="${n.key}"></rect>`;
+        svg += `<rect x="${x - nodeWidth / 2}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-col="${c}" data-key="${n.key}"><title>${n.label} - ${fmtPct(n.pct)}</title></rect>`;
+        // showLabel is only set on column-3 (points+GD) nodes, to hide
+        // labels on combos too thin to read (<0.5%) while still drawing
+        // their node/ribbons. Other columns always show their label.
+        // Even when showLabel is true, also skip if it would land too
+        // close to the last shown label in this column and visually
+        // collide - the node/ribbon/tooltip are unaffected either way.
         const midY = (n.y0 + n.y1) / 2;
+        if (n.showLabel === false) continue;
+        if (midY - lastLabelY[c] < MIN_LABEL_GAP) continue;
+        lastLabelY[c] = midY;
         const anchor = c === 0 ? 'end' : (c === columns.length - 1 ? 'start' : (c % 2 === 1 ? 'end' : 'start'));
         const labelX = c === 0 ? x - nodeWidth / 2 - 8
           : c === columns.length - 1 ? x + nodeWidth / 2 + 8
