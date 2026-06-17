@@ -119,7 +119,7 @@
     if (!currentData) return;
     const d = new Date(currentData.generatedAt);
     metaUpdated.textContent = 'Updated ' + d.toLocaleString(undefined, {
-      dateStyle: 'medium', timeStyle: 'short',
+      dateStyle: 'medium',
     });
     metaSims.textContent = 'Based on ' + currentData.numSimulations.toLocaleString() + ' tournaments';
   }

@@ -625,7 +625,7 @@
   function renderMeta() {
     const d = new Date(data.generatedAt);
     metaUpdated.textContent = 'Updated ' + d.toLocaleString(undefined, {
-      dateStyle: 'medium', timeStyle: 'short',
+      dateStyle: 'medium',
     });
 
     const metaResults = document.getElementById('meta-results');
