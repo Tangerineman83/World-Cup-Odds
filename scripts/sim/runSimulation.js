@@ -219,6 +219,13 @@ function mulberry32(seed) {
     '4th': 'fourth',
   };
 
+  // Below this, a (points, gd) combo is still drawn as its own node/ribbon
+  // (every real combo gets a node - no "Other" catch-all), but its label is
+  // hidden to avoid overcrowding the column with illegible text for combos
+  // that are too thin to read anyway. The node and its ribbons are always
+  // there and hoverable/clickable; only the always-on text label is culled.
+  const LABEL_THRESHOLD = 0.005; // 0.5%
+
   function buildPooledScenarios(name) {
     const pooled = new Map(); // "points,gd" -> { points, gd, byBucket: {bucket: count} }
     for (const bucket of OUTCOME_BUCKETS) {
@@ -233,34 +240,18 @@ function mulberry32(seed) {
       }
     }
 
-    const entries = [...pooled.values()].map((e) => ({
-      ...e,
-      total: Object.values(e.byBucket).reduce((sum, p) => sum + p, 0),
-    }));
-
-    const shown = entries.filter((e) => e.total > SCENARIO_THRESHOLD)
+    // Every distinct (points, gd) combo that occurred in at least one
+    // simulation gets its own entry - no threshold-based folding into
+    // "Other". showLabel marks whether this combo is common enough
+    // (>LABEL_THRESHOLD) for the Sankey to print its text label; thin
+    // combos still get a node and ribbons, just without a label
+    // cluttering the column.
+    return [...pooled.values()]
+      .map((e) => {
+        const total = Object.values(e.byBucket).reduce((sum, p) => sum + p, 0);
+        return { points: e.points, gd: e.gd, total, byBucket: e.byBucket, showLabel: total > LABEL_THRESHOLD };
+      })
       .sort((a, b) => (b.points - a.points) || (b.gd - a.gd));
-
-    const others = entries.filter((e) => e.total <= SCENARIO_THRESHOLD);
-    if (others.length > 0) {
-      const othersByBucket = {};
-      for (const e of others) {
-        for (const [bucket, p] of Object.entries(e.byBucket)) {
-          othersByBucket[bucket] = (othersByBucket[bucket] || 0) + p;
-        }
-      }
-      const othersTotal = Object.values(othersByBucket).reduce((sum, p) => sum + p, 0);
-      if (othersTotal > 0) {
-        shown.push({ points: null, gd: null, total: othersTotal, byBucket: othersByBucket });
-      }
-    }
-
-    return shown.map((e) => ({
-      points: e.points,
-      gd: e.gd,
-      total: e.total,
-      byBucket: e.byBucket,
-    }));
   }
 
   // Builds the "final points total" breakdown for one team - the second
@@ -366,7 +357,7 @@ function mulberry32(seed) {
       climateAdjustment: 'group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team\'s acclimatisation to that group\'s representative host-city altitude/heat profile. Directional, not a fitted parameter. Not applied to knockout matches.',
       thirdPlaceScenarios: 'For each team, thirdPlaceScenarios lists the most common (points, gd) combinations from simulations where that team finished 3rd in their group AND qualified as a top-8 third. The pct for each entry is a fraction of ALL simulations where the team finished 3rd (not just qualifying ones) - so the entries sum to pQualifyGiven3rd (in scenario.json allThirds), not to 1. The top 5 distinct (points, gd) combos are listed individually; any remainder is grouped into an "Others" entry (points: null, gd: null). The remaining gap to 1 (i.e. 1 - pQualifyGiven3rd) represents simulations where the team finished 3rd but did NOT qualify - not itemised here. Empty for teams that (almost) never finish 3rd.',
       outcomeScenarios: 'For each team, outcomeScenarios breaks the group stage down into 5 mutually exclusive outcome buckets: first, second, thirdQualified (finished 3rd AND advanced as a top-8 third), thirdEliminated (finished 3rd, did not advance), fourth. Each bucket lists every (points, gd) combination with unconditional probability >1% (a fraction of ALL simulations, not just this bucket), plus an "Others" entry (points/gd: null) for the remainder. Summing the entries for a bucket gives the overall probability of that bucket (matching positionProbabilities[0]/[1]/[3] for first/second/fourth, and pThird / (pFinish3rd - pThird) for the two third-place splits). Summing across all 5 buckets gives 1 (every simulation lands in exactly one bucket).',
-      pooledScenarios: 'pooledScenarios is the same underlying data as outcomeScenarios, pooled across all 5 buckets into a single list of (points, gd) outcomes for the whole group stage - used as the third column of the team Sankey diagram. Each entry has points, gd (or both null for "Other"), total (unconditional probability, summing to 1 across all entries), and byBucket (a map of bucket name to probability, giving the per-bucket contribution to this (points, gd) combo - i.e. the ribbons feeding this node from the outcome buckets in the fourth column). The >1% threshold is applied to each combo\'s POOLED total (summed across buckets) before folding into "Other" - so a combo can appear here even if it was <1% (and thus inside "Others") within an individual outcomeScenarios bucket. Sorted by points descending then gd descending ("best to poorest"), with "Other" last.',
+      pooledScenarios: 'pooledScenarios is the same underlying data as outcomeScenarios, pooled across all 5 buckets into a single list of (points, gd) outcomes for the whole group stage - used as the third column of the team Sankey diagram. EVERY distinct (points, gd) combo that occurred in at least one simulation gets its own entry here - there is no "Other" catch-all bucket, so the diagram never has a node mixing together unrelated scenarios. Each entry has points, gd, total (unconditional probability, summing to 1 across all entries), byBucket (a map of bucket name to probability, giving the per-bucket contribution to this combo - i.e. the ribbons feeding this node from the outcome buckets in the fourth column), and showLabel (true if total > 0.5%, a hint for the renderer to skip printing a text label on combos too thin to read - the node and its ribbons are still drawn either way, just without a label). Sorted by points descending then gd descending ("best to poorest").',
       currentStanding: 'currentStanding is each team\'s ACTUAL group-stage record from matches already played (results.json), not a simulated figure - the fixed starting point (first column) of the team Sankey diagram. Shape: points, gd, gf, ga, played (how many of their 3 group games are in the books, 0-3). For a team with played: 0, this is always points: 0, gd: 0, gf: 0, ga: 0.',
       pointsNodes: 'pointsNodes is the final-points-total breakdown for one team - the second column of the team Sankey diagram, sitting between currentStanding (fixed) and pooledScenarios (final points+gd). There are at most 9 reachable totals from 3 group games (0,1,2,3,4,5,6,7,9 - 8 points is impossible), so every reachable total gets its own node; no "Other" folding here. Each entry has points, total (unconditional probability of finishing on exactly this many points, summing to 1 across all entries), and byGd (a map of GD value to probability, giving this points total\'s breakdown by final goal difference - i.e. the ribbons feeding into pooledScenarios). Sorted by points descending.',
     },
