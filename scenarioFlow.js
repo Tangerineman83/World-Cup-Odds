@@ -152,8 +152,8 @@
   // by tracing forward/backward through the ribbon graph), not just the
   // column next to it.
   function renderFlow(svgEl, team, state, onSelect) {
-    const W = 980, H = 380;
-    const topMargin = 32, bottomMargin = 10;
+    const W = 980, H = 520;
+    const topMargin = 32, bottomMargin = 16;
     const usableH = H - topMargin - bottomMargin;
     const nodeWidth = 10;
     const colX = [200, 380, 560, 800]; // current | points | points+gd | outcome
@@ -193,9 +193,25 @@
     function layout(nodes, gap) {
       const total = nodes.reduce((sum, n) => sum + n.pct, 0) || 1;
       const totalGap = gap * Math.max(nodes.length - 1, 0);
+      const available = Math.max(usableH - totalGap, 0);
+
+      // Two-pass sizing: first give every node its proportional height,
+      // floored at MIN_NODE_H so thin nodes are still visible/clickable.
+      // With many nodes (some teams have 90+ distinct points/GD combos),
+      // that floor can push the SUM of heights past `available` - so the
+      // second pass proportionally shrinks every node by the same factor
+      // to bring the total back to exactly `available`. This keeps thin
+      // nodes visible without ever pushing the column's total height past
+      // the chart's own viewBox (which was clipping the bottom rows for
+      // high-entropy teams before this fix).
+      const MIN_NODE_H = 1.5;
+      const rawHeights = nodes.map((n) => n.pct > 0 ? Math.max((n.pct / total) * available, MIN_NODE_H) : 0);
+      const rawTotal = rawHeights.reduce((sum, h) => sum + h, 0) || 1;
+      const scale = rawTotal > available ? available / rawTotal : 1;
+
       let y = topMargin;
-      return nodes.map((n) => {
-        const h = Math.max((n.pct / total) * (usableH - totalGap), n.pct > 0 ? 1.5 : 0);
+      return nodes.map((n, i) => {
+        const h = rawHeights[i] * scale;
         const seg = { ...n, y0: y, y1: y + h };
         y += h + gap;
         return seg;
@@ -393,16 +409,22 @@
         if (n.pct <= 0) continue;
         const isSelected = selCol === c && selKey === n.key;
         const dimmed = selKey != null && !highlightSets[c].has(n.key);
-        svg += `<rect x="${x - nodeWidth / 2}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${dimmed ? 0.25 : 1}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-col="${c}" data-key="${n.key}"><title>${n.label} - ${fmtPct(n.pct)}</title></rect>`;
-        // showLabel is only set on column-3 (points+GD) nodes, to hide
-        // labels on combos too thin to read (<0.5%) while still drawing
-        // their node/ribbons. Other columns always show their label.
-        // Even when showLabel is true, also skip if it would land too
-        // close to the last shown label in this column and visually
-        // collide - the node/ribbon/tooltip are unaffected either way.
         const midY = (n.y0 + n.y1) / 2;
-        if (n.showLabel === false) continue;
-        if (midY - lastLabelY[c] < MIN_LABEL_GAP) continue;
+
+        // Decide label visibility BEFORE drawing the node, so nodes with no
+        // label (too thin to read, or skipped to avoid colliding with the
+        // previous label) can be rendered at reduced opacity - they're
+        // still real, hoverable/clickable, full-colour-on-select data, just
+        // visually de-emphasised since there's no text to anchor them to.
+        const labelWouldCollide = midY - lastLabelY[c] < MIN_LABEL_GAP;
+        const showsLabel = n.showLabel !== false && !labelWouldCollide;
+
+        let opacity = 1;
+        if (dimmed) opacity = 0.25;
+        else if (!showsLabel) opacity = 0.55;
+        svg += `<rect x="${x - nodeWidth / 2}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${opacity}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-col="${c}" data-key="${n.key}"><title>${n.label} - ${fmtPct(n.pct)}</title></rect>`;
+
+        if (!showsLabel) continue;
         lastLabelY[c] = midY;
         const anchor = c === 0 ? 'end' : (c === columns.length - 1 ? 'start' : (c % 2 === 1 ? 'end' : 'start'));
         const labelX = c === 0 ? x - nodeWidth / 2 - 8

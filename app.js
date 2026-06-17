@@ -12,6 +12,10 @@
   const scenarioModalClose = document.getElementById('scenario-modal-close');
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
+  const toggleActualBtn = document.getElementById('toggle-actual');
+  const toggleProjectedBtn = document.getElementById('toggle-projected');
+  const groupsToggleHint = document.getElementById('groups-toggle-hint');
+  let groupsViewMode = 'actual'; // 'actual' | 'projected'
   let scenarioFlowCol = null;
   let scenarioFlowKey = null;
 
@@ -202,6 +206,123 @@
   }
 
 
+  // ----------------------------------------------------------------------
+  // Actual (real-world) group table, computed from results.json directly -
+  // independent of the simulation. Used for the Actual/Projected toggle.
+  // ----------------------------------------------------------------------
+  let resultsByGroup = null; // group letter -> array of played fixtures
+
+  async function loadResults() {
+    try {
+      const res = await fetch('results.json?_=' + Date.now());
+      const json = await res.json();
+      resultsByGroup = {};
+      for (const r of json.results || []) {
+        if (r.homeGoals == null || r.awayGoals == null) continue;
+        if (!resultsByGroup[r.group]) resultsByGroup[r.group] = [];
+        resultsByGroup[r.group].push(r);
+      }
+    } catch (e) {
+      resultsByGroup = {};
+    }
+  }
+
+  // Orders one group's teams by the real-world table right now: points,
+  // then overall goal difference, then overall goals scored, then
+  // head-to-head points among the still-tied teams, then head-to-head goal
+  // difference among the still-tied teams, then alphabetically as a final
+  // deterministic fallback (teams with zero matches played, e.g., are tied
+  // on everything and have no real result to separate them - alphabetical
+  // is just a stable display order, not a meaningful ranking).
+  // teamNames: the 4 team names in this group (any order).
+  function computeActualOrder(teamNames, groupLetter) {
+    const fixtures = (resultsByGroup && resultsByGroup[groupLetter]) || [];
+    const stats = new Map(teamNames.map((name) => [name, { name, pts: 0, gf: 0, ga: 0, played: 0 }]));
+
+    for (const r of fixtures) {
+      const home = stats.get(r.home);
+      const away = stats.get(r.away);
+      if (!home || !away) continue;
+      home.gf += r.homeGoals; home.ga += r.awayGoals; home.played += 1;
+      away.gf += r.awayGoals; away.ga += r.homeGoals; away.played += 1;
+      if (r.homeGoals > r.awayGoals) home.pts += 3;
+      else if (r.homeGoals < r.awayGoals) away.pts += 3;
+      else { home.pts += 1; away.pts += 1; }
+    }
+
+    function h2hPoints(name, against) {
+      let pts = 0;
+      for (const r of fixtures) {
+        if (r.home === name && r.away === against) {
+          pts += r.homeGoals > r.awayGoals ? 3 : r.homeGoals === r.awayGoals ? 1 : 0;
+        } else if (r.away === name && r.home === against) {
+          pts += r.awayGoals > r.homeGoals ? 3 : r.awayGoals === r.homeGoals ? 1 : 0;
+        }
+      }
+      return pts;
+    }
+    function h2hGd(name, against) {
+      let gd = 0;
+      for (const r of fixtures) {
+        if (r.home === name && r.away === against) gd += r.homeGoals - r.awayGoals;
+        else if (r.away === name && r.home === against) gd += r.awayGoals - r.homeGoals;
+      }
+      return gd;
+    }
+
+    const list = [...stats.values()].map((s) => ({ ...s, gd: s.gf - s.ga }));
+
+    // Group teams into tied clusters by (pts, gd, gf), and within each
+    // cluster of 2+ teams, compare head-to-head among JUST that cluster.
+    list.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+
+    const result = [];
+    let i = 0;
+    while (i < list.length) {
+      let j = i + 1;
+      while (j < list.length && list[j].pts === list[i].pts && list[j].gd === list[i].gd && list[j].gf === list[i].gf) j++;
+      const cluster = list.slice(i, j);
+      if (cluster.length > 1) {
+        cluster.sort((a, b) => {
+          const h2hA = cluster.filter((t) => t.name !== a.name).reduce((sum, t) => sum + h2hPoints(a.name, t.name), 0);
+          const h2hB = cluster.filter((t) => t.name !== b.name).reduce((sum, t) => sum + h2hPoints(b.name, t.name), 0);
+          if (h2hA !== h2hB) return h2hB - h2hA;
+          const gdA = cluster.filter((t) => t.name !== a.name).reduce((sum, t) => sum + h2hGd(a.name, t.name), 0);
+          const gdB = cluster.filter((t) => t.name !== b.name).reduce((sum, t) => sum + h2hGd(b.name, t.name), 0);
+          if (gdA !== gdB) return gdB - gdA;
+          return a.name.localeCompare(b.name);
+        });
+      }
+      result.push(...cluster);
+      i = j;
+    }
+    return result;
+  }
+
+  const GROUPS_TOGGLE_HINTS = {
+    actual: "Actual: today's real table, from results played so far.",
+    projected: "Projected: our best guess at the final table, from the simulation.",
+  };
+
+  function setGroupsViewMode(mode) {
+    if (mode === groupsViewMode) return;
+    groupsViewMode = mode;
+    toggleActualBtn.classList.toggle('is-active', mode === 'actual');
+    toggleActualBtn.setAttribute('aria-selected', mode === 'actual' ? 'true' : 'false');
+    toggleProjectedBtn.classList.toggle('is-active', mode === 'projected');
+    toggleProjectedBtn.setAttribute('aria-selected', mode === 'projected' ? 'true' : 'false');
+    groupsToggleHint.textContent = GROUPS_TOGGLE_HINTS[mode];
+
+    // Simple crossfade: fade the grid out, swap its content while
+    // invisible, fade back in. Matches the .groups-grid.is-fading
+    // transition declared in styles.css.
+    groupsGrid.classList.add('is-fading');
+    setTimeout(() => {
+      renderGroups();
+      groupsGrid.classList.remove('is-fading');
+    }, 180);
+  }
+
   function renderGroups() {
     groupsGrid.innerHTML = '';
     for (const letter of GROUP_ORDER) {
@@ -210,31 +331,56 @@
       card.className = 'group-card';
 
       let rows = '';
-      g.order.forEach((team, i) => {
-        const posLabel = ['1st', '2nd', '3rd', '4th'][i];
-        const advances = i < 2;
-        const isBestThird = i === 2 && data.bestThirds.some((t) => t.name === team.name);
-        let rowClass = '';
-        if (advances) rowClass = 'advances';
-        else if (isBestThird) rowClass = 'maybe-advances';
-        else rowClass = 'eliminated';
 
-        const posProbs = team.positionProbabilities || [0, 0, 0, 0];
-        const posBarHtml = positionProbBar(posProbs);
+      if (groupsViewMode === 'actual') {
+        const teamByName = new Map(g.order.map((t) => [t.name, t]));
+        const actualOrder = computeActualOrder(g.order.map((t) => t.name), letter);
+        actualOrder.forEach((row, i) => {
+          const posLabel = ['1st', '2nd', '3rd', '4th'][i];
+          const team = teamByName.get(row.name) || row;
+          // Provisional zone based on TODAY's actual table - not a real
+          // qualification result (that only exists once the group is
+          // finished), just "if the group ended right now".
+          const provisionallyAdvances = i < 2;
+          const rowClass = provisionallyAdvances ? 'advances' : (i === 2 ? 'maybe-advances' : 'eliminated');
+          const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
+          const statsHtml = `<span class="actual-stats">${row.pts}pt${row.pts === 1 ? '' : 's'} &middot; GD ${gdStr} &middot; ${row.played}/3 played</span>`;
 
-        rows += `<tr class="${rowClass}" data-team="${team.name}">
-          <td class="pos-col">${posLabel}</td>
-          <td class="team-col">
-            ${teamButton(team)}
-            ${posBarHtml}
-          </td>
-        </tr>`;
-      });
+          rows += `<tr class="${rowClass}" data-team="${row.name}">
+            <td class="pos-col">${posLabel}</td>
+            <td class="team-col">
+              ${teamButton(team)}
+              ${statsHtml}
+            </td>
+          </tr>`;
+        });
+      } else {
+        g.order.forEach((team, i) => {
+          const posLabel = ['1st', '2nd', '3rd', '4th'][i];
+          const advances = i < 2;
+          const isBestThird = i === 2 && data.bestThirds.some((t) => t.name === team.name);
+          let rowClass = '';
+          if (advances) rowClass = 'advances';
+          else if (isBestThird) rowClass = 'maybe-advances';
+          else rowClass = 'eliminated';
+
+          const posProbs = team.positionProbabilities || [0, 0, 0, 0];
+          const posBarHtml = positionProbBar(posProbs);
+
+          rows += `<tr class="${rowClass}" data-team="${team.name}">
+            <td class="pos-col">${posLabel}</td>
+            <td class="team-col">
+              ${teamButton(team)}
+              ${posBarHtml}
+            </td>
+          </tr>`;
+        });
+      }
 
       card.innerHTML = `
         <div class="group-card-header">
           <h3>Group ${letter}</h3>
-          ${confidenceRing(g.probability)}
+          ${groupsViewMode === 'projected' ? confidenceRing(g.probability) : ''}
         </div>
         <table class="group-table">
           <tbody>${rows}</tbody>
@@ -651,6 +797,7 @@
       data = await res.json();
       cachedRounds = null;
       cachedRankByName = null;
+      await loadResults();
       renderMeta();
       renderGroups();
       renderThirds();
@@ -667,6 +814,9 @@
         selectedTeam = null;
         applyHighlight();
       });
+
+      toggleActualBtn.addEventListener('click', () => setGroupsViewMode('actual'));
+      toggleProjectedBtn.addEventListener('click', () => setGroupsViewMode('projected'));
 
       scenarioModalClose.addEventListener('click', closeScenarioModal);
       scenarioModalBackdrop.addEventListener('click', (e) => {

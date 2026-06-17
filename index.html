@@ -33,6 +33,14 @@
       </p>
     </section>
 
+    <section class="groups-toggle-wrap">
+      <div class="groups-toggle" id="groups-toggle" role="tablist" aria-label="Show actual or projected group standings">
+        <button class="groups-toggle-btn is-active" id="toggle-actual" role="tab" aria-selected="true" data-mode="actual">Actual</button>
+        <button class="groups-toggle-btn" id="toggle-projected" role="tab" aria-selected="false" data-mode="projected">Projected</button>
+      </div>
+      <p class="groups-toggle-hint" id="groups-toggle-hint">Actual: today's real table, from results played so far.</p>
+    </section>
+
     <section class="groups-grid" id="groups-grid">
       <!-- Group tables injected here -->
     </section>
