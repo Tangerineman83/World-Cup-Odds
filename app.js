@@ -14,8 +14,13 @@
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
   const toggleActualBtn = document.getElementById('toggle-actual');
   const toggleProjectedBtn = document.getElementById('toggle-projected');
+  const toggleOffFenceBtn = document.getElementById('toggle-off-fence');
   const groupsToggleHint = document.getElementById('groups-toggle-hint');
-  let groupsViewMode = 'actual'; // 'actual' | 'projected'
+  const thirdsTableWrap = document.getElementById('thirds-table-wrap');
+  const thirdsTableHead = document.getElementById('thirds-table-head');
+  const thirdsIntro = document.getElementById('thirds-intro');
+  const thirdsDisclaimer = document.getElementById('thirds-disclaimer');
+  let groupsViewMode = 'projected'; // 'projected' | 'actual' | 'off-the-fence'
   let scenarioFlowCol = null;
   let scenarioFlowKey = null;
 
@@ -121,8 +126,57 @@
     return cachedRankByName;
   }
 
+  const THIRDS_TABLE_HEAD = {
+    projected: `
+      <tr>
+        <th class="col-team">Team</th>
+        <th class="col-num">Grp</th>
+        <th class="col-num third-chance" title="Of all simulations where this team finishes 3rd in their group, the % where they're also one of the 8 best third-placed teams overall (ranked by points, then goal difference, then goals scored, then FIFA World Ranking - see footnote)">Chance</th>
+        <th class="col-thirdpct">Next match</th>
+      </tr>
+    `,
+    ranked: `
+      <tr>
+        <th class="col-team">Team</th>
+        <th class="col-num">Grp</th>
+        <th class="col-num">Pts</th>
+        <th class="col-num">GD</th>
+        <th class="col-num">GF</th>
+      </tr>
+    `,
+  };
+
+  const THIRDS_COPY = {
+    projected: {
+      intro: `Finishing 3rd doesn't always mean you're out — the best 8 of the 12 third-placed teams also go through to the Last 32, ranked by points, then goal difference, then goals scored. "Chance" is each team's likelihood of being one of those 8, given that they finish 3rd in their group. Here they are in the order they'll appear in the knockout rounds below, each shown with who they'd play next. The line marks the cutoff — the last 4 go home.`,
+      disclaimer: `Chance is computed from the full simulation (see the tooltip) — the table itself is ordered by Chance, not by a single simulated table. Once all group games are finished, we'll confirm this table against the real final standings.`,
+    },
+    actual: {
+      intro: `Today's 12 third-placed teams, ranked by the official tiebreak for sides that haven't played each other: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 would go through to the Last 32 if the group stage ended right now — the line marks that cutoff.`,
+      disclaimer: `This is provisional, based on results played so far — not a final qualification result. It will keep changing as more group games are played.`,
+    },
+    'off-the-fence': {
+      intro: `The 12 third-placed teams from our single most likely simulated outcome, ranked by the same tiebreak as Actual: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 go through to the Last 32 in this one scenario — the line marks that cutoff.`,
+      disclaimer: `This is one concrete simulated scenario, not a probability — see the Projected toggle for each team's actual likelihood of qualifying.`,
+    },
+  };
+
   function renderThirds() {
     if (!thirdsTableBody) return;
+    if (groupsViewMode === 'projected') {
+      renderThirdsProjected();
+    } else if (groupsViewMode === 'actual') {
+      renderThirdsRanked(computeActualThirds(), 'actual');
+    } else {
+      renderThirdsRanked(computeOffFenceThirds(), 'off-the-fence');
+    }
+  }
+
+  function renderThirdsProjected() {
+    thirdsTableHead.innerHTML = THIRDS_TABLE_HEAD.projected;
+    thirdsIntro.textContent = THIRDS_COPY.projected.intro;
+    thirdsDisclaimer.textContent = THIRDS_COPY.projected.disclaimer;
+
     const thirds = data.allThirds || [];
     if (thirds.length === 0) {
       thirdsTableBody.innerHTML = '<tr><td colspan="4" class="loading-row">No data available.</td></tr>';
@@ -158,6 +212,40 @@
       if (i === 7 && thirds.length > 8) {
         rows += `<tr class="thirds-divider-row" aria-hidden="true">
           <td colspan="4"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
+        </tr>`;
+      }
+    });
+
+    thirdsTableBody.innerHTML = rows;
+  }
+
+  // Used by Actual and Off the Fence - thirdsList: array of
+  // { name, code, group, points, gd, gf, fifaRank }, one entry per group
+  // (see computeActualThirds/computeOffFenceThirds). Ranks via the shared
+  // FIFA tiebreak order and renders a Pts/GD/GF table instead of Chance.
+  function renderThirdsRanked(thirdsList, mode) {
+    thirdsTableHead.innerHTML = THIRDS_TABLE_HEAD.ranked;
+    thirdsIntro.textContent = THIRDS_COPY[mode].intro;
+    thirdsDisclaimer.textContent = THIRDS_COPY[mode].disclaimer;
+
+    const ranked = rankThirdsByFifaOrder(thirdsList);
+    let rows = '';
+    ranked.forEach((team, i) => {
+      const qualifies = i < 8;
+      const gdStr = (team.gd >= 0 ? '+' : '') + team.gd;
+
+      rows += `<tr data-team="${team.name}" class="${qualifies ? 'third-qualifies' : 'third-eliminated'}">
+        <td class="col-team">${teamButton(team)}</td>
+        <td class="col-num">${team.group}</td>
+        <td class="col-num">${team.points}</td>
+        <td class="col-num">${gdStr}</td>
+        <td class="col-num">${team.gf}</td>
+      </tr>`;
+
+      // Divider after the 8th team: 8 of 12 thirds advance to the Last 32.
+      if (i === 7 && ranked.length > 8) {
+        rows += `<tr class="thirds-divider-row" aria-hidden="true">
+          <td colspan="5"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
         </tr>`;
       }
     });
@@ -224,6 +312,26 @@
       }
     } catch (e) {
       resultsByGroup = {};
+    }
+  }
+
+  // Full per-team predictions data (all 48 teams) - fetched purely so the
+  // thirds-table "tap a team to see their road to the Last 32" popup works
+  // for ANY team shown there. scenario.json's allThirds only carries this
+  // data for the 12 teams the model itself expects to finish 3rd, but the
+  // Actual/Off the Fence toggles can show a different team in that slot
+  // (e.g. if the real or modal table differs from the model's main
+  // scenario) - predictionsByName covers every team so the popup never
+  // silently fails to open.
+  let predictionsByName = null; // team name -> predictions.json team record
+
+  async function loadPredictions() {
+    try {
+      const res = await fetch('predictions.json?_=' + Date.now());
+      const json = await res.json();
+      predictionsByName = new Map((json.teams || []).map((t) => [t.name, t]));
+    } catch (e) {
+      predictionsByName = new Map();
     }
   }
 
@@ -299,32 +407,134 @@
     return result;
   }
 
+  // ----------------------------------------------------------------------
+  // Cross-group third-place ranking, shared by the Actual and Off the Fence
+  // thirds tables - both rank the 12 third-placed teams by the official
+  // tiebreak order for teams that haven't played each other: points, goal
+  // difference, goals scored, then FIFA World Ranking. This mirrors
+  // scripts/sim/simulateTournament.js's pickBestThirds() exactly (the
+  // model's own approximation, ignoring head-to-head/cards since neither is
+  // modelled) - just applied to real or modal-scenario stats here instead of
+  // a fresh Monte Carlo run. The Projected toggle's thirds table is
+  // unaffected by this - it keeps using pQualifyGiven3rd (see renderThirds).
+  // ----------------------------------------------------------------------
+
+  // thirds: array of { name, group, points, gd, gf, fifaRank, ... }.
+  // Returns a NEW array, same length, ranked best-to-worst.
+  function rankThirdsByFifaOrder(thirds) {
+    return [...thirds].sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      if (b.gf !== a.gf) return b.gf - a.gf;
+      const rankA = a.fifaRank != null ? a.fifaRank : Infinity;
+      const rankB = b.fifaRank != null ? b.fifaRank : Infinity;
+      if (rankA !== rankB) return rankA - rankB;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // The 12 real, today's-table third-placed teams (one per group), from
+  // computeActualOrder - i.e. "if the group stage ended right now".
+  function computeActualThirds() {
+    return GROUP_ORDER.map((letter) => {
+      const g = data.groups[letter];
+      const teamByName = new Map(g.order.map((t) => [t.name, t]));
+      const third = computeActualOrder(g.order.map((t) => t.name), letter)[2];
+      const team = teamByName.get(third.name) || {};
+      return {
+        name: third.name,
+        code: team.code,
+        group: letter,
+        points: third.pts,
+        gd: third.gd,
+        gf: third.gf,
+        played: third.played,
+        fifaRank: team.fifaRank != null ? team.fifaRank : null,
+      };
+    });
+  }
+
+  // The 12 modal-scenario third-placed teams (one per group) - g.order[2]
+  // is already the modal 3rd-place team, with points/gd/gf/fifaRank from
+  // the single most common joint final table (see scripts/sim/mostLikely.js).
+  function computeOffFenceThirds() {
+    return GROUP_ORDER.map((letter) => {
+      const third = data.groups[letter].order[2];
+      return {
+        name: third.name,
+        code: third.code,
+        group: letter,
+        points: third.points,
+        gd: third.gd,
+        gf: third.gf,
+        played: third.played,
+        fifaRank: third.fifaRank != null ? third.fifaRank : null,
+      };
+    });
+  }
+
+  // Names of the 8 qualifying thirds for a given toggle mode - used both to
+  // colour the 3rd-place row within each group card, and to draw the
+  // cutoff line in the thirds table itself. Returns null for 'projected'
+  // (which uses data.bestThirds/pQualifyGiven3rd instead - a probability,
+  // not a ranking of one single table).
+  function qualifyingThirdNamesForMode(mode) {
+    if (mode === 'actual') return new Set(rankThirdsByFifaOrder(computeActualThirds()).slice(0, 8).map((t) => t.name));
+    if (mode === 'off-the-fence') return new Set(rankThirdsByFifaOrder(computeOffFenceThirds()).slice(0, 8).map((t) => t.name));
+    return null;
+  }
+
   const GROUPS_TOGGLE_HINTS = {
+    projected: "Projected: each team's chance of finishing 1st-4th, from the simulation.",
     actual: "Actual: today's real table, from results played so far.",
-    projected: "Projected: our best guess at the final table, from the simulation.",
+    'off-the-fence': "Off the Fence: the single most likely simulated outcome, shown as a table.",
   };
 
   function setGroupsViewMode(mode) {
     if (mode === groupsViewMode) return;
     groupsViewMode = mode;
-    toggleActualBtn.classList.toggle('is-active', mode === 'actual');
-    toggleActualBtn.setAttribute('aria-selected', mode === 'actual' ? 'true' : 'false');
     toggleProjectedBtn.classList.toggle('is-active', mode === 'projected');
     toggleProjectedBtn.setAttribute('aria-selected', mode === 'projected' ? 'true' : 'false');
+    toggleActualBtn.classList.toggle('is-active', mode === 'actual');
+    toggleActualBtn.setAttribute('aria-selected', mode === 'actual' ? 'true' : 'false');
+    toggleOffFenceBtn.classList.toggle('is-active', mode === 'off-the-fence');
+    toggleOffFenceBtn.setAttribute('aria-selected', mode === 'off-the-fence' ? 'true' : 'false');
     groupsToggleHint.textContent = GROUPS_TOGGLE_HINTS[mode];
 
-    // Simple crossfade: fade the grid out, swap its content while
-    // invisible, fade back in. Matches the .groups-grid.is-fading
-    // transition declared in styles.css.
+    // Simple crossfade: fade the grid (and thirds table) out, swap content
+    // while invisible, fade back in. Matches the .is-fading transitions
+    // declared in styles.css.
     groupsGrid.classList.add('is-fading');
+    thirdsTableWrap.classList.add('is-fading');
     setTimeout(() => {
       renderGroups();
+      renderThirds();
       groupsGrid.classList.remove('is-fading');
+      thirdsTableWrap.classList.remove('is-fading');
     }, 180);
+  }
+
+  // Shared row markup for the Actual and Off the Fence group tables - same
+  // visual format (pos, team, "X pts · GD ±Y · Z/3 played"), just sourced
+  // from different stats (real results.json vs the modal simulated table).
+  function statsStyleRowHtml(posLabel, team, rowClass, row) {
+    const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
+    const statsHtml = `<span class="actual-stats">${row.pts}pt${row.pts === 1 ? '' : 's'} &middot; GD ${gdStr} &middot; ${row.played}/3 played</span>`;
+    return `<tr class="${rowClass}" data-team="${row.name}">
+      <td class="pos-col">${posLabel}</td>
+      <td class="team-col">
+        ${teamButton(team)}
+        ${statsHtml}
+      </td>
+    </tr>`;
   }
 
   function renderGroups() {
     groupsGrid.innerHTML = '';
+    // Only needed for 'actual'/'off-the-fence' - 'projected' colours its
+    // 3rd-place row from data.bestThirds (a probability ranking) instead.
+    const qualifyingThirdNames = groupsViewMode === 'projected' ? null : qualifyingThirdNamesForMode(groupsViewMode);
+
     for (const letter of GROUP_ORDER) {
       const g = data.groups[letter];
       const card = document.createElement('div');
@@ -341,18 +551,20 @@
           // Provisional zone based on TODAY's actual table - not a real
           // qualification result (that only exists once the group is
           // finished), just "if the group ended right now".
-          const provisionallyAdvances = i < 2;
-          const rowClass = provisionallyAdvances ? 'advances' : (i === 2 ? 'maybe-advances' : 'eliminated');
-          const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
-          const statsHtml = `<span class="actual-stats">${row.pts}pt${row.pts === 1 ? '' : 's'} &middot; GD ${gdStr} &middot; ${row.played}/3 played</span>`;
-
-          rows += `<tr class="${rowClass}" data-team="${row.name}">
-            <td class="pos-col">${posLabel}</td>
-            <td class="team-col">
-              ${teamButton(team)}
-              ${statsHtml}
-            </td>
-          </tr>`;
+          let rowClass;
+          if (i < 2) rowClass = 'advances';
+          else if (i === 2) rowClass = qualifyingThirdNames.has(row.name) ? 'maybe-advances' : 'eliminated';
+          else rowClass = 'eliminated';
+          rows += statsStyleRowHtml(posLabel, team, rowClass, row);
+        });
+      } else if (groupsViewMode === 'off-the-fence') {
+        g.order.forEach((team, i) => {
+          const posLabel = ['1st', '2nd', '3rd', '4th'][i];
+          let rowClass;
+          if (i < 2) rowClass = 'advances';
+          else if (i === 2) rowClass = qualifyingThirdNames.has(team.name) ? 'maybe-advances' : 'eliminated';
+          else rowClass = 'eliminated';
+          rows += statsStyleRowHtml(posLabel, team, rowClass, { name: team.name, pts: team.points, gd: team.gd, played: team.played });
         });
       } else {
         g.order.forEach((team, i) => {
@@ -741,7 +953,8 @@
     const thirdsCell = e.target.closest('#thirds-table-body td.col-team');
     if (thirdsCell) {
       const row = thirdsCell.closest('tr[data-team]');
-      const team = row && (data.allThirds || []).find((t) => t.name === row.dataset.team);
+      const name = row && row.dataset.team;
+      const team = name && ((data.allThirds || []).find((t) => t.name === name) || (predictionsByName && predictionsByName.get(name)));
       if (team) openScenarioModal(team);
       return;
     }
@@ -797,7 +1010,7 @@
       data = await res.json();
       cachedRounds = null;
       cachedRankByName = null;
-      await loadResults();
+      await Promise.all([loadResults(), loadPredictions()]);
       renderMeta();
       renderGroups();
       renderThirds();
@@ -817,6 +1030,7 @@
 
       toggleActualBtn.addEventListener('click', () => setGroupsViewMode('actual'));
       toggleProjectedBtn.addEventListener('click', () => setGroupsViewMode('projected'));
+      toggleOffFenceBtn.addEventListener('click', () => setGroupsViewMode('off-the-fence'));
 
       scenarioModalClose.addEventListener('click', closeScenarioModal);
       scenarioModalBackdrop.addEventListener('click', (e) => {

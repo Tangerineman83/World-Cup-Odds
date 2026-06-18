@@ -6,8 +6,17 @@ World Cup:
 - **`index.html`** — the "most likely scenario": predicted group standings (1st-4th
   for all 12 groups, with relative-strength Elo bars) and a full knockout bracket
   tree (Round of 32 → Final → Champion) with drawn connector lines, built by taking
-  the modal group outcome and then a "chalk" (favourite-wins) bracket. **Click any
-  team name** to trace its predicted route: the team's group row, every bracket match
+  the modal group outcome and then a "chalk" (favourite-wins) bracket. Each group
+  table and the third-placed-teams table can be toggled between **Projected**
+  (default - each team's chance of finishing 1st-4th, from the simulation),
+  **Actual** (today's real table, from results played so far), and **Off the
+  Fence** (a single concrete Pts/GD/GF table - the modal simulated outcome,
+  rather than a spread of probabilities). The third-placed-teams table ranks
+  across groups by points, then goal difference, then goals scored, then FIFA
+  World Ranking (the same tiebreak the simulation itself uses) for the Actual
+  and Off the Fence views; the Projected view instead ranks by each team's
+  modelled probability of qualifying as a top-8 third. **Click any team name**
+  to trace its predicted route: the team's group row, every bracket match
   it plays, and the connector lines along its path all highlight together, and the
   bracket scrolls to its first knockout match.
 - **`predictions.html`** — the full probability table: for all 48 teams, the

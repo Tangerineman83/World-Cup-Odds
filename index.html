@@ -34,11 +34,12 @@
     </section>
 
     <section class="groups-toggle-wrap">
-      <div class="groups-toggle" id="groups-toggle" role="tablist" aria-label="Show actual or projected group standings">
-        <button class="groups-toggle-btn is-active" id="toggle-actual" role="tab" aria-selected="true" data-mode="actual">Actual</button>
-        <button class="groups-toggle-btn" id="toggle-projected" role="tab" aria-selected="false" data-mode="projected">Projected</button>
+      <div class="groups-toggle" id="groups-toggle" role="tablist" aria-label="Show projected, actual or off-the-fence group standings">
+        <button class="groups-toggle-btn is-active" id="toggle-projected" role="tab" aria-selected="true" data-mode="projected">Projected</button>
+        <button class="groups-toggle-btn" id="toggle-actual" role="tab" aria-selected="false" data-mode="actual">Actual</button>
+        <button class="groups-toggle-btn" id="toggle-off-fence" role="tab" aria-selected="false" data-mode="off-the-fence">Off the Fence</button>
       </div>
-      <p class="groups-toggle-hint" id="groups-toggle-hint">Actual: today's real table, from results played so far.</p>
+      <p class="groups-toggle-hint" id="groups-toggle-hint">Projected: each team's chance of finishing 1st-4th, from the simulation.</p>
     </section>
 
     <section class="groups-grid" id="groups-grid">
@@ -49,7 +50,7 @@
       <div class="bracket-section-head">
         <h2>Best of the third-placed teams</h2>
       </div>
-      <p class="thirds-intro">
+      <p class="thirds-intro" id="thirds-intro">
         Finishing 3rd doesn't always mean you're out — the best 8 of the 12
         third-placed teams also go through to the Last 32, ranked by points,
         then goal difference, then goals scored. "Chance" is each team's
@@ -58,15 +59,15 @@
         knockout rounds below, each shown with who they'd play next. The
         line marks the cutoff — the last 4 go home.
       </p>
-      <p class="thirds-disclaimer">
+      <p class="thirds-disclaimer" id="thirds-disclaimer">
         Pts/GD/GF shows our most likely group-stage outcome for each team,
         for context — the table itself is ordered by Chance. Once all group
         games are finished, we'll confirm this table against the real final
         standings.
       </p>
-      <div class="table-wrap thirds-table-wrap">
+      <div class="table-wrap thirds-table-wrap" id="thirds-table-wrap">
         <table id="thirds-table" class="thirds-table">
-          <thead>
+          <thead id="thirds-table-head">
             <tr>
               <th class="col-team">Team</th>
               <th class="col-num">Grp</th>
