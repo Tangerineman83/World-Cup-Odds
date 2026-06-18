@@ -146,7 +146,7 @@ function computeGroupResults(teamsByName, knownByGroup = new Map()) {
 
   for (const [letter, names] of Object.entries(GROUPS)) {
     const teams = names.map((name) => ({ name, elo: teamsByName.get(name).elo }));
-    groupResults[letter] = modalGroupOrdering(teams, 20000, {
+    groupResults[letter] = modalGroupOrdering(teams, 50000, {
       knownResults: knownByGroup.get(letter) || [],
       groupLetter: letter,
     });
