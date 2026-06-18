@@ -40,13 +40,13 @@
 
   // The 5 mutually-exclusive group-stage outcome buckets, ordered best to
   // worst. Colours follow a semantic scale: bright green (automatic advance)
-  // → teal (wildcard advance) → amber (partial success, eliminated) → red
+  // → teal (top-8-third advance) → amber (partial success, eliminated) → red
   // (fully eliminated). This makes qualifying vs eliminated paths immediately
   // distinguishable without needing labels.
   const OUTCOME_BUCKETS = [
     { key: 'first',           label: '1st in group',                shortLabel: '1st',          color: '#4ade80', desc: 'Automatic advance' },
     { key: 'second',          label: '2nd in group',                shortLabel: '2nd',          color: '#86efac', desc: 'Automatic advance' },
-    { key: 'thirdQualified',  label: '3rd, advance as a wildcard',  shortLabel: '3rd (through)', color: '#5eead4', desc: 'Advance via top-8 third' },
+    { key: 'thirdQualified',  label: '3rd, advance as a top-8 third', shortLabel: '3rd (through)', color: '#5eead4', desc: 'Advance via top-8 third' },
     { key: 'thirdEliminated', label: '3rd, eliminated',             shortLabel: '3rd (out)',    color: '#fb923c', desc: 'Misses out on tiebreaks' },
     { key: 'fourth',          label: '4th in group',                shortLabel: '4th',          color: '#f87171', desc: 'Eliminated' },
   ];
@@ -117,11 +117,11 @@
       </div>
       <div class="gauge-bar">
         <div class="gauge-seg gauge-seg-direct" style="width:${pWinnerOrRunnerUpShare}%" title="As group winner or runner-up: ${fmtPct(pWinnerOrRunnerUp)}"></div>
-        <div class="gauge-seg gauge-seg-wildcard" style="width:${pThirdShare}%" title="As a top-8 third-placed team: ${fmtPct(pThird)}"></div>
+        <div class="gauge-seg gauge-seg-third" style="width:${pThirdShare}%" title="As a top-8 third-placed team: ${fmtPct(pThird)}"></div>
       </div>
       <div class="gauge-sub">
         <span><span class="gauge-dot gauge-dot-direct"></span>1st or 2nd: ${fmtPct(pWinnerOrRunnerUp)}</span>
-        <span><span class="gauge-dot gauge-dot-wildcard"></span>Wildcard 3rd: ${fmtPct(pThird)}</span>
+        <span><span class="gauge-dot gauge-dot-third"></span>Top-8 third: ${fmtPct(pThird)}</span>
       </div>
       ${explainerNote}
     `;

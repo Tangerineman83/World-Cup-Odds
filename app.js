@@ -88,24 +88,6 @@
     `;
   }
 
-  // Renders a compact 4-segment stacked bar showing P(1st)/P(2nd)/P(3rd)/P(4th)
-  // for a team within its group, plus a text summary for screen readers /
-  // hover tooltips.
-  function positionProbBar(probs) {
-    const labels = ['1st', '2nd', '3rd', '4th'];
-    const segments = probs.map((p, i) => {
-      const pct = Math.max(0, p * 100);
-      return `<span class="pp-seg pp-seg-${i}" style="width:${pct.toFixed(1)}%" title="${labels[i]}: ${pct.toFixed(0)}%"></span>`;
-    }).join('');
-
-    const summary = probs.map((p, i) => `${labels[i]} ${(p * 100).toFixed(0)}%`).join(' · ');
-
-    return `
-      <div class="pp-bar" role="img" aria-label="Finishing position probabilities: ${summary}">${segments}</div>
-      <div class="pp-summary">${summary}</div>
-    `;
-  }
-
   // Each team's world ranking (1 = most likely to win the tournament),
   // precomputed in scenario.json from predictions.json's pChampion - so this
   // matches the ranking shown on the odds page, not raw rating. Falls back
@@ -156,7 +138,7 @@
       disclaimer: `This is provisional, based on results played so far — not a final qualification result. It will keep changing as more group games are played.`,
     },
     'off-the-fence': {
-      intro: `The 12 third-placed teams from our single most likely simulated outcome, ranked by the same tiebreak as Actual: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 go through to the Last 32 in this one scenario — the line marks that cutoff.`,
+      intro: `The 12 third-placed teams from our single most likely simulated outcome, ranked by the same tiebreak as Current: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 go through to the Last 32 in this one scenario — the line marks that cutoff.`,
       disclaimer: `This is one concrete simulated scenario, not a probability — see the Projected toggle for each team's actual likelihood of qualifying.`,
     },
   };
@@ -486,7 +468,7 @@
 
   const GROUPS_TOGGLE_HINTS = {
     projected: "Projected: each team's chance of finishing 1st-4th, from the simulation.",
-    actual: "Actual: today's real table, from results played so far.",
+    actual: "Current: today's real table, from results played so far.",
     'off-the-fence': "Off the Fence: the single most likely simulated outcome, shown as a table.",
   };
 
@@ -517,15 +499,16 @@
   // Shared row markup for the Actual and Off the Fence group tables - same
   // visual format (pos, team, "X pts · GD ±Y · Z/3 played"), just sourced
   // from different stats (real results.json vs the modal simulated table).
-  function statsStyleRowHtml(posLabel, team, rowClass, row) {
-    const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
-    const statsHtml = `<span class="actual-stats">${row.pts}pt${row.pts === 1 ? '' : 's'} &middot; GD ${gdStr}</span>`;
-    return `<tr class="${rowClass}" data-team="${row.name}">
-      <td class="pos-col">${posLabel}</td>
-      <td class="team-col">
-        ${teamButton(team)}
-        ${statsHtml}
-      </td>
+  // Shared row markup for ALL THREE group-table modes: a team cell plus
+  // however many right-aligned stat columns the mode needs (one % column
+  // for Projected; Pts + GD columns for Actual/Off the Fence). No explicit
+  // 1st/2nd/3rd/4th label cell - row order within the table already
+  // conveys finishing position, and dropping it saves real width on these
+  // narrow per-group cards.
+  function groupRowHtml(team, rowClass, statCellsHtml) {
+    return `<tr class="${rowClass}" data-team="${team.name}">
+      <td class="team-col">${teamButton(team)}</td>
+      ${statCellsHtml}
     </tr>`;
   }
 
@@ -564,6 +547,7 @@
     // Only needed for 'actual'/'off-the-fence' - 'projected' colours its
     // 3rd-place row from data.bestThirds (a probability ranking) instead.
     const qualifyingThirdNames = groupsViewMode === 'projected' ? null : qualifyingThirdNamesForMode(groupsViewMode);
+    const ORDINAL = ['1st', '2nd', '3rd', '4th']; // used in tooltips/aria only - not shown as a column
 
     for (const letter of GROUP_ORDER) {
       const g = data.groups[letter];
@@ -578,7 +562,6 @@
         const actualOrder = computeActualOrder(g.order.map((t) => t.name), letter);
         headerBadgeHtml = roundStatusBadge(actualOrder.map((row) => row.played));
         actualOrder.forEach((row, i) => {
-          const posLabel = ['1st', '2nd', '3rd', '4th'][i];
           const team = teamByName.get(row.name) || row;
           // Provisional zone based on TODAY's actual table - not a real
           // qualification result (that only exists once the group is
@@ -587,21 +570,23 @@
           if (i < 2) rowClass = 'advances';
           else if (i === 2) rowClass = qualifyingThirdNames.has(row.name) ? 'maybe-advances' : 'eliminated';
           else rowClass = 'eliminated';
-          rows += statsStyleRowHtml(posLabel, team, rowClass, row);
+          const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
+          const statCellsHtml = `<td class="col-num">${row.pts}</td><td class="col-num">${gdStr}</td>`;
+          rows += groupRowHtml(team, rowClass, statCellsHtml);
         });
       } else if (groupsViewMode === 'off-the-fence') {
         headerBadgeHtml = roundStatusBadge(g.order.map((t) => t.played));
         g.order.forEach((team, i) => {
-          const posLabel = ['1st', '2nd', '3rd', '4th'][i];
           let rowClass;
           if (i < 2) rowClass = 'advances';
           else if (i === 2) rowClass = qualifyingThirdNames.has(team.name) ? 'maybe-advances' : 'eliminated';
           else rowClass = 'eliminated';
-          rows += statsStyleRowHtml(posLabel, team, rowClass, { name: team.name, pts: team.points, gd: team.gd, played: team.played });
+          const gdStr = (team.gd >= 0 ? '+' : '') + team.gd;
+          const statCellsHtml = `<td class="col-num">${team.points}</td><td class="col-num">${gdStr}</td>`;
+          rows += groupRowHtml(team, rowClass, statCellsHtml);
         });
       } else {
         g.order.forEach((team, i) => {
-          const posLabel = ['1st', '2nd', '3rd', '4th'][i];
           const advances = i < 2;
           const isBestThird = i === 2 && data.bestThirds.some((t) => t.name === team.name);
           let rowClass = '';
@@ -609,16 +594,16 @@
           else if (isBestThird) rowClass = 'maybe-advances';
           else rowClass = 'eliminated';
 
+          // This team's own probability of finishing in THIS row's
+          // position specifically - distinct from the confidence ring,
+          // which covers the group's whole 1st-4th ordering being exactly
+          // right. The two are complementary, not redundant: the ring says
+          // "how sure are we about this whole table", this % says "how
+          // sure are we this team lands in this particular spot".
           const posProbs = team.positionProbabilities || [0, 0, 0, 0];
-          const posBarHtml = positionProbBar(posProbs);
-
-          rows += `<tr class="${rowClass}" data-team="${team.name}">
-            <td class="pos-col">${posLabel}</td>
-            <td class="team-col">
-              ${teamButton(team)}
-              ${posBarHtml}
-            </td>
-          </tr>`;
+          const pct = Math.round((posProbs[i] || 0) * 100);
+          const statCellsHtml = `<td class="col-num" title="${pct}% chance of finishing ${ORDINAL[i]} in Group ${letter}, across all simulations">${pct}%</td>`;
+          rows += groupRowHtml(team, rowClass, statCellsHtml);
         });
       }
 
