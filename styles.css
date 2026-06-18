@@ -238,6 +238,39 @@ html, body {
   fill: var(--text);
 }
 
+/* ---------------- Round status badge (Actual / Off the Fence) ---------------- */
+/* Replaces a per-team "X/3 played" line (noisy across 4 rows) with one
+   group-wide status next to the heading: which matchday the group is on,
+   and whether every team has played it yet. */
+
+.round-status {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+
+.round-status-round {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.round-status-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.round-status--complete .round-status-label { color: var(--pos); }
+.round-status--in-progress .round-status-label { color: var(--host); }
+.round-status--not-started .round-status-label { color: var(--text-faint); }
+
 .group-table {
   width: 100%;
   border-collapse: collapse;
@@ -631,6 +664,8 @@ html, body {
   .group-table td { padding: 0.45rem 0.55rem; }
   .masthead-top h1 { font-size: 1.5rem; }
   .confidence-ring { width: 32px; height: 32px; }
+  .round-status-round { font-size: 0.7rem; }
+  .round-status-label { font-size: 0.56rem; }
 }
 
 /* ---------------- Reduced motion ---------------- */

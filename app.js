@@ -519,7 +519,7 @@
   // from different stats (real results.json vs the modal simulated table).
   function statsStyleRowHtml(posLabel, team, rowClass, row) {
     const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
-    const statsHtml = `<span class="actual-stats">${row.pts}pt${row.pts === 1 ? '' : 's'} &middot; GD ${gdStr} &middot; ${row.played}/3 played</span>`;
+    const statsHtml = `<span class="actual-stats">${row.pts}pt${row.pts === 1 ? '' : 's'} &middot; GD ${gdStr}</span>`;
     return `<tr class="${rowClass}" data-team="${row.name}">
       <td class="pos-col">${posLabel}</td>
       <td class="team-col">
@@ -527,6 +527,36 @@
         ${statsHtml}
       </td>
     </tr>`;
+  }
+
+  // Group-wide "which matchday is this group on" status, shown next to the
+  // heading for Actual/Off the Fence (replacing a per-team "X/3 played"
+  // line, which got noisy repeated across all 4 rows). playedCounts: the 4
+  // teams' games-played counts (0-3). Off the Fence always passes [3,3,3,3]
+  // since it represents a fully played-out scenario.
+  function groupRoundStatus(playedCounts) {
+    const minPlayed = Math.min(...playedCounts);
+    const maxPlayed = Math.max(...playedCounts);
+    if (maxPlayed === 0) return { round: 1, status: 'not-started', label: 'Not started' };
+    if (minPlayed === maxPlayed) return { round: minPlayed, status: 'complete', label: 'Complete' };
+    // Some teams have played one more fixture in this group than others -
+    // the further-along round is "in progress" group-wide.
+    return { round: maxPlayed, status: 'in-progress', label: 'In progress' };
+  }
+
+  function roundStatusBadge(playedCounts) {
+    const { round, status, label } = groupRoundStatus(playedCounts);
+    const title = status === 'complete'
+      ? `Every team in this group has played their round ${round} fixture.`
+      : status === 'not-started'
+      ? 'No fixtures played yet in this group.'
+      : `Some teams have played their round ${round} fixture, others haven't yet.`;
+    return `
+      <div class="round-status round-status--${status}" title="${title}">
+        <span class="round-status-round">Round ${round}/3</span>
+        <span class="round-status-label">${label}</span>
+      </div>
+    `;
   }
 
   function renderGroups() {
@@ -541,10 +571,12 @@
       card.className = 'group-card';
 
       let rows = '';
+      let headerBadgeHtml = '';
 
       if (groupsViewMode === 'actual') {
         const teamByName = new Map(g.order.map((t) => [t.name, t]));
         const actualOrder = computeActualOrder(g.order.map((t) => t.name), letter);
+        headerBadgeHtml = roundStatusBadge(actualOrder.map((row) => row.played));
         actualOrder.forEach((row, i) => {
           const posLabel = ['1st', '2nd', '3rd', '4th'][i];
           const team = teamByName.get(row.name) || row;
@@ -558,6 +590,7 @@
           rows += statsStyleRowHtml(posLabel, team, rowClass, row);
         });
       } else if (groupsViewMode === 'off-the-fence') {
+        headerBadgeHtml = roundStatusBadge(g.order.map((t) => t.played));
         g.order.forEach((team, i) => {
           const posLabel = ['1st', '2nd', '3rd', '4th'][i];
           let rowClass;
@@ -592,7 +625,7 @@
       card.innerHTML = `
         <div class="group-card-header">
           <h3>Group ${letter}</h3>
-          ${groupsViewMode === 'projected' ? confidenceRing(g.probability) : ''}
+          ${groupsViewMode === 'projected' ? confidenceRing(g.probability) : headerBadgeHtml}
         </div>
         <table class="group-table">
           <tbody>${rows}</tbody>
