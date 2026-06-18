@@ -278,10 +278,20 @@ html, body {
   table-layout: fixed;
 }
 
+/* Inherits uppercase/muted/letter-spacing from the generic "thead th" rule
+   further down this file - just need to undo the sticky-header behaviour
+   meant for the big scrollable predictions table, which doesn't apply to
+   these small per-group tables, and tighten the padding to match. */
+.group-table thead th {
+  position: static;
+  background: none;
+  padding: 0.3rem 0.7rem;
+}
+
 .group-table td {
   padding: 0.5rem 0.7rem;
   border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .group-table tr:last-child td { border-bottom: none; }
@@ -296,18 +306,28 @@ html, body {
 
 .team-col {
   min-width: 0;
+  overflow: hidden;
 }
 
 .group-table .team-cell {
   max-width: 100%;
   min-width: 0;
   white-space: normal;
+  overflow-wrap: break-word;
   align-items: flex-start;
 }
 
+/* table-layout:fixed splits column width evenly across cells with no
+   explicit width - without this, the stat column(s) and the team column
+   were getting roughly equal width, so longer team names overflowed
+   straight into the Pts/GD/% column and visually overlapped it. Giving the
+   stat columns a fixed width here means .team-col automatically gets
+   "whatever's left" instead. */
 .group-table th.col-num,
 .group-table td.col-num {
-  min-width: 2.6em;
+  width: 2.8em;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
   text-align: center;
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -355,12 +375,6 @@ html, body {
   background: var(--border);
 }
 
-.team-cell .code {
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  color: var(--text-faint);
-}
-
 .team-tbd {
   color: var(--text-faint);
   font-style: italic;
@@ -377,8 +391,6 @@ html, body {
   color: #06281f;
   font-weight: 800;
 }
-
-.highlight .code { color: #06281f; opacity: 0.75; }
 
 .dim {
   opacity: 0.3;
@@ -608,6 +620,8 @@ html, body {
   .group-card-header h3 { font-size: 0.9rem; }
   .group-table { font-size: 0.78rem; }
   .group-table td { padding: 0.45rem 0.55rem; }
+  .group-table thead th { padding: 0.25rem 0.55rem; font-size: 0.6rem; }
+  .group-table th.col-num, .group-table td.col-num { width: 2.6em; font-size: 0.74rem; padding-left: 0.25rem; padding-right: 0.25rem; }
   .masthead-top h1 { font-size: 1.5rem; }
   .confidence-ring { width: 32px; height: 32px; }
   .round-status-round { font-size: 0.7rem; }
@@ -764,14 +778,6 @@ td.col-team .flag-icon {
   flex: 0 0 auto;
   display: inline-block;
   vertical-align: middle;
-}
-
-td.col-team .code {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text-faint);
-  margin-left: 0.2rem;
-  flex: 0 0 auto;
 }
 
 .rank-pill {

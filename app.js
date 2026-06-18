@@ -63,7 +63,7 @@
     const flagHtml = flag
       ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="eager" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
       : `<span class="flag-icon"></span>`;
-    return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}<span class="code">${team.code || ''}</span></button>`;
+    return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}</button>`;
   }
 
   // Renders a small circular "how sure are we" ring. pct is 0-1.
@@ -607,12 +607,17 @@
         });
       }
 
+      const theadHtml = groupsViewMode === 'projected'
+        ? '<thead><tr><th class="team-col"></th><th class="col-num">%</th></tr></thead>'
+        : '<thead><tr><th class="team-col"></th><th class="col-num">Pts</th><th class="col-num">GD</th></tr></thead>';
+
       card.innerHTML = `
         <div class="group-card-header">
           <h3>Group ${letter}</h3>
           ${groupsViewMode === 'projected' ? confidenceRing(g.probability) : headerBadgeHtml}
         </div>
         <table class="group-table">
+          ${theadHtml}
           <tbody>${rows}</tbody>
         </table>
       `;

@@ -55,7 +55,7 @@
       const tdTeam = document.createElement('td');
       tdTeam.className = 'col-team';
       const flagHtml = flagImgHtml(row.code, 24);
-      tdTeam.innerHTML = `<span class="team-name-wrap">${flagHtml}<span class="team-name">${row.name}</span><span class="code">${row.code || ''}</span></span>`;
+      tdTeam.innerHTML = `<span class="team-name-wrap">${flagHtml}<span class="team-name">${row.name}</span></span>`;
 
       const tdGroup = document.createElement('td');
       tdGroup.className = 'col-num';
@@ -195,7 +195,7 @@
     selectedFlowKey = null;
 
     const flagHtml = flagImgHtml(team.code, 32);
-    scenarioModalTitle.innerHTML = `${flagHtml}${team.name} <span class="code">${team.code || ''}</span>`;
+    scenarioModalTitle.innerHTML = `${flagHtml}${team.name}`;
 
     window.ScenarioFlow.renderGauge(scenarioModalGauge, team);
     renderModalFlow(team);
