@@ -139,7 +139,7 @@
     },
     'off-the-fence': {
       intro: `The 12 third-placed teams from our single most likely simulated outcome, ranked by the same tiebreak as Current: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 go through to the Last 32 in this one scenario — the line marks that cutoff.`,
-      disclaimer: `This is one concrete simulated scenario, not a probability — see the Projected toggle for each team's actual likelihood of qualifying.`,
+      disclaimer: `The cutoff between 8th and 9th is inherently sensitive to minute differences — goal difference and goals scored separate many groups that are on equal points, and there are often several equally-plausible scorelines within the same finishing order. Think of the dividing line as a guide rather than a firm prediction; see the Projected toggle for each team's actual probability of making it through.`,
     },
   };
 
