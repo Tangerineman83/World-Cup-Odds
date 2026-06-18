@@ -42,17 +42,18 @@ function mulberry32(seed) {
 function modalGroupOrdering(teams, N = 20000, options = {}) {
   const orderingCounts = new Map(); // key = "team1|team2|team3|team4" -> count
   const positionCounts = new Map(); // team name -> [count1st, count2nd, count3rd, count4th]
-  // For each distinct ordering, tabulate how often each (points, gd, gf)
-  // combination occurs for the team finishing 3rd - then, for whichever
-  // ordering turns out to be modal, report the MODAL stats combination (not
-  // just "a" representative run). A single representative run can be
-  // unrepresentative even when its ordering is correct - e.g. a 3rd-place
-  // finish on 6 points (2W 1L) is possible but rare (~2%) compared to the
-  // typical 3-4 points, even though many different points totals can produce
-  // the same final ORDERING. Reporting the modal stats combo for the modal
-  // ordering avoids surfacing such an outlier as if it were typical.
-  const statsCountsByKey = new Map(); // orderingKey -> Map("points|gd|gf" -> count)
-  const statsExampleByKey = new Map(); // orderingKey -> Map("points|gd|gf" -> {points,gd,gf})
+  // For each distinct ordering, tabulate how often each JOINT (points,gd,gf)
+  // combination - across all 4 teams together, in standings order - occurs.
+  // Then, for whichever ordering turns out to be modal, report the single
+  // most common JOINT combination (not just "a" representative run, and
+  // crucially not 4 independently-modal per-position stats lines, which
+  // could come from 4 different runs and not actually sum to a valid table -
+  // e.g. goal differences across the 4 teams wouldn't necessarily sum to
+  // zero). Picking one real, internally-consistent simulated table keeps
+  // this in the same spirit as the rest of the page: a single coherent
+  // scenario, not a probability distribution.
+  const jointStatsCountsByKey = new Map(); // orderingKey -> Map("p1,gd1,gf1|p2,gd2,gf2|..." -> count)
+  const jointStatsExampleByKey = new Map(); // orderingKey -> Map(jointKey -> [{points,gd,gf} x4, standings order])
 
   for (const t of teams) positionCounts.set(t.name, [0, 0, 0, 0]);
 
@@ -62,16 +63,15 @@ function modalGroupOrdering(teams, N = 20000, options = {}) {
     const key = standings.map((s) => s.name).join('|');
     orderingCounts.set(key, (orderingCounts.get(key) || 0) + 1);
 
-    const third = standings[2];
-    const statsKey = `${third.points}|${third.gd}|${third.gf}`;
-    if (!statsCountsByKey.has(key)) {
-      statsCountsByKey.set(key, new Map());
-      statsExampleByKey.set(key, new Map());
+    const jointKey = standings.map((s) => `${s.points},${s.gd},${s.gf}`).join('|');
+    if (!jointStatsCountsByKey.has(key)) {
+      jointStatsCountsByKey.set(key, new Map());
+      jointStatsExampleByKey.set(key, new Map());
     }
-    const counts = statsCountsByKey.get(key);
-    counts.set(statsKey, (counts.get(statsKey) || 0) + 1);
-    if (!statsExampleByKey.get(key).has(statsKey)) {
-      statsExampleByKey.get(key).set(statsKey, { points: third.points, gd: third.gd, gf: third.gf });
+    const counts = jointStatsCountsByKey.get(key);
+    counts.set(jointKey, (counts.get(jointKey) || 0) + 1);
+    if (!jointStatsExampleByKey.get(key).has(jointKey)) {
+      jointStatsExampleByKey.get(key).set(jointKey, standings.map((s) => ({ points: s.points, gd: s.gd, gf: s.gf })));
     }
 
     standings.forEach((s, pos) => {
@@ -90,20 +90,22 @@ function modalGroupOrdering(teams, N = 20000, options = {}) {
     positionProbabilities[name] = counts.map((c) => c / N);
   }
 
-  // Modal (points, gd, gf) for the 3rd-placed team, among runs that produced
-  // bestKey's ordering.
-  const thirdName = names[2];
-  let bestStatsKey = null, bestStatsCount = -1;
-  for (const [statsKey, count] of statsCountsByKey.get(bestKey).entries()) {
-    if (count > bestStatsCount) { bestStatsCount = count; bestStatsKey = statsKey; }
+  // The single most common JOINT (points,gd,gf) table, among runs that
+  // produced bestKey's ordering - keyed by team name so e.g. modalStats[names[0]]
+  // is that team's stats line within this one coherent modal table.
+  let bestJointKey = null, bestJointCount = -1;
+  for (const [jointKey, count] of jointStatsCountsByKey.get(bestKey).entries()) {
+    if (count > bestJointCount) { bestJointCount = count; bestJointKey = jointKey; }
   }
-  const thirdStats = statsExampleByKey.get(bestKey).get(bestStatsKey);
+  const jointStatsArr = jointStatsExampleByKey.get(bestKey).get(bestJointKey); // [{points,gd,gf} x4], standings order
+  const modalStats = {};
+  names.forEach((name, pos) => { modalStats[name] = jointStatsArr[pos]; });
 
   return {
     order: names,
     probability: bestCount / N,
     positionProbabilities, // { teamName: [p1st, p2nd, p3rd, p4th] }
-    thirdPlaceStats: { [thirdName]: thirdStats }, // { teamName: {points, gd, gf} } - modal stats for the 3rd-placed team under the modal ordering
+    modalStats, // { teamName: {points, gd, gf} } - this team's line within the single most common JOINT final table for the modal ordering (internally consistent: gd sums to zero across the group)
   };
 }
 

@@ -109,7 +109,7 @@ function cleanMatch(m, codeOf) {
     const pred = predictionsByName.get(name);
     const pThird = pred ? Math.max(0, pred.pRoundOf32 - pred.pGroupWinner - pred.pRunnerUp) : 0;
     const pQualifyGiven3rd = pFinish3rd > 0 ? pThird / pFinish3rd : 0;
-    const stats = result.thirdPlaceStats && result.thirdPlaceStats[name];
+    const stats = result.modalStats && result.modalStats[name];
     return {
       name,
       group: letter,
@@ -151,13 +151,27 @@ function cleanMatch(m, codeOf) {
   const groups = {};
   for (const [letter, g] of Object.entries(scenario.groups)) {
     groups[letter] = {
-      order: g.order.map((name) => ({
-        name,
-        code: codeOf[name] || null,
-        elo: teamsByName.get(name).elo,
-        worldRank: worldRankByName.get(name),
-        positionProbabilities: g.positionProbabilities[name], // [p1st, p2nd, p3rd, p4th]
-      })),
+      order: g.order.map((name) => {
+        const stats = g.modalStats ? g.modalStats[name] : null;
+        return {
+          name,
+          code: codeOf[name] || null,
+          elo: teamsByName.get(name).elo,
+          worldRank: worldRankByName.get(name),
+          fifaRank: FIFA_RANK[name] != null ? FIFA_RANK[name] : null,
+          positionProbabilities: g.positionProbabilities[name], // [p1st, p2nd, p3rd, p4th]
+          // Modal (points, gd, gf) for THIS team's own modal finishing
+          // position in this group - i.e. the "Off the Fence" table's
+          // concrete stats line, parallel to the real-results "Actual"
+          // table. played is always 3 here since this represents the
+          // group stage's completed/projected end state, not a
+          // partially-played group like Actual.
+          points: stats ? stats.points : null,
+          gd: stats ? stats.gd : null,
+          gf: stats ? stats.gf : null,
+          played: 3,
+        };
+      }),
       probability: g.probability,
     };
   }
@@ -241,7 +255,8 @@ function cleanMatch(m, codeOf) {
         ? 'Each team\'s worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions.json) - i.e. the rank matches the same model used for the odds table, not raw rating.'
         : 'predictions.json was unavailable when this was generated, so worldRank falls back to a simple rank by rating - regenerate after running runSimulation.js for a pChampion-based rank.',
       groupOrdering: 'modal (most frequent) full 1st-4th ordering across 20,000 group simulations per group',
-      thirdPlaceRanking: "the 12 third-placed teams (one per group, from the modal group scenario) are ranked by P(qualify as a top-8 third | finish 3rd in their group) - computed from the full 20,000-simulation run (predictions.json), where each simulation independently determines its own top-8-of-12 thirds using the official tiebreak order (points -> goal difference -> goals scored -> FIFA World Ranking). 'Ignoring cards' is deliberate: FIFA's real order also includes head-to-head results (above goal difference) and a disciplinary 'team conduct' score (between goals-scored and FIFA ranking) - neither is modelled, since we have no data source for card counts, but both are rare deciders in practice. points/gd/gf/fifaRank are included per team for reference (their modal-scenario stats and FIFA World Ranking) but are NOT the basis for this ranking - pQualifyGiven3rd is. Bracket slot assignment (which qualifying third plays which group winner) is an approximation of FIFA's official Annex C lookup table.",
+      groupModalStats: "each team in groups[letter].order also carries points/gd/gf (and played, always 3) - taken from the single most common JOINT final table (all 4 teams' points/gd/gf together, internally consistent so gd sums to zero) among just the 20,000-simulation runs that produced this group's modal ordering (see groupOrdering). This is what the 'Off the Fence' toggle displays in the same Pts/GD table format as the 'Actual' toggle (which shows the same shape of data sourced from results.json instead). fifaRank (official FIFA World Ranking) is also included per team, used as the final tiebreak - alongside points/gd/gf - when ranking third-placed teams across groups for the Actual/Off-the-Fence thirds table (see thirdPlaceRanking).",
+      thirdPlaceRanking: "for the 'Projected' toggle's thirds table specifically: the 12 third-placed teams (one per group, from the modal group scenario) are ranked by P(qualify as a top-8 third | finish 3rd in their group) - computed from the full 20,000-simulation run (predictions.json), where each simulation independently determines its own top-8-of-12 thirds using the official tiebreak order (points -> goal difference -> goals scored -> FIFA World Ranking). 'Ignoring cards' is deliberate: FIFA's real order also includes head-to-head results (above goal difference) and a disciplinary 'team conduct' score (between goals-scored and FIFA ranking) - neither is modelled, since we have no data source for card counts, but both are rare deciders in practice. points/gd/gf/fifaRank are included per team for reference (their modal-scenario stats and FIFA World Ranking) but are NOT the basis for THIS ranking - pQualifyGiven3rd is. The 'Actual' and 'Off the Fence' toggles instead rank their 12 thirds directly by that same points -> gd -> gf -> fifaRank order (no probability involved) - see groupModalStats. Bracket slot assignment (which qualifying third plays which group winner) is an approximation of FIFA's official Annex C lookup table.",
       allThirds: 'allThirds lists all 12 third-placed teams (one per group, modal scenario), in one continuous ranking by pQualifyGiven3rd (P(qualify | finish 3rd)) descending - see thirdPlaceRanking. The first 8 (qualifies: true) are the qualifying thirds per bestThirds/the bracket, each with `opponent`/`matchId`/`pWin` for their assigned Round-of-32 fixture (matchIds may not run M74->M87 in ranking order, since slot eligibility is constrained per Annex C). The remaining 4 (qualifies: false) continue the same ranking - i.e. "how close did they come". Each team also carries thirdPlaceScenarios (the (points,gd) breakdown conditional on finishing 3rd, see predictions.json), plus outcomeScenarios/pooledScenarios/pGroupWinner/pRunnerUp/pRoundOf32 (copied from predictions.json) - the same data used for the team Sankey popup on predictions.html, shown here for these 12 teams via the same popup design.',
       bracketStructure: 'official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 "3rd-placed" slots are filled by greedily assigning the best-ranked qualifying third-place team whose group is eligible for that slot, processed in official match order (74, 77, 79, 80, 81, 82, 85, 87) - an approximation of the 495-scenario Annex C table that always produces a structurally valid matchup',
       knockouts: 'chalk bracket - at each match, the team with the higher combined win+penalty probability advances',
