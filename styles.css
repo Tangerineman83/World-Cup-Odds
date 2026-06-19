@@ -270,6 +270,41 @@ html, body {
 .round-status--complete .round-status-label { color: var(--pos); }
 .round-status--in-progress .round-status-label { color: var(--host); }
 .round-status--not-started .round-status-label { color: var(--text-faint); }
+.round-status--upcoming .round-status-label { color: var(--accent); }
+
+/* ---- Next Match: fixture score blocks ----------------------------------- */
+/* Each upcoming fixture is shown as a vertical stack: home team / score /
+   away team. Stacking avoids the overflow issue you'd get trying to fit
+   flag + long team name + score + flag + long team name on a 165px card. */
+
+.fixture-list {
+  padding: 0.1rem 0;
+}
+
+.fixture-block {
+  padding: 0.55rem 0.7rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.fixture-block:last-child {
+  border-bottom: none;
+}
+
+/* Reuse .team-cell directly — the button already handles flag + name. */
+.fixture-block .team-cell {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.fixture-scoreline {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  padding: 0.2rem 0;
+  letter-spacing: 0.06em;
+}
 
 .group-table {
   width: 100%;

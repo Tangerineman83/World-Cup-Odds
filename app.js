@@ -15,12 +15,13 @@
   const toggleActualBtn = document.getElementById('toggle-actual');
   const toggleProjectedBtn = document.getElementById('toggle-projected');
   const toggleOffFenceBtn = document.getElementById('toggle-off-fence');
+  const toggleNextMatchBtn = document.getElementById('toggle-next-match');
   const groupsToggleHint = document.getElementById('groups-toggle-hint');
   const thirdsTableWrap = document.getElementById('thirds-table-wrap');
   const thirdsTableHead = document.getElementById('thirds-table-head');
   const thirdsIntro = document.getElementById('thirds-intro');
   const thirdsDisclaimer = document.getElementById('thirds-disclaimer');
-  let groupsViewMode = 'projected'; // 'projected' | 'actual' | 'off-the-fence'
+  let groupsViewMode = 'projected'; // 'projected' | 'actual' | 'off-the-fence' | 'next-match'
   let scenarioFlowCol = null;
   let scenarioFlowKey = null;
 
@@ -150,6 +151,9 @@
     } else if (groupsViewMode === 'actual') {
       renderThirdsRanked(computeActualThirds(), 'actual');
     } else {
+      // 'off-the-fence' and 'next-match' both show the Off the Fence thirds
+      // (the model's own predicted outcome - most consistent with the forward-
+      // looking predicted scores shown in Next Match mode).
       renderThirdsRanked(computeOffFenceThirds(), 'off-the-fence');
     }
   }
@@ -470,6 +474,7 @@
     projected: "Projected: each team's chance of finishing 1st-4th, from the simulation.",
     actual: "Current: today's real table, from results played so far.",
     'off-the-fence': "Off the Fence: the single most likely simulated outcome, shown as a table.",
+    'next-match': "Next Match: predicted scorelines for each group's upcoming fixtures, from the model.",
   };
 
   function setGroupsViewMode(mode) {
@@ -481,6 +486,8 @@
     toggleActualBtn.setAttribute('aria-selected', mode === 'actual' ? 'true' : 'false');
     toggleOffFenceBtn.classList.toggle('is-active', mode === 'off-the-fence');
     toggleOffFenceBtn.setAttribute('aria-selected', mode === 'off-the-fence' ? 'true' : 'false');
+    toggleNextMatchBtn.classList.toggle('is-active', mode === 'next-match');
+    toggleNextMatchBtn.setAttribute('aria-selected', mode === 'next-match' ? 'true' : 'false');
     groupsToggleHint.textContent = GROUPS_TOGGLE_HINTS[mode];
 
     // Simple crossfade: fade the grid (and thirds table) out, swap content
@@ -544,9 +551,11 @@
 
   function renderGroups() {
     groupsGrid.innerHTML = '';
-    // Only needed for 'actual'/'off-the-fence' - 'projected' colours its
+    // Only needed for 'actual'/'off-the-fence'/'next-match' - 'projected' colours its
     // 3rd-place row from data.bestThirds (a probability ranking) instead.
-    const qualifyingThirdNames = groupsViewMode === 'projected' ? null : qualifyingThirdNamesForMode(groupsViewMode);
+    const qualifyingThirdNames = groupsViewMode === 'projected' ? null : qualifyingThirdNamesForMode(
+      groupsViewMode === 'next-match' ? 'actual' : groupsViewMode
+    );
     const ORDINAL = ['1st', '2nd', '3rd', '4th']; // used in tooltips/aria only - not shown as a column
 
     for (const letter of GROUP_ORDER) {
@@ -556,6 +565,56 @@
 
       let rows = '';
       let headerBadgeHtml = '';
+
+      // ---- Next Match mode: early-exit with bespoke card HTML ----
+      if (groupsViewMode === 'next-match') {
+        const nextFixtures = g.nextFixtures || [];
+
+        if (nextFixtures.length === 0) {
+          // Group complete — fall back to Current table layout so users can
+          // see the final standings without switching tabs.
+          const teamByName = new Map(g.order.map((t) => [t.name, t]));
+          const actualOrder = computeActualOrder(g.order.map((t) => t.name), letter);
+          const badge = roundStatusBadge(actualOrder.map((r) => r.played));
+          const thead = '<thead><tr><th class="team-col"></th><th class="col-num">Pts</th><th class="col-num">GD</th></tr></thead>';
+          let tbody = '';
+          actualOrder.forEach((row, i) => {
+            const team = teamByName.get(row.name) || row;
+            const rc = i < 2 ? 'advances' : i === 2 ? (qualifyingThirdNames && qualifyingThirdNames.has(row.name) ? 'maybe-advances' : 'eliminated') : 'eliminated';
+            const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
+            tbody += groupRowHtml(team, rc, `<td class="col-num">${row.pts}</td><td class="col-num">${gdStr}</td>`);
+          });
+          card.innerHTML = `
+            <div class="group-card-header"><h3>Group ${letter}</h3>${badge}</div>
+            <table class="group-table">
+              ${thead}<tbody>${tbody}</tbody>
+            </table>`;
+        } else {
+          // Upcoming fixtures — vertical stack (home / score / away) per match.
+          const round = g.nextRound || 1;
+          const upcomingBadge = `
+            <div class="round-status round-status--upcoming" title="These are the next fixtures for Group ${letter}.">
+              <span class="round-status-round">Round ${round}/3</span>
+              <span class="round-status-label">Upcoming</span>
+            </div>`;
+          const fixtureBlocksHtml = nextFixtures.map((r) => {
+            const homeTeam = g.order.find((t) => t.name === r.home) || { name: r.home };
+            const awayTeam = g.order.find((t) => t.name === r.away) || { name: r.away };
+            return `<div class="fixture-block">
+              ${teamButton(homeTeam)}
+              <div class="fixture-scoreline">${r.predictedHome} – ${r.predictedAway}</div>
+              ${teamButton(awayTeam)}
+            </div>`;
+          }).join('');
+          card.innerHTML = `
+            <div class="group-card-header"><h3>Group ${letter}</h3>${upcomingBadge}</div>
+            <div class="fixture-list">${fixtureBlocksHtml}</div>`;
+        }
+
+        groupsGrid.appendChild(card);
+        continue; // skip shared table template below
+      }
+      // ---- end Next Match mode ----
 
       if (groupsViewMode === 'actual') {
         const teamByName = new Map(g.order.map((t) => [t.name, t]));
@@ -1054,6 +1113,7 @@
       toggleActualBtn.addEventListener('click', () => setGroupsViewMode('actual'));
       toggleProjectedBtn.addEventListener('click', () => setGroupsViewMode('projected'));
       toggleOffFenceBtn.addEventListener('click', () => setGroupsViewMode('off-the-fence'));
+      toggleNextMatchBtn.addEventListener('click', () => setGroupsViewMode('next-match'));
 
       scenarioModalClose.addEventListener('click', closeScenarioModal);
       scenarioModalBackdrop.addEventListener('click', (e) => {
