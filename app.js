@@ -600,9 +600,28 @@
           const fixtureBlocksHtml = nextFixtures.map((r) => {
             const homeTeam = g.order.find((t) => t.name === r.home) || { name: r.home };
             const awayTeam = g.order.find((t) => t.name === r.away) || { name: r.away };
+
+            // Confidence: probability that the result implied by the predicted
+            // score actually occurs. Low confidence (e.g. 44% Morocco win) signals
+            // the match is genuinely open; high confidence (e.g. 84% win) means
+            // the model strongly favours this outcome.
+            const outcome = r.predictedHome > r.predictedAway ? 'home'
+                          : r.predictedHome < r.predictedAway ? 'away'
+                          : 'draw';
+            // Truncate long team names in the label so they don't overflow the
+            // narrow cards (≤14 chars keeps "Bosnia-Herzegovina" readable).
+            const truncate = (name) => name.length > 14 ? name.slice(0, 13) + '…' : name;
+            const confLabel = outcome === 'draw'
+              ? 'Draw'
+              : truncate(outcome === 'home' ? r.home : r.away) + ' win';
+            const confClass = r.confidence >= 65 ? 'fixture-confidence--high'
+                            : r.confidence >= 40 ? 'fixture-confidence--mid'
+                            :                      'fixture-confidence--low';
+
             return `<div class="fixture-block">
               ${teamButton(homeTeam)}
               <div class="fixture-scoreline">${r.predictedHome} – ${r.predictedAway}</div>
+              <div class="fixture-confidence ${confClass}">${r.confidence}% · ${confLabel}</div>
               ${teamButton(awayTeam)}
             </div>`;
           }).join('');
