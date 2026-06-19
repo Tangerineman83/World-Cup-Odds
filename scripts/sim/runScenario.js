@@ -17,6 +17,9 @@ const { computeGroupResults, buildBracket } = require('./mostLikely');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { computeCurrentRatings } = require('./eloBaseline');
 const { FIFA_RANK } = require('../fifaRankings');
+const { matchProbabilities } = require('./eloModel');
+const { HOST_NATIONS, hostGroupMatchMultiplier } = require('./tournament');
+const { climateAdjustment, GROUP_VENUE } = require('./venues');
 
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario.json');
 
@@ -45,14 +48,63 @@ function cleanMatch(m, codeOf) {
   };
 }
 
+// Modal scoreline prediction for a single upcoming fixture, using the same
+// Poisson goal-distribution model as groupStage.js. Returns the most likely
+// exact score: mode of independent Poisson(homeLambda) x Poisson(awayLambda),
+// where each lambda = BASE_GOAL_LAMBDA * (0.6 + that side's win probability).
+// This IS the most likely individual scoreline under the model, even though it
+// often resolves to 1-1 or 1-0 (reflects genuine football score distributions).
+const BASE_GOAL_LAMBDA = 1.35; // matches groupStage.js
+
+function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, hostMatchNumber) {
+  const home = teamsByName.get(homeName);
+  const away = teamsByName.get(awayName);
+  if (!home || !away) return { predictedHome: 1, predictedAway: 1 };
+
+  const homeIsHost = HOST_NATIONS.has(homeName);
+  const awayIsHost = HOST_NATIONS.has(awayName);
+  const neutralVenue = !homeIsHost && !awayIsHost;
+
+  // Per results.json convention the host is always listed as home, so the
+  // swap path below should never trigger for group stage — included for
+  // robustness only.
+  let effHome = home, effAway = away, swapped = false;
+  if (awayIsHost && !homeIsHost) { effHome = away; effAway = home; swapped = true; }
+
+  const homeAdvMultiplier = (homeIsHost || awayIsHost) ? hostGroupMatchMultiplier(hostMatchNumber) : 1;
+
+  let climateAdj = 0;
+  const venueName = groupLetter ? GROUP_VENUE[groupLetter] : null;
+  if (venueName) {
+    climateAdj = climateAdjustment(effHome.name, venueName) - climateAdjustment(effAway.name, venueName);
+  }
+
+  const { pWin, pDraw } = matchProbabilities(effHome.elo, effAway.elo, {
+    neutralVenue, climateAdj, homeAdvantageMultiplier: homeAdvMultiplier,
+  });
+  const pLoss = 1 - pWin - pDraw;
+
+  const homeLambda = BASE_GOAL_LAMBDA * (0.6 + pWin);
+  const awayLambda = BASE_GOAL_LAMBDA * (0.6 + pLoss);
+
+  // Mode of Poisson(λ) = floor(λ) for any non-integer λ; 0 for λ < 1.
+  let pHome = Math.floor(homeLambda);
+  let pAway = Math.floor(awayLambda);
+  if (swapped) { [pHome, pAway] = [pAway, pHome]; }
+
+  return { predictedHome: pHome, predictedAway: pAway };
+}
+
 (async () => {
   const allTeams = Object.values(GROUPS).flat();
   const codeOf = NAME_TO_CODE;
 
   console.log('Computing ratings from baseline + results.json...');
   const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
+  const allResultsJson = require(path.join(__dirname, '..', '..', 'results.json'));
+  const allResults = allResultsJson.results;
   const { teamsByName, eloChanges, appliedCount, baselineFetchedAt, deltaMultiplier } = computeCurrentRatings(
-    require(path.join(__dirname, '..', '..', 'results.json')).results
+    allResults
   );
 
   if (appliedCount > 0) {
@@ -175,6 +227,58 @@ function cleanMatch(m, codeOf) {
       probability: g.probability,
     };
   }
+
+  // ---- "Next Match" predictions -------------------------------------------
+  // For each group: which fixtures are coming up, and what's the modal
+  // predicted scoreline for each? Used by the "Next Match" toggle in the UI.
+  // Complete groups get an empty nextFixtures array; nextRound = null.
+  for (const letter of Object.keys(groups)) {
+    const groupFixtures = allResults.filter((r) => r.group === letter);
+    const unplayed = groupFixtures.filter((r) => r.homeGoals == null);
+
+    if (unplayed.length === 0) {
+      groups[letter].nextFixtures = [];
+      groups[letter].nextRound = null;
+      continue;
+    }
+
+    // "Next" = all unplayed fixtures sharing the earliest upcoming date.
+    const dates = unplayed.map((r) => r.date).filter(Boolean).sort();
+    const nextDate = dates[0] || null;
+    const nextBatch = nextDate
+      ? unplayed.filter((r) => r.date === nextDate)
+      : unplayed.slice(0, 2); // fallback if dates are missing
+
+    // Track how many group-stage matches each host nation has already played,
+    // so the correct HOME_ADVANTAGE_SCHEDULE multiplier is used.
+    const played = groupFixtures.filter((r) => r.homeGoals != null);
+    const hostMatchCounts = new Map();
+    for (const r of played) {
+      for (const side of [r.home, r.away]) {
+        if (HOST_NATIONS.has(side)) hostMatchCounts.set(side, (hostMatchCounts.get(side) || 0) + 1);
+      }
+    }
+
+    // Round number (1-3): each round = 2 group-stage fixtures.
+    const nextRound = Math.floor(played.length / 2) + 1;
+
+    groups[letter].nextFixtures = nextBatch.map((r) => {
+      const host = HOST_NATIONS.has(r.home) ? r.home : HOST_NATIONS.has(r.away) ? r.away : null;
+      const hostMatchNumber = host ? (hostMatchCounts.get(host) || 0) + 1 : 1;
+      const { predictedHome, predictedAway } = predictedScoreForFixture(
+        r.home, r.away, letter, teamsByName, hostMatchNumber
+      );
+      return {
+        home: r.home,
+        away: r.away,
+        predictedHome,
+        predictedAway,
+        date: r.date || null,
+      };
+    });
+    groups[letter].nextRound = nextRound;
+  }
+  // ---- end "Next Match" predictions ----------------------------------------
 
   // allThirds: all 12 third-placed teams (one per group, the modal-scenario
   // 3rd-placed team from each group's `order`), in ONE continuous ranking by
