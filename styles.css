@@ -302,9 +302,35 @@ html, body {
   font-weight: 800;
   color: var(--text);
   text-align: center;
-  padding: 0.2rem 0;
   letter-spacing: 0.06em;
 }
+
+/* Score + confidence ring on one balanced row.
+   A spacer on the left mirrors the ring width on the right so the
+   score stays visually centred even with the ring beside it. */
+.fixture-score-row {
+  display: flex;
+  align-items: center;
+  padding: 0.2rem 0.7rem 0.1rem;
+}
+
+.fixture-score-spacer {
+  flex: 0 0 28px;
+}
+
+.fixture-scoreline {
+  flex: 1;
+  text-align: center;
+}
+
+.fixture-conf-ring {
+  flex: 0 0 28px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Scale the ring label font down for the smaller 28px ring */
+.fixture-ring .ring-label { font-size: 9px; }
 
 .group-table {
   width: 100%;

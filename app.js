@@ -69,6 +69,7 @@
 
   // Renders a small circular "how sure are we" ring. pct is 0-1.
   // Colour reflects confidence tier (mirrors group-row advance colours).
+  // Full-size group-ordering confidence ring (Projected mode card headers).
   function confidenceRing(pct) {
     const pctLabel = Math.round(pct * 100);
     const tier = pct >= 0.3 ? 'conf-high' : pct >= 0.15 ? 'conf-mid' : 'conf-low';
@@ -84,6 +85,29 @@
             stroke-dashoffset="${offset.toFixed(2)}"
             transform="rotate(-90 19 19)"></circle>
           <text class="ring-label" x="19" y="19" text-anchor="middle" dominant-baseline="central">${pctLabel}%</text>
+        </svg>
+      </div>
+    `;
+  }
+
+  // Compact ring for Next Match fixture confidence (28 px, sits beside the score).
+  // Thresholds differ from confidenceRing: fixture outcome probabilities are
+  // much higher in general (65%+ is a confident call vs <30% for exact orderings).
+  function fixtureConfRing(confidence) {
+    const pct = confidence / 100;
+    const tier = pct >= 0.65 ? 'conf-high' : pct >= 0.40 ? 'conf-mid' : 'conf-low';
+    const r = 16;
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference * (1 - pct);
+    return `
+      <div class="confidence-ring fixture-ring" title="${confidence}% chance of this result">
+        <svg width="28" height="28" viewBox="0 0 38 38">
+          <circle class="ring-track" cx="19" cy="19" r="${r}" transform="rotate(-90 19 19)"></circle>
+          <circle class="ring-progress ${tier}" cx="19" cy="19" r="${r}"
+            stroke-dasharray="${circumference.toFixed(2)}"
+            stroke-dashoffset="${offset.toFixed(2)}"
+            transform="rotate(-90 19 19)"></circle>
+          <text class="ring-label" x="19" y="19" text-anchor="middle" dominant-baseline="central">${confidence}%</text>
         </svg>
       </div>
     `;
@@ -600,28 +624,15 @@
           const fixtureBlocksHtml = nextFixtures.map((r) => {
             const homeTeam = g.order.find((t) => t.name === r.home) || { name: r.home };
             const awayTeam = g.order.find((t) => t.name === r.away) || { name: r.away };
-
-            // Confidence: probability that the result implied by the predicted
-            // score actually occurs. Low confidence (e.g. 44% Morocco win) signals
-            // the match is genuinely open; high confidence (e.g. 84% win) means
-            // the model strongly favours this outcome.
-            const outcome = r.predictedHome > r.predictedAway ? 'home'
-                          : r.predictedHome < r.predictedAway ? 'away'
-                          : 'draw';
-            // Truncate long team names in the label so they don't overflow the
-            // narrow cards (≤14 chars keeps "Bosnia-Herzegovina" readable).
-            const truncate = (name) => name.length > 14 ? name.slice(0, 13) + '…' : name;
-            const confLabel = outcome === 'draw'
-              ? 'Draw'
-              : truncate(outcome === 'home' ? r.home : r.away) + ' win';
-            const confClass = r.confidence >= 65 ? 'fixture-confidence--high'
-                            : r.confidence >= 40 ? 'fixture-confidence--mid'
-                            :                      'fixture-confidence--low';
+            const ringHtml = fixtureConfRing(r.confidence);
 
             return `<div class="fixture-block">
               ${teamButton(homeTeam)}
-              <div class="fixture-scoreline">${r.predictedHome} – ${r.predictedAway}</div>
-              <div class="fixture-confidence ${confClass}">${r.confidence}% · ${confLabel}</div>
+              <div class="fixture-score-row">
+                <span class="fixture-score-spacer"></span>
+                <div class="fixture-scoreline">${r.predictedHome} – ${r.predictedAway}</div>
+                <div class="fixture-conf-ring">${ringHtml}</div>
+              </div>
               ${teamButton(awayTeam)}
             </div>`;
           }).join('');
