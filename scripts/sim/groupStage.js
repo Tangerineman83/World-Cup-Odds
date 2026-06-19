@@ -133,10 +133,31 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
       const { pWin, pDraw } = matchProbabilities(effHome.elo, effAway.elo, { neutralVenue, climateAdj, homeAdvantageMultiplier: hostRemainingMultiplier });
       const outcome = playMatch(pWin, pDraw, rand());
 
-      // Goal simulation: base expected goals scaled by win probability
-      const baseLambda = 1.35;
-      let homeLambda = baseLambda * (0.6 + pWin);
-      let awayLambda = baseLambda * (0.6 + (1 - pWin - pDraw));
+      // Goal simulation: base expected goals scaled by win probability.
+      //
+      // The offset (GOAL_OFFSET) and scale (GOAL_LAMBDA) are chosen so that:
+      //   - Equal matches (~50/50) predict ~1-1 and produce ~2.9 goals total
+      //   - Moderate favourites (~65% win) predict ~2-1 (not 1-1 as before)
+      //   - Clear favourites (~75-85% win) predict ~2-0
+      //   - Extreme mismatches (~92%+) predict 2-0 (modal); the tail of the
+      //     distribution still produces large-margin results like 5-1 or 7-1
+      //     in proportion to their real probability.
+      //
+      // The previous 1.35 / 0.6 values were too compressed: the offset of 0.6
+      // kept the underdog's lambda above 1.0 in almost every match (locking
+      // the modal away-goals at 1), and capped the favourite's modal at 1 goal
+      // unless they had >88% win probability. The new 2.0 / 0.35 values double
+      // the spread while keeping the average goals/game near 2.9-3.1, closer
+      // to the real World Cup 2026 figure (~3.1 through matchday 2).
+      //
+      // W/D/L outcome probabilities are UNAFFECTED - playMatch() determines
+      // those independently from matchProbabilities() before this code runs.
+      // The lambda change only affects scoreline margins (GD, GF), which flow
+      // into group-stage tiebreaks and the Off the Fence stats table.
+      const GOAL_LAMBDA = 2.0;
+      const GOAL_OFFSET = 0.35;
+      let homeLambda = GOAL_LAMBDA * (GOAL_OFFSET + pWin);
+      let awayLambda = GOAL_LAMBDA * (GOAL_OFFSET + (1 - pWin - pDraw));
 
       let gHome = poissonSample(homeLambda, rand);
       let gAway = poissonSample(awayLambda, rand);

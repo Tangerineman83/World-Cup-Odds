@@ -48,13 +48,9 @@ function cleanMatch(m, codeOf) {
   };
 }
 
-// Modal scoreline prediction for a single upcoming fixture, using the same
-// Poisson goal-distribution model as groupStage.js. Returns the most likely
-// exact score: mode of independent Poisson(homeLambda) x Poisson(awayLambda),
-// where each lambda = BASE_GOAL_LAMBDA * (0.6 + that side's win probability).
-// This IS the most likely individual scoreline under the model, even though it
-// often resolves to 1-1 or 1-0 (reflects genuine football score distributions).
-const BASE_GOAL_LAMBDA = 1.35; // matches groupStage.js
+// Matches groupStage.js's GOAL_LAMBDA / GOAL_OFFSET - must be kept in sync.
+const GOAL_LAMBDA = 2.0;
+const GOAL_OFFSET = 0.35;
 
 function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, hostMatchNumber) {
   const home = teamsByName.get(homeName);
@@ -84,10 +80,12 @@ function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, 
   });
   const pLoss = 1 - pWin - pDraw;
 
-  const homeLambda = BASE_GOAL_LAMBDA * (0.6 + pWin);
-  const awayLambda = BASE_GOAL_LAMBDA * (0.6 + pLoss);
-
   // Mode of Poisson(λ) = floor(λ) for any non-integer λ; 0 for λ < 1.
+  // Uses the same GOAL_LAMBDA / GOAL_OFFSET as groupStage.js so the
+  // modal score is consistent with the full simulation's distribution.
+  const homeLambda = GOAL_LAMBDA * (GOAL_OFFSET + pWin);
+  const awayLambda = GOAL_LAMBDA * (GOAL_OFFSET + pLoss);
+
   let pHome = Math.floor(homeLambda);
   let pAway = Math.floor(awayLambda);
   if (swapped) { [pHome, pAway] = [pAway, pHome]; }
