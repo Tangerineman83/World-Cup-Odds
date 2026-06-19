@@ -48,14 +48,24 @@ function cleanMatch(m, codeOf) {
   };
 }
 
-// Matches groupStage.js's GOAL_LAMBDA / GOAL_OFFSET - must be kept in sync.
+// Poisson goal-model constants — must match groupStage.js exactly.
+// See the CALIBRATION comment in that file for the derivation and
+// recalibration instructions.
 const GOAL_LAMBDA = 2.0;
 const GOAL_OFFSET = 0.35;
+
+// Poisson PMF helper — used only in point-prediction, not in the full simulation.
+function poissonPMF(lambda, k) {
+  if (k < 0) return 0;
+  let p = Math.exp(-lambda);
+  for (let i = 1; i <= k; i++) p *= lambda / i;
+  return p;
+}
 
 function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, hostMatchNumber) {
   const home = teamsByName.get(homeName);
   const away = teamsByName.get(awayName);
-  if (!home || !away) return { predictedHome: 1, predictedAway: 1 };
+  if (!home || !away) return { predictedHome: 1, predictedAway: 1, confidence: 33 };
 
   const homeIsHost = HOST_NATIONS.has(homeName);
   const awayIsHost = HOST_NATIONS.has(awayName);
@@ -80,17 +90,59 @@ function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, 
   });
   const pLoss = 1 - pWin - pDraw;
 
-  // Mode of Poisson(λ) = floor(λ) for any non-integer λ; 0 for λ < 1.
   // Uses the same GOAL_LAMBDA / GOAL_OFFSET as groupStage.js so the
-  // modal score is consistent with the full simulation's distribution.
-  const homeLambda = GOAL_LAMBDA * (GOAL_OFFSET + pWin);
-  const awayLambda = GOAL_LAMBDA * (GOAL_OFFSET + pLoss);
+  // score distribution is consistent with the full simulation.
+  const effHomeLambda = GOAL_LAMBDA * (GOAL_OFFSET + pWin);
+  const effAwayLambda = GOAL_LAMBDA * (GOAL_OFFSET + pLoss);
 
-  let pHome = Math.floor(homeLambda);
-  let pAway = Math.floor(awayLambda);
-  if (swapped) { [pHome, pAway] = [pAway, pHome]; }
+  // ---- Two-step prediction ------------------------------------------------
+  //
+  // Step 1 — Most likely OUTCOME (win / draw / loss by probability).
+  //   We show the statistically most likely result even if its modal Poisson
+  //   score would be a draw — e.g. Germany vs Ivory Coast: pWin=58% > pDraw
+  //   22%, so we always show a German-win scoreline, never a neutral 1-1.
+  //
+  // Step 2 — Most likely exact score GIVEN that outcome.
+  //   Constrained search over independent Poisson(effHomeLambda) x
+  //   Poisson(effAwayLambda), keeping only (h,a) pairs that are consistent
+  //   with the chosen outcome (h>a, h=a, or h<a). This gives e.g. 2-1 for
+  //   a moderate favourite, 2-0 for a clear favourite, 1-1 for a draw, etc.
+  //   Searching up to 7 goals per side covers all realistic football scores.
+  //
+  // -------------------------------------------------------------------------
 
-  return { predictedHome: pHome, predictedAway: pAway };
+  const predictedOutcome = (pWin >= pDraw && pWin >= pLoss) ? 'effHome'
+                         : (pLoss >= pDraw)                   ? 'effAway'
+                         :                                       'draw';
+
+  let effHomeGoals = 0, effAwayGoals = 0, bestProb = -1;
+  for (let h = 0; h <= 7; h++) {
+    for (let a = 0; a <= 7; a++) {
+      const consistent =
+        predictedOutcome === 'effHome' ? h > a :
+        predictedOutcome === 'effAway' ? a > h :
+        h === a;
+      if (!consistent) continue;
+      const prob = poissonPMF(effHomeLambda, h) * poissonPMF(effAwayLambda, a);
+      if (prob > bestProb) { bestProb = prob; effHomeGoals = h; effAwayGoals = a; }
+    }
+  }
+
+  // Map goals back to the original fixture perspective (home/away from results.json)
+  const pHome = swapped ? effAwayGoals : effHomeGoals;
+  const pAway = swapped ? effHomeGoals : effAwayGoals;
+
+  // Confidence = probability of the predicted outcome, from the original fixture perspective
+  const homeWinProb = swapped ? pLoss : pWin;
+  const awayWinProb = swapped ? pWin  : pLoss;
+  const resultPerspective = pHome > pAway ? 'home' : pHome < pAway ? 'away' : 'draw';
+  const confidence = Math.round(
+    (resultPerspective === 'home' ? homeWinProb :
+     resultPerspective === 'away' ? awayWinProb :
+     pDraw) * 100
+  );
+
+  return { predictedHome: pHome, predictedAway: pAway, confidence };
 }
 
 (async () => {
@@ -263,7 +315,7 @@ function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, 
     groups[letter].nextFixtures = nextBatch.map((r) => {
       const host = HOST_NATIONS.has(r.home) ? r.home : HOST_NATIONS.has(r.away) ? r.away : null;
       const hostMatchNumber = host ? (hostMatchCounts.get(host) || 0) + 1 : 1;
-      const { predictedHome, predictedAway } = predictedScoreForFixture(
+      const { predictedHome, predictedAway, confidence } = predictedScoreForFixture(
         r.home, r.away, letter, teamsByName, hostMatchNumber
       );
       return {
@@ -271,6 +323,7 @@ function predictedScoreForFixture(homeName, awayName, groupLetter, teamsByName, 
         away: r.away,
         predictedHome,
         predictedAway,
+        confidence,
         date: r.date || null,
       };
     });
