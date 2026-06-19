@@ -4,6 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>World Cup 2026 Predictor</title>
+<meta name="description" content="Elo-based predictions for the 2026 FIFA World Cup. Group tables, knockout bracket and per-team stage probabilities, updated after every result." />
+<meta property="og:title" content="World Cup 2026 Predictor" />
+<meta property="og:description" content="Elo-based predictions for the 2026 FIFA World Cup — group tables, knockout bracket and per-team stage probabilities." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -22,18 +27,18 @@
       </div>
     </header>
 
-    <section class="instructions">
+    <div class="instructions">
       <p>
         <span class="hint-pill">Tap a team</span> to follow them through the whole
         tournament — their group, every knockout game, and the final if they get
-        there. The ring on each group shows how confident we are: a fuller green
-        ring means we're pretty sure, a smaller or amber/red ring means it's a
-        close call. The little bar under each team's name shows their own chance
-        of finishing 1st, 2nd, 3rd or 4th in the group.
+        there. The ring on each group card shows how confident we are about that
+        group's ordering: a fuller green ring means we're pretty sure, a smaller
+        or amber/red ring means it's a close call. In Projected mode, the %
+        next to each team shows their own chance of finishing in that position.
       </p>
-    </section>
+    </div>
 
-    <section class="groups-toggle-wrap">
+    <div class="groups-toggle-wrap">
       <div class="groups-toggle" id="groups-toggle" role="tablist" aria-label="Show projected, current, off-the-fence or next-match group standings">
         <button class="groups-toggle-btn is-active" id="toggle-projected" role="tab" aria-selected="true" data-mode="projected">Projected</button>
         <button class="groups-toggle-btn" id="toggle-actual" role="tab" aria-selected="false" data-mode="actual">Current</button>
@@ -41,7 +46,7 @@
         <button class="groups-toggle-btn" id="toggle-next-match" role="tab" aria-selected="false" data-mode="next-match">Next Match</button>
       </div>
       <p class="groups-toggle-hint" id="groups-toggle-hint">Projected: each team's chance of finishing 1st-4th, from the simulation.</p>
-    </section>
+    </div>
 
     <section class="groups-grid" id="groups-grid">
       <!-- Group tables injected here -->
@@ -127,7 +132,7 @@
   <div id="scenario-modal-backdrop" class="modal-backdrop" hidden>
     <div class="modal modal-wide" id="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
       <button class="modal-close" id="scenario-modal-close" aria-label="Close">&times;</button>
-      <h3 id="scenario-modal-title" class="modal-title"></h3>
+      <h2 id="scenario-modal-title" class="modal-title"></h2>
       <div class="team-detail-gauge" id="scenario-modal-gauge"></div>
       <div class="team-detail-flow-wrap">
         <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>

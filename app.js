@@ -21,6 +21,8 @@
   const thirdsTableHead = document.getElementById('thirds-table-head');
   const thirdsIntro = document.getElementById('thirds-intro');
   const thirdsDisclaimer = document.getElementById('thirds-disclaimer');
+  const metaResults = document.getElementById('meta-results');
+  const scenarioModalTitle = document.getElementById('scenario-modal-title');
   let groupsViewMode = 'projected'; // 'projected' | 'actual' | 'off-the-fence' | 'next-match'
   let scenarioFlowCol = null;
   let scenarioFlowKey = null;
@@ -67,18 +69,20 @@
     return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}</button>`;
   }
 
-  // Renders a small circular "how sure are we" ring. pct is 0-1.
-  // Colour reflects confidence tier (mirrors group-row advance colours).
-  // Full-size group-ordering confidence ring (Projected mode card headers).
-  function confidenceRing(pct) {
+  // Shared SVG ring renderer. Both confidenceRing (group card headers) and
+  // fixtureConfRing (Next Match fixture confidence) use the same geometry —
+  // a 16-radius circle inside a 38x38 viewBox — differing only in rendered
+  // size, tier thresholds, and CSS modifier class.
+  function renderRing(pct, { size, highThreshold, midThreshold, extraClass = '', titleText = '' }) {
     const pctLabel = Math.round(pct * 100);
-    const tier = pct >= 0.3 ? 'conf-high' : pct >= 0.15 ? 'conf-mid' : 'conf-low';
     const r = 16;
     const circumference = 2 * Math.PI * r;
     const offset = circumference * (1 - pct);
+    const tier = pct >= highThreshold ? 'conf-high' : pct >= midThreshold ? 'conf-mid' : 'conf-low';
+    const cls = extraClass ? `confidence-ring ${extraClass}` : 'confidence-ring';
     return `
-      <div class="confidence-ring" title="How sure we are about this exact order: ${pctLabel}%">
-        <svg width="38" height="38" viewBox="0 0 38 38">
+      <div class="${cls}" title="${titleText}">
+        <svg width="${size}" height="${size}" viewBox="0 0 38 38">
           <circle class="ring-track" cx="19" cy="19" r="${r}" transform="rotate(-90 19 19)"></circle>
           <circle class="ring-progress ${tier}" cx="19" cy="19" r="${r}"
             stroke-dasharray="${circumference.toFixed(2)}"
@@ -90,27 +94,27 @@
     `;
   }
 
-  // Compact ring for Next Match fixture confidence (28 px, sits beside the score).
-  // Thresholds differ from confidenceRing: fixture outcome probabilities are
-  // much higher in general (65%+ is a confident call vs <30% for exact orderings).
+  // Full-size group-ordering confidence ring (38px, Projected mode card headers).
+  // Thresholds are low because joint-ordering probabilities are inherently small.
+  function confidenceRing(pct) {
+    return renderRing(pct, {
+      size: 38,
+      highThreshold: 0.3,
+      midThreshold: 0.15,
+      titleText: `How sure we are about this exact order: ${Math.round(pct * 100)}%`,
+    });
+  }
+
+  // Compact ring for Next Match fixture confidence (28px, sits beside the score).
+  // Thresholds differ: fixture outcome probabilities are much higher in general.
   function fixtureConfRing(confidence) {
-    const pct = confidence / 100;
-    const tier = pct >= 0.65 ? 'conf-high' : pct >= 0.40 ? 'conf-mid' : 'conf-low';
-    const r = 16;
-    const circumference = 2 * Math.PI * r;
-    const offset = circumference * (1 - pct);
-    return `
-      <div class="confidence-ring fixture-ring" title="${confidence}% chance of this result">
-        <svg width="28" height="28" viewBox="0 0 38 38">
-          <circle class="ring-track" cx="19" cy="19" r="${r}" transform="rotate(-90 19 19)"></circle>
-          <circle class="ring-progress ${tier}" cx="19" cy="19" r="${r}"
-            stroke-dasharray="${circumference.toFixed(2)}"
-            stroke-dashoffset="${offset.toFixed(2)}"
-            transform="rotate(-90 19 19)"></circle>
-          <text class="ring-label" x="19" y="19" text-anchor="middle" dominant-baseline="central">${confidence}%</text>
-        </svg>
-      </div>
-    `;
+    return renderRing(confidence / 100, {
+      size: 28,
+      highThreshold: 0.65,
+      midThreshold: 0.40,
+      extraClass: 'fixture-ring',
+      titleText: `${confidence}% chance of this result`,
+    });
   }
 
   // Each team's world ranking (1 = most likely to win the tournament),
@@ -175,9 +179,9 @@
     } else if (groupsViewMode === 'actual') {
       renderThirdsRanked(computeActualThirds(), 'actual');
     } else {
-      // 'off-the-fence' and 'next-match' both show the Off the Fence thirds
-      // (the model's own predicted outcome - most consistent with the forward-
-      // looking predicted scores shown in Next Match mode).
+      // Both 'off-the-fence' and 'next-match' show the Off the Fence thirds.
+      // 'next-match' is intentionally not a key in THIRDS_COPY — renderThirdsRanked
+      // is always called here with 'off-the-fence', so the lookup is safe.
       renderThirdsRanked(computeOffFenceThirds(), 'off-the-fence');
     }
   }
@@ -269,7 +273,7 @@
     if (!team.pooledScenarios || team.pooledScenarios.length === 0) return;
     scenarioFlowCol = null;
     scenarioFlowKey = null;
-    scenarioModal.querySelector('.modal-title').innerHTML = teamButton(team);
+    scenarioModalTitle.innerHTML = teamButton(team);
     // In index.html, the popup is opened from the thirds table where the
     // "Chance" column shows P(qualify | finish 3rd). The gauge headline
     // stays as the unconditional pRoundOf32 (matching what the chart's
@@ -580,7 +584,22 @@
     const qualifyingThirdNames = groupsViewMode === 'projected' ? null : qualifyingThirdNamesForMode(
       groupsViewMode === 'next-match' ? 'actual' : groupsViewMode
     );
-    const ORDINAL = ['1st', '2nd', '3rd', '4th']; // used in tooltips/aria only - not shown as a column
+    const ORDINAL = ['1st', '2nd', '3rd', '4th']; // used in tooltips/aria only
+
+    // Pre-build a Set for O(1) bestThirds lookups in Projected mode (avoids
+    // repeated .some() scans across all 48 team rows).
+    const bestThirdsSet = new Set((data.bestThirds || []).map((t) => t.name));
+
+    // Cache computeActualOrder results for this render pass so that both the
+    // qualifyingThirdNamesForMode call above and the next-match/actual render
+    // branches below share the same computed table rather than recalculating.
+    const actualOrderCache = new Map();
+    function getActualOrder(letter) {
+      if (!actualOrderCache.has(letter)) {
+        actualOrderCache.set(letter, computeActualOrder(data.groups[letter].order.map((t) => t.name), letter));
+      }
+      return actualOrderCache.get(letter);
+    }
 
     for (const letter of GROUP_ORDER) {
       const g = data.groups[letter];
@@ -598,7 +617,7 @@
           // Group complete — fall back to Current table layout so users can
           // see the final standings without switching tabs.
           const teamByName = new Map(g.order.map((t) => [t.name, t]));
-          const actualOrder = computeActualOrder(g.order.map((t) => t.name), letter);
+          const actualOrder = getActualOrder(letter);
           const badge = roundStatusBadge(actualOrder.map((r) => r.played));
           const thead = '<thead><tr><th class="team-col"></th><th class="col-num">Pts</th><th class="col-num">GD</th></tr></thead>';
           let tbody = '';
@@ -648,13 +667,10 @@
 
       if (groupsViewMode === 'actual') {
         const teamByName = new Map(g.order.map((t) => [t.name, t]));
-        const actualOrder = computeActualOrder(g.order.map((t) => t.name), letter);
+        const actualOrder = getActualOrder(letter);
         headerBadgeHtml = roundStatusBadge(actualOrder.map((row) => row.played));
         actualOrder.forEach((row, i) => {
           const team = teamByName.get(row.name) || row;
-          // Provisional zone based on TODAY's actual table - not a real
-          // qualification result (that only exists once the group is
-          // finished), just "if the group ended right now".
           let rowClass;
           if (i < 2) rowClass = 'advances';
           else if (i === 2) rowClass = qualifyingThirdNames.has(row.name) ? 'maybe-advances' : 'eliminated';
@@ -675,20 +691,16 @@
           rows += groupRowHtml(team, rowClass, statCellsHtml);
         });
       } else {
+        // Projected mode
         g.order.forEach((team, i) => {
           const advances = i < 2;
-          const isBestThird = i === 2 && data.bestThirds.some((t) => t.name === team.name);
+          const isBestThird = i === 2 && bestThirdsSet.has(team.name);
           let rowClass = '';
           if (advances) rowClass = 'advances';
           else if (isBestThird) rowClass = 'maybe-advances';
           else rowClass = 'eliminated';
 
-          // This team's own probability of finishing in THIS row's
-          // position specifically - distinct from the confidence ring,
-          // which covers the group's whole 1st-4th ordering being exactly
-          // right. The two are complementary, not redundant: the ring says
-          // "how sure are we about this whole table", this % says "how
-          // sure are we this team lands in this particular spot".
+          // This team's probability of finishing in THIS row's position specifically.
           const posProbs = team.positionProbabilities || [0, 0, 0, 0];
           const pct = Math.round((posProbs[i] || 0) * 100);
           const statCellsHtml = `<td class="col-num" title="${pct}% chance of finishing ${ORDINAL[i]} in Group ${letter}, across all simulations">${pct}%</td>`;
@@ -1004,7 +1016,7 @@
     if (!selectedTeam) {
       allTeamEls.forEach((el) => el.classList.remove('highlight', 'dim'));
       allConnectors.forEach((el) => el.classList.remove('connector-highlight'));
-      groupRows.forEach((el) => el.classList.remove('row-highlight', 'row-dim'));
+      groupRows.forEach((el) => el.classList.remove('row-highlight'));
       document.querySelectorAll('.match, .champion-card').forEach((el) => el.classList.remove('match-highlight'));
       clearBtn.hidden = true;
       return;
@@ -1099,7 +1111,6 @@
       dateStyle: 'medium',
     });
 
-    const metaResults = document.getElementById('meta-results');
     const n = data.resultsApplied || 0;
     if (n > 0) {
       metaResults.textContent = `${n} result${n === 1 ? '' : 's'} played so far`;
@@ -1132,7 +1143,17 @@
       requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
 
       window.addEventListener('resize', scheduleRedraw);
-      bracketWrap.addEventListener('scroll', scheduleRedraw);
+      // Single scroll listener: redraws connectors on every scroll, and
+      // also hides the scroll hint the first time the user scrolls past 20px.
+      let scrollHintHidden = bracketWrap.scrollWidth <= bracketWrap.clientWidth + 4;
+      if (scrollHintHidden) scrollHint.classList.add('hidden');
+      bracketWrap.addEventListener('scroll', () => {
+        scheduleRedraw();
+        if (!scrollHintHidden && bracketWrap.scrollLeft > 20) {
+          scrollHint.classList.add('hidden');
+          scrollHintHidden = true;
+        }
+      });
 
       document.body.addEventListener('click', onTeamClick);
       clearBtn.addEventListener('click', () => {
@@ -1152,15 +1173,6 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !scenarioModalBackdrop.hidden) closeScenarioModal();
       });
-
-      // Hide the scroll hint once the user has scrolled the bracket
-      bracketWrap.addEventListener('scroll', () => {
-        if (bracketWrap.scrollLeft > 20) scrollHint.classList.add('hidden');
-      }, { once: true });
-      // Also hide it if the bracket already fits without scrolling
-      if (bracketWrap.scrollWidth <= bracketWrap.clientWidth + 4) {
-        scrollHint.classList.add('hidden');
-      }
     } catch (e) {
       groupsGrid.innerHTML = `<p class="error-row">Couldn't load scenario.json: ${e.message}. Run <code>node scripts/sim/runScenario.js</code> and commit the result.</p>`;
     }

@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Every team's odds — World Cup 2026</title>
+<title>Every team's odds · World Cup 2026 Predictor</title>
+<meta name="description" content="Full per-team stage probabilities for the 2026 FIFA World Cup — sortable table showing each team's chances of reaching the Last 16, quarters, semis, final and winning the tournament." />
+<meta property="og:title" content="Every team's odds · World Cup 2026 Predictor" />
+<meta property="og:description" content="Full per-team stage probabilities for the 2026 FIFA World Cup, updated after every result." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -24,24 +29,21 @@
 
     <section class="legend">
       <div class="legend-item">
-        <span class="swatch swatch-accent"></span>
         <div>
           <strong>How it works</strong>
           <p>Every team has a rating based on how well they've been playing. We use these ratings to work out the chance of either team winning any match, with a boost for the three host nations (USA, Canada, Mexico) when they play. Then we play out the whole tournament 20,000 times on a computer and count how often each team reaches each stage.</p>
         </div>
       </div>
       <div class="legend-item">
-        <span class="swatch swatch-host"></span>
         <div>
           <strong>What to know</strong>
           <p>The route from the group stage into the last-32 follows the real World Cup rules. A few details of exactly which third-placed teams meet which group winners are simplified — close, but not pinpoint-exact for every combination. Results already played are built in and update each team's rating.</p>
         </div>
       </div>
       <div class="legend-item">
-        <span class="swatch swatch-pos"></span>
         <div>
           <strong>Reading the table</strong>
-          <p>Rank is our world ranking (#1 = most likely to win it all). FIFA is the official FIFA World Ranking from just before the tournament — a different system, shown for comparison. Rating is our own current rating, adjusted for tournament performance — the number and arrow next to it show how much it's moved from before the tournament (hover for the exact pre-tournament value). 1st/2nd are the chance of finishing top or second in the group. Last 32, Last 16, Quarters, Semis, Final and Champions are the chance of <em>reaching</em> that stage — Champions means winning the whole thing.</p>
+          <p>Rank is our world ranking (#1 = most likely to win it all). FIFA is the official FIFA World Ranking from just before the tournament — a different system, shown for comparison. Rating is our own current rating, adjusted for tournament performance — the number and arrow next to it show how much it's moved from before the tournament (hover for the exact pre-tournament value). Last 16, Quarters, Semis, Final and Champions are the chance of <em>reaching</em> that stage — Champions means winning the whole thing.</p>
         </div>
       </div>
     </section>
@@ -71,7 +73,7 @@
     <div id="scenario-modal-backdrop" class="modal-backdrop" hidden>
       <div class="modal modal-wide" id="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
         <button class="modal-close" id="scenario-modal-close" aria-label="Close">&times;</button>
-        <h3 id="scenario-modal-title" class="modal-title"></h3>
+        <h2 id="scenario-modal-title" class="modal-title"></h2>
         <div class="team-detail-gauge" id="scenario-modal-gauge"></div>
         <div class="team-detail-flow-wrap">
           <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>
