@@ -349,16 +349,24 @@
     }
   }
 
-  // Orders one group's teams by the real-world table right now: points,
-  // then overall goal difference, then overall goals scored, then
-  // head-to-head points among the still-tied teams, then head-to-head goal
-  // difference among the still-tied teams, then alphabetically as a final
-  // deterministic fallback (teams with zero matches played, e.g., are tied
-  // on everything and have no real result to separate them - alphabetical
-  // is just a stable display order, not a meaningful ranking).
-  // teamNames: the 4 team names in this group (any order).
-  function computeActualOrder(teamNames, groupLetter) {
+  // Orders one group's teams by the real-world table right now, using the
+  // correct FIFA tiebreak order: points, then head-to-head (a mini-league of
+  // just the tied teams' results against each other: points, then goal
+  // difference, then goals scored), then overall goal difference, then
+  // overall goals scored, then FIFA World Ranking, then alphabetically as a
+  // final deterministic fallback (e.g. teams tied on literally everything
+  // with zero matches played).
+  //
+  // Getting the order of head-to-head vs overall GD/GF wrong matters: a team
+  // can show as eliminated or relegated to 4th when they've already beaten,
+  // head-to-head, every team they're tied with on points - which is
+  // impossible under the real rules regardless of other teams' GD.
+  //
+  // teams: array of {name, fifaRank, ...} for this group (any order).
+  function computeActualOrder(teams, groupLetter) {
     const fixtures = (resultsByGroup && resultsByGroup[groupLetter]) || [];
+    const teamNames = teams.map((t) => t.name);
+    const fifaRankByName = new Map(teams.map((t) => [t.name, t.fifaRank]));
     const stats = new Map(teamNames.map((name) => [name, { name, pts: 0, gf: 0, ga: 0, played: 0 }]));
 
     for (const r of fixtures) {
@@ -372,46 +380,64 @@
       else { home.pts += 1; away.pts += 1; }
     }
 
-    function h2hPoints(name, against) {
-      let pts = 0;
+    // This team's points/GD/GF from just the single match against `against`
+    // (group-stage round robin: each pair plays exactly once).
+    function h2hStats(name, against) {
       for (const r of fixtures) {
         if (r.home === name && r.away === against) {
-          pts += r.homeGoals > r.awayGoals ? 3 : r.homeGoals === r.awayGoals ? 1 : 0;
-        } else if (r.away === name && r.home === against) {
-          pts += r.awayGoals > r.homeGoals ? 3 : r.awayGoals === r.homeGoals ? 1 : 0;
+          const pts = r.homeGoals > r.awayGoals ? 3 : r.homeGoals === r.awayGoals ? 1 : 0;
+          return { pts, gd: r.homeGoals - r.awayGoals, gf: r.homeGoals };
+        }
+        if (r.away === name && r.home === against) {
+          const pts = r.awayGoals > r.homeGoals ? 3 : r.awayGoals === r.homeGoals ? 1 : 0;
+          return { pts, gd: r.awayGoals - r.homeGoals, gf: r.awayGoals };
         }
       }
-      return pts;
+      return { pts: 0, gd: 0, gf: 0 };
     }
-    function h2hGd(name, against) {
-      let gd = 0;
-      for (const r of fixtures) {
-        if (r.home === name && r.away === against) gd += r.homeGoals - r.awayGoals;
-        else if (r.away === name && r.home === against) gd += r.awayGoals - r.homeGoals;
+
+    // Head-to-head mini-league: this team's combined points/GD/GF against
+    // just the OTHER teams in clusterNames (the teams it's tied with on
+    // points), not the whole group.
+    function h2hMiniLeagueStats(name, clusterNames) {
+      let pts = 0, gd = 0, gf = 0;
+      for (const opp of clusterNames) {
+        if (opp === name) continue;
+        const h = h2hStats(name, opp);
+        pts += h.pts; gd += h.gd; gf += h.gf;
       }
-      return gd;
+      return { pts, gd, gf };
     }
 
     const list = [...stats.values()].map((s) => ({ ...s, gd: s.gf - s.ga }));
 
-    // Group teams into tied clusters by (pts, gd, gf), and within each
-    // cluster of 2+ teams, compare head-to-head among JUST that cluster.
-    list.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+    // Cluster by POINTS ONLY - this is where the previous version of this
+    // function was wrong: it clustered by (pts, gd, gf) all matching, which
+    // meant head-to-head only ever ran as an unlikely last resort, instead
+    // of FIFA's actual order where head-to-head comes immediately after points.
+    list.sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
 
     const result = [];
     let i = 0;
     while (i < list.length) {
       let j = i + 1;
-      while (j < list.length && list[j].pts === list[i].pts && list[j].gd === list[i].gd && list[j].gf === list[i].gf) j++;
+      while (j < list.length && list[j].pts === list[i].pts) j++;
       const cluster = list.slice(i, j);
       if (cluster.length > 1) {
+        const clusterNames = cluster.map((t) => t.name);
         cluster.sort((a, b) => {
-          const h2hA = cluster.filter((t) => t.name !== a.name).reduce((sum, t) => sum + h2hPoints(a.name, t.name), 0);
-          const h2hB = cluster.filter((t) => t.name !== b.name).reduce((sum, t) => sum + h2hPoints(b.name, t.name), 0);
-          if (h2hA !== h2hB) return h2hB - h2hA;
-          const gdA = cluster.filter((t) => t.name !== a.name).reduce((sum, t) => sum + h2hGd(a.name, t.name), 0);
-          const gdB = cluster.filter((t) => t.name !== b.name).reduce((sum, t) => sum + h2hGd(b.name, t.name), 0);
-          if (gdA !== gdB) return gdB - gdA;
+          const ha = h2hMiniLeagueStats(a.name, clusterNames);
+          const hb = h2hMiniLeagueStats(b.name, clusterNames);
+          if (hb.pts !== ha.pts) return hb.pts - ha.pts;
+          if (hb.gd !== ha.gd) return hb.gd - ha.gd;
+          if (hb.gf !== ha.gf) return hb.gf - ha.gf;
+          // Still tied after head-to-head: fall through to overall GD/GF,
+          // then FIFA World Ranking, then alphabetical.
+          if (b.gd !== a.gd) return b.gd - a.gd;
+          if (b.gf !== a.gf) return b.gf - a.gf;
+          const rankA = fifaRankByName.get(a.name) != null ? fifaRankByName.get(a.name) : Infinity;
+          const rankB = fifaRankByName.get(b.name) != null ? fifaRankByName.get(b.name) : Infinity;
+          if (rankA !== rankB) return rankA - rankB;
           return a.name.localeCompare(b.name);
         });
       }
@@ -453,7 +479,7 @@
     return GROUP_ORDER.map((letter) => {
       const g = data.groups[letter];
       const teamByName = new Map(g.order.map((t) => [t.name, t]));
-      const third = computeActualOrder(g.order.map((t) => t.name), letter)[2];
+      const third = computeActualOrder(g.order, letter)[2];
       const team = teamByName.get(third.name) || {};
       return {
         name: third.name,
@@ -596,7 +622,7 @@
     const actualOrderCache = new Map();
     function getActualOrder(letter) {
       if (!actualOrderCache.has(letter)) {
-        actualOrderCache.set(letter, computeActualOrder(data.groups[letter].order.map((t) => t.name), letter));
+        actualOrderCache.set(letter, computeActualOrder(data.groups[letter].order, letter));
       }
       return actualOrderCache.get(letter);
     }
