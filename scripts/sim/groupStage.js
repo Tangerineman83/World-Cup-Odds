@@ -56,8 +56,21 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
   const { knownResults = [], groupLetter = null } = options;
 
   const stats = {};
+  // h2h[name] maps opponentName -> { pts, gf, ga } for the single match
+  // between them (each pair plays exactly once in the group stage). Used
+  // to build each team's head-to-head mini-league record against just the
+  // OTHER teams they're tied with on points - see the tiebreak below.
+  const h2h = {};
   for (const t of teams) {
     stats[t.name] = { name: t.name, elo: t.elo, points: 0, gf: 0, ga: 0, gd: 0, wins: 0, draws: 0, losses: 0 };
+    h2h[t.name] = new Map();
+  }
+
+  function recordH2H(nameA, nameB, scoreA, scoreB, resultForA) {
+    const ptsA = resultForA === 'home' ? 3 : resultForA === 'away' ? 0 : 1;
+    const ptsB = resultForA === 'home' ? 0 : resultForA === 'away' ? 3 : 1;
+    h2h[nameA].set(nameB, { pts: ptsA, gf: scoreA, ga: scoreB });
+    h2h[nameB].set(nameA, { pts: ptsB, gf: scoreB, ga: scoreA });
   }
 
   const knownByFixture = new Map();
@@ -111,6 +124,7 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
         }
         const resultForA = scoreA > scoreB ? 'home' : scoreA < scoreB ? 'away' : 'draw';
         applyResult(stats[home.name], stats[away.name], scoreA, scoreB, resultForA);
+        recordH2H(home.name, away.name, scoreA, scoreB, resultForA);
         continue;
       }
 
@@ -150,6 +164,12 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
       // the spread while keeping the average goals/game near 2.9-3.1, closer
       // to the real World Cup 2026 figure (~3.1 through matchday 2).
       //
+      // CALIBRATION: these two constants should be rechecked against actual
+      // tournament results as the group stage completes. Target metrics:
+      //   - Modelled mean goals/game ≈ real tournament mean (check results.json)
+      //   - Modal predicted scores (Next Match toggle) tracking actual scorelines
+      //   - Home/away goal histograms from simulation matching real distributions
+      // Best time: after each matchday is complete (more data = better estimates).
       // W/D/L outcome probabilities are UNAFFECTED - playMatch() determines
       // those independently from matchProbabilities() before this code runs.
       // The lambda change only affects scoreline margins (GD, GF), which flow
@@ -173,28 +193,71 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
         : outcome;
 
       applyResult(stats[home.name], stats[away.name], scoreA, scoreB, resultForA);
+      recordH2H(home.name, away.name, scoreA, scoreB, resultForA);
     }
   }
 
   for (const s of Object.values(stats)) s.gd = s.gf - s.ga;
 
   const standings = Object.values(stats);
-  standings.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    if (b.gd !== a.gd) return b.gd - a.gd;
-    if (b.gf !== a.gf) return b.gf - a.gf;
-    // Final tiebreak: FIFA World Ranking (lower rank number = higher
-    // standing), per the 2026 regulations - head-to-head and disciplinary
-    // record (team conduct) are not modelled, but both sit ABOVE the FIFA
-    // ranking in FIFA's actual tiebreak order, so this is an approximation
-    // for the rare case all of points/GD/GF tie. Missing ranks (shouldn't
-    // happen for the 48 World Cup teams) sort last.
-    const rankA = FIFA_RANK[a.name] != null ? FIFA_RANK[a.name] : Infinity;
-    const rankB = FIFA_RANK[b.name] != null ? FIFA_RANK[b.name] : Infinity;
-    return rankA - rankB;
-  });
 
-  return standings;
+  // FIFA group-stage tiebreak order (2026 regulations, Article 19-ish):
+  //   1. Points
+  //   2. Head-to-head: points, then goal difference, then goals scored, in
+  //      matches between JUST the tied teams (not the whole group)
+  //   3. Overall goal difference (all group matches)
+  //   4. Overall goals scored (all group matches)
+  //   5. FIFA World Ranking (approximates the real "team conduct" /
+  //      disciplinary criterion, which sits between goals-scored and FIFA
+  //      ranking in the real rules and isn't modelled here, plus the
+  //      ranking itself, which IS the final official criterion before a
+  //      literal draw of lots)
+  //
+  // Head-to-head must come BEFORE overall GD/GF - getting this order wrong
+  // can produce results that are mathematically impossible in real life
+  // (e.g. a team the model shows finishing 4th despite having already
+  // beaten, head-to-head, every team they're tied with on points).
+  //
+  // Sort by points first to establish clusters of tied teams.
+  standings.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+
+  function h2hMiniLeagueStats(name, clusterNames) {
+    let pts = 0, gf = 0, ga = 0;
+    for (const opp of clusterNames) {
+      if (opp === name) continue;
+      const rec = h2h[name].get(opp);
+      if (rec) { pts += rec.pts; gf += rec.gf; ga += rec.ga; }
+    }
+    return { pts, gd: gf - ga, gf };
+  }
+
+  const finalStandings = [];
+  let i = 0;
+  while (i < standings.length) {
+    let j = i + 1;
+    while (j < standings.length && standings[j].points === standings[i].points) j++;
+    const cluster = standings.slice(i, j);
+    if (cluster.length > 1) {
+      const clusterNames = cluster.map((s) => s.name);
+      cluster.sort((a, b) => {
+        const ha = h2hMiniLeagueStats(a.name, clusterNames);
+        const hb = h2hMiniLeagueStats(b.name, clusterNames);
+        if (hb.pts !== ha.pts) return hb.pts - ha.pts;
+        if (hb.gd !== ha.gd) return hb.gd - ha.gd;
+        if (hb.gf !== ha.gf) return hb.gf - ha.gf;
+        // Still tied after head-to-head: fall through to overall GD/GF/FIFA rank.
+        if (b.gd !== a.gd) return b.gd - a.gd;
+        if (b.gf !== a.gf) return b.gf - a.gf;
+        const rankA = FIFA_RANK[a.name] != null ? FIFA_RANK[a.name] : Infinity;
+        const rankB = FIFA_RANK[b.name] != null ? FIFA_RANK[b.name] : Infinity;
+        return rankA - rankB;
+      });
+    }
+    finalStandings.push(...cluster);
+    i = j;
+  }
+
+  return finalStandings;
 }
 
 function applyResult(homeStats, awayStats, gHome, gAway, resultForHome) {
