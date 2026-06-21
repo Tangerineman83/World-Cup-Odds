@@ -21,6 +21,7 @@
   .legend { font-size: 12px; margin-top: 10px; }
   .legend span { display: inline-block; width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; }
   #error { color: #b00; font-weight: bold; }
+  h2 { font-size: 16px; margin-top: 36px; border-top: 2px solid #ddd; padding-top: 20px; }
 </style>
 </head>
 <body>
@@ -77,6 +78,50 @@
   is optional - if it's missing (e.g. before Phase 2 has been run), the "(current)" and "(tourney)" columns
   just show baseline values / dashes rather than the page failing to load. Nothing here is wired into
   <code>index.html</code> / <code>predictions.html</code>.
+</p>
+
+<h2>Model comparison: existing (scalar Elo / Poisson) vs NegBin (dual-Elo) &mdash; Phase 3 review</h2>
+<div class="meta" id="meta3">Loading predictions.json + predictions_negbin.json...</div>
+<div id="error2"></div>
+
+<input type="text" id="filterBox2" placeholder="Filter by team name..." style="display:none;">
+
+<table id="compareTable" style="display:none;">
+  <thead>
+    <tr>
+      <th data-key="name" data-type="string">Team</th>
+      <th data-key="group" data-type="string">Group</th>
+      <th data-key="pGroupWinner_existing" data-type="number">Group win % (existing)</th>
+      <th data-key="pGroupWinner_negbin" data-type="number">Group win % (NegBin)</th>
+      <th data-key="pGroupWinner_diff" data-type="number" title="NegBin minus existing">&Delta; group win</th>
+      <th data-key="pRoundOf16_existing" data-type="number">R16 % (existing)</th>
+      <th data-key="pRoundOf16_negbin" data-type="number">R16 % (NegBin)</th>
+      <th data-key="pRoundOf16_diff" data-type="number" title="NegBin minus existing">&Delta; R16</th>
+      <th data-key="pChampion_existing" data-type="number">Champion % (existing)</th>
+      <th data-key="pChampion_negbin" data-type="number">Champion % (NegBin)</th>
+      <th data-key="pChampion_diff" data-type="number" title="NegBin minus existing">&Delta; champion</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="legend" id="compareLegend" style="display:none;">
+  Sorted by absolute &Delta; champion (largest divergence between the two models first) by default - click any
+  column header to re-sort. <span style="color:#2a7;font-weight:bold;">Green</span> = NegBin rates this team
+  higher than the existing model; <span style="color:#c33;font-weight:bold;">red</span> = NegBin rates them
+  lower. This is a comparison of OUTPUT only - it doesn't say which model is more accurate; that needs
+  validation against actual results as the tournament progresses (see calibrateNegBin.js's own
+  out-of-sample-validation discussion).
+</div>
+
+<p style="font-size:12px;color:#777;margin-top:20px;">
+  This table reads <code>predictions.json</code> (existing live model, from <code>runSimulation.js</code>) and
+  <code>predictions_negbin.json</code> (Phase 3 dual-Elo Negative Binomial model, from
+  <code>scripts/sim/runSimulationNegBin.js</code>) and joins them by team name. Both are required for this
+  table to render - if either is missing, an error is shown below instead of a partial table, since a
+  comparison with only one side isn't meaningful. Re-run <code>runSimulationNegBin.js</code> (or its GitHub
+  Action) and refresh this page to update the NegBin side; <code>predictions.json</code> already refreshes via
+  the existing live workflow.
 </p>
 
 <script>
@@ -160,6 +205,138 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+// --- Model comparison table (predictions.json vs predictions_negbin.json) ---
+//
+// Deliberately a SEPARATE load/render pair from the ELO table above, with
+// its own rawRows-equivalent (compareRows) and sort state - so a failure
+// loading either prediction file never affects the ELO table, and vice
+// versa, the same defensive-independence pattern already used for
+// elo_baseline_split.json vs elo_current_split.json.
+let compareRows = [];
+let compareSortKey = 'pChampion_diff_abs';
+let compareSortDir = 'desc';
+
+async function loadComparison() {
+  const meta3El = document.getElementById('meta3');
+  const err2El = document.getElementById('error2');
+  try {
+    const [existingRes, negbinRes] = await Promise.all([
+      fetch('predictions.json?_=' + Date.now()),
+      fetch('predictions_negbin.json?_=' + Date.now()),
+    ]);
+
+    if (!existingRes.ok) throw new Error('predictions.json: HTTP ' + existingRes.status);
+    if (!negbinRes.ok) throw new Error('predictions_negbin.json: HTTP ' + negbinRes.status + ' - run scripts/sim/runSimulationNegBin.js (Phase 3b) first');
+
+    const existing = await existingRes.json();
+    const negbin = await negbinRes.json();
+
+    meta3El.innerHTML =
+      '<span><b>Existing model generated:</b> ' + (existing.generatedAt || '?') + ' (' + (existing.numSimulations || '?') + ' sims)</span>' +
+      '<span><b>NegBin model generated:</b> ' + (negbin.generatedAt || '?') + ' (' + (negbin.numSimulations || '?') + ' sims)</span>' +
+      '<span><b>NegBin constants:</b> ' + JSON.stringify(negbin.negBinConstants || {}) + '</span>';
+
+    const existingByName = new Map((existing.teams || []).map((t) => [t.name, t]));
+    const negbinByName = new Map((negbin.teams || []).map((t) => [t.name, t]));
+
+    const allNames = new Set([...existingByName.keys(), ...negbinByName.keys()]);
+    compareRows = [...allNames].map((name) => {
+      const ex = existingByName.get(name) || null;
+      const nb = negbinByName.get(name) || null;
+      const row = {
+        name,
+        group: (nb && nb.group) || (ex && ex.group) || '',
+        pGroupWinner_existing: ex ? round2(ex.pGroupWinner * 100) : null,
+        pGroupWinner_negbin: nb ? round2(nb.pGroupWinner * 100) : null,
+        pRoundOf16_existing: ex ? round2(ex.pRoundOf16 * 100) : null,
+        pRoundOf16_negbin: nb ? round2(nb.pRoundOf16 * 100) : null,
+        pChampion_existing: ex ? round2(ex.pChampion * 100) : null,
+        pChampion_negbin: nb ? round2(nb.pChampion * 100) : null,
+      };
+      row.pGroupWinner_diff = (row.pGroupWinner_existing != null && row.pGroupWinner_negbin != null)
+        ? round2(row.pGroupWinner_negbin - row.pGroupWinner_existing) : null;
+      row.pRoundOf16_diff = (row.pRoundOf16_existing != null && row.pRoundOf16_negbin != null)
+        ? round2(row.pRoundOf16_negbin - row.pRoundOf16_existing) : null;
+      row.pChampion_diff = (row.pChampion_existing != null && row.pChampion_negbin != null)
+        ? round2(row.pChampion_negbin - row.pChampion_existing) : null;
+      row.pChampion_diff_abs = row.pChampion_diff != null ? Math.abs(row.pChampion_diff) : -1;
+      return row;
+    });
+
+    document.getElementById('filterBox2').style.display = '';
+    document.getElementById('compareTable').style.display = '';
+    document.getElementById('compareLegend').style.display = '';
+    renderComparison();
+  } catch (e) {
+    err2El.textContent = 'Could not load model comparison - ' + e.message;
+    meta3El.textContent = '';
+  }
+}
+
+function renderComparison() {
+  const filter = document.getElementById('filterBox2').value.trim().toLowerCase();
+  const tbody = document.querySelector('#compareTable tbody');
+  tbody.innerHTML = '';
+
+  let rows = compareRows.filter((r) => r.name.toLowerCase().includes(filter));
+
+  rows.sort((a, b) => {
+    const av = a[compareSortKey];
+    const bv = b[compareSortKey];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    let cmp;
+    if (typeof av === 'string') {
+      cmp = av.localeCompare(bv);
+    } else {
+      cmp = av - bv;
+    }
+    return compareSortDir === 'asc' ? cmp : -cmp;
+  });
+
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + r.name + '</td>' +
+      '<td>' + (r.group || '-') + '</td>' +
+      '<td>' + fmt(r.pGroupWinner_existing) + '</td>' +
+      '<td>' + fmt(r.pGroupWinner_negbin) + '</td>' +
+      '<td style="' + moveStyle(r.pGroupWinner_diff) + '">' + fmtSigned(r.pGroupWinner_diff) + '</td>' +
+      '<td>' + fmt(r.pRoundOf16_existing) + '</td>' +
+      '<td>' + fmt(r.pRoundOf16_negbin) + '</td>' +
+      '<td style="' + moveStyle(r.pRoundOf16_diff) + '">' + fmtSigned(r.pRoundOf16_diff) + '</td>' +
+      '<td>' + fmt(r.pChampion_existing) + '</td>' +
+      '<td>' + fmt(r.pChampion_negbin) + '</td>' +
+      '<td style="' + moveStyle(r.pChampion_diff) + '">' + fmtSigned(r.pChampion_diff) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  document.querySelectorAll('#compareTable th').forEach((th) => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.key === compareSortKey) {
+      th.classList.add(compareSortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    }
+  });
+}
+
+document.querySelectorAll('#compareTable th').forEach((th) => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (compareSortKey === key) {
+      compareSortDir = compareSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      compareSortKey = key;
+      compareSortDir = th.dataset.type === 'string' ? 'asc' : 'desc';
+    }
+    renderComparison();
+  });
+});
+
+document.getElementById('filterBox2').addEventListener('input', renderComparison);
+
+loadComparison();
+
 function render() {
   const filter = document.getElementById('filterBox').value.trim().toLowerCase();
   const tbody = document.querySelector('#eloTable tbody');
@@ -208,7 +385,7 @@ function render() {
   }
 
   // update header sort indicator classes
-  document.querySelectorAll('th').forEach((th) => {
+  document.querySelectorAll('#eloTable th').forEach((th) => {
     th.classList.remove('sorted-asc', 'sorted-desc');
     if (th.dataset.key === sortKey) {
       th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
@@ -230,7 +407,7 @@ function moveStyle(v) {
   return '';
 }
 
-document.querySelectorAll('th').forEach((th) => {
+document.querySelectorAll('#eloTable th').forEach((th) => {
   th.addEventListener('click', () => {
     const key = th.dataset.key;
     if (sortKey === key) {
