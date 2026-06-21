@@ -44,6 +44,40 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'elo_baseline_split.json');
 // "recent" means recent relative to the tournament, not relative to today.
 const CALIBRATION_WINDOW_MATCHES = 20;
 
+// GOAL_MARGIN_CAP: a single historical match's goal margin is capped at
+// this value before being added to either team's gf/ga totals - e.g. a 6-0
+// result is treated as 3-0 (winner's tally reduced to loser's goals + cap;
+// see capMatchMargin below for the exact rule). Addresses a real, traced
+// case: Canada's pre-tournament gaPerMatch (0.55, very low) was already
+// baked in before any 2026 matches were played, from their full 20-match
+// historical window - capping protects against any single extreme
+// historical result (e.g. a blowout where the opponent finished a player
+// or two down, or any other unusual one-off circumstance) being weighted
+// as if it were a fully representative result. One unusual match shouldn't
+// carry the same evidential weight in a 20-match average as a normal one.
+//
+// HONEST LIMITATION: this only helps if a team's low GA (or high GF) comes
+// from a FEW extreme outlier matches. If it instead comes from a broad
+// pattern of generally weaker opposition across many matches (e.g. a
+// schedule with many low-scoring-against results, none of them
+// individually "extreme"), capping each match's margin won't meaningfully
+// change the average - that's the separate, harder problem of adjusting
+// for opponent strength, not addressed here. Check whether this materially
+// moved a disputed team's numbers after re-running, rather than assuming
+// it resolved them outright.
+const GOAL_MARGIN_CAP = 3;
+
+// Caps a single match's goal margin: the winning side's tally is reduced
+// to (loser's goals + GOAL_MARGIN_CAP) if the raw margin exceeds the cap -
+// e.g. 6-0 (margin 6) -> 3-0; 5-1 (margin 4) -> 4-1; 4-1 (margin 3, already
+// at the cap) -> unchanged. Draws (margin 0) are never affected.
+function capMatchMargin(gf, ga) {
+  const margin = gf - ga;
+  if (Math.abs(margin) <= GOAL_MARGIN_CAP) return { gf, ga };
+  if (margin > 0) return { gf: ga + GOAL_MARGIN_CAP, ga };
+  return { gf, ga: gf + GOAL_MARGIN_CAP };
+}
+
 // Only matches strictly before this date are eligible for the baseline
 // calibration window, so no in-tournament 2026 results leak into what's
 // meant to be a PRE-tournament baseline. Matches eloBaseline.js's existing
@@ -190,11 +224,20 @@ function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize) {
     const homeCanonical = nameToCanonical[normalizeName(r.home_team)];
     const awayCanonical = nameToCanonical[normalizeName(r.away_team)];
 
+    // Cap the margin ONCE per match (not independently per side) so both
+    // teams' records of the same match stay mutually consistent - e.g. a
+    // 6-0 capped to 3-0 should appear as gf=3,ga=0 for the winner and
+    // gf=0,ga=3 for the loser, not two different cap decisions.
+    const capped = capMatchMargin(homeGoals, awayGoals);
+    const cappedHomeGoals = capped.gf;
+    const cappedAwayGoals = capped.ga;
+    const wasCapped = cappedHomeGoals !== homeGoals || cappedAwayGoals !== awayGoals;
+
     if (homeCanonical) {
-      byTeam[homeCanonical].push({ date: r.date, gf: homeGoals, ga: awayGoals });
+      byTeam[homeCanonical].push({ date: r.date, gf: cappedHomeGoals, ga: cappedAwayGoals, wasCapped });
     }
     if (awayCanonical) {
-      byTeam[awayCanonical].push({ date: r.date, gf: awayGoals, ga: homeGoals });
+      byTeam[awayCanonical].push({ date: r.date, gf: cappedAwayGoals, ga: cappedHomeGoals, wasCapped });
     }
   }
 
@@ -205,6 +248,7 @@ function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize) {
     const n = windowMatches.length;
     const gfTotal = windowMatches.reduce((sum, m) => sum + m.gf, 0);
     const gaTotal = windowMatches.reduce((sum, m) => sum + m.ga, 0);
+    const cappedCount = windowMatches.filter((m) => m.wasCapped).length;
     const windowStart = n > 0 ? windowMatches[0].date : null;
     const windowEnd = n > 0 ? windowMatches[n - 1].date : null;
     // If the window's matches span more than ~3 years, this team has thin
@@ -220,6 +264,7 @@ function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize) {
       windowStart,
       windowEnd,
       thinHistory: spanYears > 3,
+      cappedMatchCount: cappedCount,
     };
   }
   return stats;
@@ -297,6 +342,7 @@ function deriveEloSplit(overallRatings, goalStats, kappa, windowSize) {
       windowStart: g.windowStart,
       windowEnd: g.windowEnd,
       thinHistory: g.thinHistory,
+      cappedMatchCount: g.cappedMatchCount,
     };
   }
 
@@ -360,6 +406,20 @@ async function main() {
     }
   }
 
+  // Capped-match summary - see GOAL_MARGIN_CAP's own comment for why this
+  // matters: if very few matches were actually capped for a team whose
+  // numbers still look like an outlier, that's real evidence the cap
+  // ISN'T the fix for that team (their numbers come from a broad pattern
+  // across many matches, not a few extreme ones) - surfaced here so that's
+  // checkable at a glance rather than discovered by re-deriving it later.
+  const teamsWithCappedMatches = Object.entries(goalStats).filter(([, s]) => s.cappedMatchCount > 0);
+  const totalCappedAcrossField = teamsWithCappedMatches.reduce((sum, [, s]) => sum + s.cappedMatchCount, 0);
+  console.log(`  Goal-margin cap (+/-${GOAL_MARGIN_CAP}): ${totalCappedAcrossField} historical match-observations capped across ${teamsWithCappedMatches.length} team(s).`);
+  if (teamsWithCappedMatches.length > 0) {
+    const sortedByCapped = teamsWithCappedMatches.sort((a, b) => b[1].cappedMatchCount - a[1].cappedMatchCount);
+    console.log('  Most-affected teams:', sortedByCapped.slice(0, 8).map(([team, s]) => `${team} (${s.cappedMatchCount})`).join(', '));
+  }
+
   console.log('Deriving ELOa / ELOd split with confidence-weighted shrinkage (kappa is a placeholder - see header comment)...');
   const { split, gfBaseline, gaBaseline } = deriveEloSplit(overallRatings, goalStats, KAPPA_PLACEHOLDER, CALIBRATION_WINDOW_MATCHES);
 
@@ -396,5 +456,6 @@ module.exports = {
   verifyTeamCoverage,
   computeTeamGoalStats,
   deriveEloSplit,
+  capMatchMargin,
   CANONICAL_TO_DATASET_NAME,
 };
