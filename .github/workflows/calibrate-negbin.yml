@@ -1,1 +1,121 @@
+name: Calibrate Negative Binomial constants
+
+# Fits alpha, gamma, sigma, kappa, and r jointly by maximum likelihood
+# against every played result in results.json - see Phase 3a of the
+# dual-Elo project, scripts/sim/calibrateNegBin.js for the full
+# methodology. Writes negbin_calibration.json.
+#
+# Like update-elo-split.yml (Phase 2), this script has NO network
+# dependency - it only reads elo_baseline_split.json and results.json, both
+# already in the repo - so it's safe to run on a schedule as well as
+# manually, same trigger pattern as refresh-predictions.yml and
+# update-elo-split.yml.
+#
+# INDEPENDENT of update-elo-split.yml: calibrateNegBin.js reads
+# elo_baseline_split.json directly (Phase 1's output), NOT
+# elo_current_split.json (Phase 2's output) - it replays its own
+# chronological pre-match-rating sequence internally rather than relying on
+# Phase 2's already-applied current ratings (see the script's own header
+# comment on why pre-match, not post-match, ratings matter for a fair fit).
+# This means there's no dependency or ordering requirement between this
+# workflow and update-elo-split.yml; both can run in any order, on
+# different schedules, and a failure in one never blocks the other. Still
+# depends on build-elo-split.yml (Phase 1) having been run at least once -
+# fails clearly, not silently, if elo_baseline_split.json is missing.
+#
+# Re-run whenever results.json gains new played matches (more data
+# generally improves/stabilizes the fit - see the script's own
+# small-sample warnings in its output), or rely on the schedule below.
+#
+# Nothing currently depends on this workflow's output - still Phase 3a /
+# under review, feeds temp.html only (once temp.html is updated to read
+# negbin_calibration.json - not yet wired in as of this workflow's
+# creation).
+
+on:
+  schedule:
+    # Twice daily, same cadence as the other in-tournament workflows -
+    # safety net; the main trigger is workflow_dispatch after updating
+    # results.json.
+    - cron: '0 6,18 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  calibrate-negbin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run calibrateNegBin.js
+        run: node scripts/sim/calibrateNegBin.js
+        # No install step: this script only uses Node core modules - no
+        # dependencies to install.
+        # If elo_baseline_split.json doesn't exist yet (Phase 1 hasn't been
+        # run), this step fails with a clear error pointing at
+        # build-elo-split.yml, rather than silently producing nothing.
+
+      - name: Sanity-check output
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('negbin_calibration.json')) {
+              console.error('ERROR: negbin_calibration.json was not written. Refusing to commit.');
+              process.exit(1);
+            }
+            const data = require('./negbin_calibration.json');
+            console.log('Match count:', data.matchCount, '/ observations:', data.observationCount);
+            if (data.sampleSizeWarning) {
+              console.log('Sample size note:', data.sampleSizeWarning);
+            }
+            if (data.pinnedAtBound && data.pinnedAtBound.length > 0) {
+              console.log('Pinned at search bound (using recommendedParams fallback for these):', data.pinnedAtBound.join(', '));
+            }
+            console.log('Fitted params:', JSON.stringify(data.fittedParams));
+            console.log('Recommended params (for actual use):', JSON.stringify(data.recommendedParams));
+            console.log('Log-likelihood: fitted=' + data.logLikelihood.fitted + ' vs placeholder=' + data.logLikelihood.placeholder + ' (higher is better fit)');
+            if (data.logLikelihood.fitted < data.logLikelihood.placeholder) {
+              console.error('ERROR: fitted log-likelihood is WORSE than the placeholder constants - something is likely wrong with the fit. Refusing to commit.');
+              process.exit(1);
+            }
+          "
+
+      - name: Commit updated negbin_calibration.json if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add negbin_calibration.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update negbin_calibration.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+
+          # Same rebase-retry approach as the other workflows, in case main
+          # has moved since checkout.
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase origin/main; then
+              if git push origin main; then
+                echo "Pushed successfully."
+                exit 0
+              fi
+            else
+              echo "Rebase conflict - aborting rebase. Manual intervention needed."
+              git rebase --abort
+              exit 1
+            fi
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          echo "ERROR: failed to push after retries."
+          exit 1
 
