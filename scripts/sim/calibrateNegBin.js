@@ -77,6 +77,23 @@ const SPLIT_BASELINE_PATH = path.join(__dirname, '..', '..', 'elo_baseline_split
 const RESULTS_PATH = path.join(__dirname, '..', '..', 'results.json');
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'negbin_calibration.json');
 
+// Out-of-sample-preferred dispersion value, from rolling-origin
+// cross-validation (validateNegBin.js) run against 36 played matches
+// across 4 train/test splits. In 3 of 4 splits, the split's own in-sample
+// fitted r (which climbed toward 40+ as more training data was added) was
+// NOT the best predictor of the held-out matches that actually followed -
+// smaller r values (mostly r=8 and r=12) scored better out-of-sample.
+// Pooled across all held-out observations, r=12 was the best-scoring fixed
+// value overall (see negbin_validation.json's aggregate.bestOverallFixedR).
+// Used as a fallback below when the in-sample fit's r lands above
+// R_OVERFIT_THRESHOLD - the same "in-sample fit chasing noise toward an
+// extreme" pattern already handled for kappa, now extended to r based on
+// this specific validation evidence (not just a generic small-sample
+// heuristic) - re-run validateNegBin.js as more matchdays are played and
+// update this constant if the out-of-sample picture changes.
+const R_VALIDATED_FALLBACK = 12;
+const R_OVERFIT_THRESHOLD = 25; // matches the threshold already used for the console "r is large" note below
+
 const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
 // --- Negative Binomial log-likelihood (mean/dispersion parameterization) ---
@@ -448,19 +465,33 @@ function main() {
   }
 
   // recommendedParams applies a conservative judgment call on top of the
-  // raw fit, specifically for parameters that landed pinned at a bound
-  // (small-sample overfitting risk, see warning above) - this is the set
-  // intended for actual use by a later phase, NOT fittedParams directly.
-  // kappa: if pinned, fall back to Phase 1's baseline kappa (anchored by a
-  // much larger historical sample) rather than the unconstrained in-
-  // tournament-only estimate. Other parameters use the fitted value as-is.
+  // raw fit - this is the set intended for actual use by a later phase,
+  // NOT fittedParams directly.
+  // kappa: if pinned at a search bound, fall back to Phase 1's baseline
+  // kappa (anchored by a much larger historical sample) rather than the
+  // unconstrained in-tournament-only estimate.
+  // r: if the in-sample fit lands above R_OVERFIT_THRESHOLD (close to the
+  // Poisson limit), fall back to R_VALIDATED_FALLBACK - NOT because it's
+  // pinned at a search bound (the search bound is 60, well above this
+  // threshold), but because out-of-sample validation specifically showed
+  // values in-sample fits converge toward (30-40+) predict held-out
+  // matches WORSE than r=12 does - see the R_VALIDATED_FALLBACK comment
+  // above for the validation evidence. This is a different trigger
+  // condition from kappa's (validation evidence vs bound-pinning) so it's
+  // tracked separately, not folded into pinnedParams.
   const recommendedParams = { ...fitted };
+  const overriddenParams = [];
   if (pinnedParams.includes('kappa')) {
     recommendedParams.kappa = baselineKappa;
+    overriddenParams.push('kappa');
   }
-  const recommendedNote = pinnedParams.length > 0
-    ? 'kappa/other pinned params replaced with conservative values - see pinnedAtBound and console warning above for which and why.'
-    : 'No parameters were pinned at a search bound - fittedParams and recommendedParams are identical.';
+  if (fitted.r > R_OVERFIT_THRESHOLD) {
+    recommendedParams.r = R_VALIDATED_FALLBACK;
+    overriddenParams.push('r');
+  }
+  const recommendedNote = overriddenParams.length > 0
+    ? `${overriddenParams.join(', ')} replaced with conservative/validated values - see console warnings above for which and why (kappa: pinned-at-bound fallback to Phase 1's historical estimate; r: out-of-sample-validated fallback to R_VALIDATED_FALLBACK=${R_VALIDATED_FALLBACK}, see validateNegBin.js).`
+    : 'No parameters were overridden - fittedParams and recommendedParams are identical.';
 
   console.log('\n--- Fitted constants ---');
   console.log(`  alpha = ${round2(fitted.alpha)}  (exp(alpha) = ${round2(Math.exp(fitted.alpha))} goals/match baseline)`);
@@ -468,11 +499,11 @@ function main() {
   console.log(`  sigma = ${round2(fitted.sigma)}`);
   console.log(`  kappa = ${round2(fitted.kappa)}  (Phase 1 baseline kappa was ${baselineKappa} - see header caveat on small-sample re-fitting)`);
   console.log(`  r     = ${round2(fitted.r)}  (Poisson limit is r -> infinity; lower r = more overdispersion)`);
-  if (fitted.r > 25) {
-    console.log(`  Note: r is large (closer to the Poisson limit) - this sample doesn't yet show strong`);
-    console.log(`  overdispersion evidence. That may be genuine (real tournament goal variance closer to`);
-    console.log(`  Poisson than assumed) or may firm up differently with more matches - re-check after`);
-    console.log(`  more results are played rather than treating this as the final word on dispersion.`);
+  if (fitted.r > R_OVERFIT_THRESHOLD) {
+    console.log(`  Note: r is large (closer to the Poisson limit) - out-of-sample validation (validateNegBin.js)`);
+    console.log(`  showed this in-sample fit predicts held-out matches WORSE than r=${R_VALIDATED_FALLBACK} does (see`);
+    console.log(`  R_VALIDATED_FALLBACK comment). recommendedParams.r is set to ${R_VALIDATED_FALLBACK} accordingly -`);
+    console.log(`  re-run validateNegBin.js as more matchdays are played to check this is still the best fallback.`);
   }
   console.log(`\n  Log-likelihood: fitted=${finalLogLikelihood} vs placeholder=${placeholderLogLikelihood} (higher is better fit)`);
 
@@ -484,6 +515,7 @@ function main() {
       ? 'Small sample for a 5-parameter joint fit - treat as a rough first pass, re-run as more matches are played.'
       : null,
     pinnedAtBound: pinnedParams.length > 0 ? pinnedParams : null,
+    overriddenParams: overriddenParams.length > 0 ? overriddenParams : null,
     initialParams: {
       alpha: round2(initialParams.alpha), gamma: initialParams.gamma,
       sigma: initialParams.sigma, kappa: initialParams.kappa, r: initialParams.r,

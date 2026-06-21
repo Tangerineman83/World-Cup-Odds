@@ -114,7 +114,51 @@ const SIGMA_PLACEHOLDER = 250;
 // 1-0 Haiti) should produce a clearly bigger swing than that, but not one
 // that consumes most of a team's entire pre-tournament attack/defense
 // spread in a single match. NOT fitted against real data (Section 5).
-const K_GOALS_PLACEHOLDER = 12;
+//
+// This is now the FULLY-RAMPED ceiling (see MATCH_COUNT_RAMP below), not a
+// flat per-match value - raised from the original 12 because a team's
+// later matches (3rd onward) now carry MORE weight than a flat-12 system
+// gave them, to compensate for early matches carrying less.
+const K_GOALS_PLACEHOLDER = 16;
+
+// --- Match-count-aware confidence ramp ----------------------------------
+//
+// PROBLEM THIS SOLVES: a flat K_GOALS applies the same per-goal weight to
+// a team's 1st tournament match as its 5th. Testing (ad hoc
+// kGoalsSensitivity.js sweep, not committed to the repo) found that any
+// flat K_GOALS strong enough to meaningfully shift a team's rating after
+// 2 consistent results (e.g. USA's two convincing wins) ALSO produces
+// implausibly large single-match swings for teams with only 1 match played
+// - e.g. Cape Verde's one 0-0 draw away to Spain moved their defense
+// rating by +200+ points at K_GOALS=36, treating one result against one
+// specific opponent with the same confidence a 20-match historical
+// baseline carries. That's not a defensible weighting - one match is not
+// strong evidence about a team's true quality, no matter how surprising
+// the result.
+//
+// FIX: each match's K_GOALS contribution is scaled by how many TOURNAMENT
+// matches that specific team has played so far (including the current
+// one), via the same min(1, x) confidence-shrinkage pattern already used
+// for historical-data confidence in buildEloSplit.js's shrinkFactor - so
+// this isn't a new ad hoc idea, it's applying an existing, already-reviewed
+// pattern to a second place it's needed. A team's Nth tournament match gets
+// weight min(1, N / MATCH_COUNT_RAMP_FULL), so:
+//   - 1st match: weight 1/3 of K_GOALS_PLACEHOLDER (still real movement,
+//     just appropriately cautious)
+//   - 2nd match: weight 2/3
+//   - 3rd match onward: full weight (1.0) - by the 3rd match a team has a
+//     complete group-stage sample, a natural, non-arbitrary threshold for
+//     "enough in-tournament evidence to weight as strongly as later
+//     matches", rather than picking an arbitrary cutoff.
+// This means EARLY matches move ratings less than under the old flat-12
+// system, while LATE matches (3rd+) move them MORE (full K_GOALS_PLACEHOLDER
+// = 16, vs the old flat 12) - both intentional: early caution, full
+// confidence once a team has shown a genuine in-tournament sample.
+const MATCH_COUNT_RAMP_FULL = 3;
+
+function matchCountWeight(matchNumberForTeam) {
+  return Math.min(1, matchNumberForTeam / MATCH_COUNT_RAMP_FULL);
+}
 
 const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
@@ -162,10 +206,10 @@ function loadResults() {
 // --- Core update logic ---------------------------------------------------
 
 // Applies a single played result to the running attack/defense ratings
-// (mutates ratingsByTeam in place). Returns a per-match log entry for
-// transparency/debugging (this is the piece that lets you see exactly why
-// Scotland's numbers moved the way they did after Haiti, rather than just
-// the before/after snapshot).
+// (mutates ratingsByTeam in place, including each team's matchesPlayed
+// counter). Returns a per-match log entry for transparency/debugging (this
+// is the piece that lets you see exactly why Scotland's numbers moved the
+// way they did after Haiti, rather than just the before/after snapshot).
 function applyResultToSplit(ratingsByTeam, result) {
   const { home, away, homeGoals, awayGoals } = result;
   const homeRating = ratingsByTeam.get(home);
@@ -182,11 +226,23 @@ function applyResultToSplit(ratingsByTeam, result) {
   const expectedHomeGoals = expectedGoals(homeRating.attack, awayRating.defense, homeIsHost);
   const expectedAwayGoals = expectedGoals(awayRating.attack, homeRating.defense, awayIsHost);
 
+  // This is each team's Nth tournament match (1-indexed, including this
+  // one) - drives the confidence ramp below. Incremented BEFORE computing
+  // the weight, so a team's literal first tournament match is N=1, not 0.
+  homeRating.matchesPlayed += 1;
+  awayRating.matchesPlayed += 1;
+  const homeWeight = matchCountWeight(homeRating.matchesPlayed);
+  const awayWeight = matchCountWeight(awayRating.matchesPlayed);
+
   // Independent deltas - see header comment for why these are NOT zero-sum.
-  const homeAttackDelta = K_GOALS_PLACEHOLDER * (homeGoals - expectedHomeGoals);
-  const homeDefenseDelta = K_GOALS_PLACEHOLDER * (expectedAwayGoals - awayGoals);
-  const awayAttackDelta = K_GOALS_PLACEHOLDER * (awayGoals - expectedAwayGoals);
-  const awayDefenseDelta = K_GOALS_PLACEHOLDER * (expectedHomeGoals - homeGoals);
+  // Each side's deltas are scaled by THAT side's own match-count weight,
+  // not a shared one - e.g. a side playing its 1st tournament match against
+  // an opponent playing its 3rd gets appropriately different confidence
+  // applied to each side's own movement from the same single fixture.
+  const homeAttackDelta = K_GOALS_PLACEHOLDER * homeWeight * (homeGoals - expectedHomeGoals);
+  const homeDefenseDelta = K_GOALS_PLACEHOLDER * homeWeight * (expectedAwayGoals - awayGoals);
+  const awayAttackDelta = K_GOALS_PLACEHOLDER * awayWeight * (awayGoals - expectedAwayGoals);
+  const awayDefenseDelta = K_GOALS_PLACEHOLDER * awayWeight * (expectedHomeGoals - homeGoals);
 
   homeRating.attack += homeAttackDelta;
   homeRating.defense += homeDefenseDelta;
@@ -197,6 +253,10 @@ function applyResultToSplit(ratingsByTeam, result) {
     home, away, homeGoals, awayGoals,
     expectedHomeGoals: round2(expectedHomeGoals),
     expectedAwayGoals: round2(expectedAwayGoals),
+    homeMatchNumber: homeRating.matchesPlayed,
+    awayMatchNumber: awayRating.matchesPlayed,
+    homeWeight: round2(homeWeight),
+    awayWeight: round2(awayWeight),
     homeAttackDelta: round2(homeAttackDelta),
     homeDefenseDelta: round2(homeDefenseDelta),
     awayAttackDelta: round2(awayAttackDelta),
@@ -225,6 +285,7 @@ function main() {
       attack: r.attack != null ? r.attack : r.overall,
       defense: r.defense != null ? r.defense : r.overall,
       overall: r.overall,
+      matchesPlayed: 0,
     });
   }
 
@@ -248,8 +309,8 @@ function main() {
     console.log(
       `  ${entry.home} ${entry.homeGoals}-${entry.awayGoals} ${entry.away}  ` +
       `(expected ${entry.expectedHomeGoals}-${entry.expectedAwayGoals})  ` +
-      `${entry.home} attack ${entry.homeAttackDelta >= 0 ? '+' : ''}${entry.homeAttackDelta}, defense ${entry.homeDefenseDelta >= 0 ? '+' : ''}${entry.homeDefenseDelta}  ` +
-      `${entry.away} attack ${entry.awayAttackDelta >= 0 ? '+' : ''}${entry.awayAttackDelta}, defense ${entry.awayDefenseDelta >= 0 ? '+' : ''}${entry.awayDefenseDelta}`
+      `${entry.home}[match ${entry.homeMatchNumber}, w=${entry.homeWeight}] attack ${entry.homeAttackDelta >= 0 ? '+' : ''}${entry.homeAttackDelta}, defense ${entry.homeDefenseDelta >= 0 ? '+' : ''}${entry.homeDefenseDelta}  ` +
+      `${entry.away}[match ${entry.awayMatchNumber}, w=${entry.awayWeight}] attack ${entry.awayAttackDelta >= 0 ? '+' : ''}${entry.awayAttackDelta}, defense ${entry.awayDefenseDelta >= 0 ? '+' : ''}${entry.awayDefenseDelta}`
     );
   }
 
@@ -259,6 +320,7 @@ function main() {
       overall: r.overall,
       attack: round2(r.attack),
       defense: round2(r.defense),
+      matchesPlayed: r.matchesPlayed,
     };
   }
 
@@ -272,7 +334,8 @@ function main() {
       gamma: GAMMA_PLACEHOLDER,
       sigma: SIGMA_PLACEHOLDER,
       kGoals: K_GOALS_PLACEHOLDER,
-      status: 'PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md',
+      matchCountRampFull: MATCH_COUNT_RAMP_FULL,
+      status: 'PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md. kGoals is now match-count-ramped (see matchCountWeight) rather than flat - see header comment for rationale.',
     },
     ratings: ratingsOut,
     matchLog,
@@ -295,8 +358,10 @@ if (require.main === module) {
 module.exports = {
   expectedGoals,
   applyResultToSplit,
+  matchCountWeight,
   ALPHA_PLACEHOLDER,
   GAMMA_PLACEHOLDER,
   SIGMA_PLACEHOLDER,
   K_GOALS_PLACEHOLDER,
+  MATCH_COUNT_RAMP_FULL,
 };
