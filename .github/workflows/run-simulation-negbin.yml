@@ -1,1 +1,110 @@
+name: Run NegBin tournament simulation
+
+# Runs the dual-Elo Negative Binomial Monte Carlo (scripts/sim/runSimulationNegBin.js)
+# and writes predictions_negbin.json - the NegBin-engine counterpart to
+# refresh-predictions.yml's predictions.json, for side-by-side comparison
+# via temp.html.
+#
+# DEPENDS ON (but does not itself run):
+#   - elo_current_split.json (Phase 2, update-elo-split.yml)
+#   - negbin_calibration.json (Phase 3a, calibrate-negbin.yml)
+# This workflow deliberately does NOT re-run updateEloSplit.js or
+# calibrateNegBin.js itself - those have their own independent workflows,
+# and re-running them here would duplicate that logic and risk drift if
+# the two ever diverge. Instead this just reads whatever's already
+# committed, the same relationship refresh-predictions.yml already has to
+# the scalar engine's own inputs. If elo_current_split.json is missing,
+# runSimulationNegBin.js fails clearly (see its own error handling) rather
+# than silently using stale or placeholder data. If negbin_calibration.json
+# is missing, it falls back to placeholder constants with a clear warning
+# in the log (does not fail the run) - see groupStageNegBin.js's
+# loadCalibratedParams().
+#
+# No network dependency - safe on a schedule as well as manual trigger,
+# same pattern as the other in-tournament workflows. Independent of
+# update-elo-split.yml and calibrate-negbin.yml's own schedules; if you
+# want this to always reflect the very latest calibration/ratings, run
+# those two first, then this one, manually, in that order - the schedule
+# below doesn't guarantee that ordering.
+
+on:
+  schedule:
+    - cron: '0 7,19 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  run-simulation-negbin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run runSimulationNegBin.js
+        run: node scripts/sim/runSimulationNegBin.js 20000
+        # No install step: this script only uses Node core modules - no
+        # dependencies to install.
+        # Fails clearly if elo_current_split.json is missing (see the
+        # script's own check) - does not fail if negbin_calibration.json
+        # is missing, just warns and falls back to placeholder constants.
+
+      - name: Sanity-check output
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('predictions_negbin.json')) {
+              console.error('ERROR: predictions_negbin.json was not written. Refusing to commit.');
+              process.exit(1);
+            }
+            const data = require('./predictions_negbin.json');
+            console.log('Teams:', data.teams.length, '(expect 48)');
+            if (data.teams.length !== 48) {
+              console.error('ERROR: expected 48 teams, got ' + data.teams.length + '. Refusing to commit.');
+              process.exit(1);
+            }
+            const totalChampion = data.teams.reduce((s, t) => s + t.pChampion, 0);
+            console.log('Sum of pChampion across all teams:', totalChampion.toFixed(4), '(expect ~1.0)');
+            if (Math.abs(totalChampion - 1) > 0.01) {
+              console.error('ERROR: pChampion does not sum to ~1 - something is likely wrong with the simulation. Refusing to commit.');
+              process.exit(1);
+            }
+            console.log('NegBin constants used:', JSON.stringify(data.negBinConstants));
+            console.log('Constants source:', data.negBinConstantsSource);
+          "
+
+      - name: Commit updated predictions_negbin.json if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add predictions_negbin.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update predictions_negbin.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase origin/main; then
+              if git push origin main; then
+                echo "Pushed successfully."
+                exit 0
+              fi
+            else
+              echo "Rebase conflict - aborting rebase. Manual intervention needed."
+              git rebase --abort
+              exit 1
+            fi
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          echo "ERROR: failed to push after retries."
+          exit 1
 
