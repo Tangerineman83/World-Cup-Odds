@@ -43,6 +43,23 @@ const RESULTS_PATH = path.join(__dirname, '..', '..', 'results.json');
 const ELO_BASELINE_PATH = path.join(__dirname, '..', '..', 'elo_baseline.json');
 const CURRENT_SPLIT_PATH = path.join(__dirname, '..', '..', 'elo_current_split.json');
 
+// Computes a team's group-stage match number for an UPCOMING fixture (1st,
+// 2nd, or 3rd group match) by counting how many group-stage matches that
+// team has already played in results.json, plus one for the fixture being
+// evaluated now. This was previously hardcoded to 1 for every fixture (a
+// real bug, not a placeholder) - meaning every host-nation match beyond
+// their 1st group game was incorrectly given FULL home-advantage strength
+// by existingEnginePrediction, instead of the tapered 0.75/0.5 the live
+// engine (groupStage.js, via HOME_ADVANTAGE_SCHEDULE) actually uses. Only
+// matters for host nations (USA/Canada/Mexico) - HOST_NATIONS-gated
+// upstream, but computed generally here since it's cheap to do correctly.
+function computeGroupMatchNumber(teamName, allFixtures) {
+  const playedCount = allFixtures.filter(
+    (f) => (f.home === teamName || f.away === teamName) && f.homeGoals != null && f.group
+  ).length;
+  return playedCount + 1;
+}
+
 // Existing engine's own constants (must match groupStage.js / runScenario.js).
 const GOAL_LAMBDA = 2.0;
 const GOAL_OFFSET = 0.35;
@@ -125,7 +142,7 @@ function existingEnginePrediction(homeName, awayName, groupLetter, overallEloByN
 
 // --- NegBin engine's prediction: simply the highest-joint-probability
 // (h,a) pair, no outcome-decision step at all.
-function negBinEnginePrediction(homeName, awayName, groupLetter, currentSplitRatings, params) {
+function negBinEnginePrediction(homeName, awayName, groupLetter, currentSplitRatings, params, hostMatchNumber) {
   const home = currentSplitRatings[homeName];
   const away = currentSplitRatings[awayName];
 
@@ -143,7 +160,13 @@ function negBinEnginePrediction(homeName, awayName, groupLetter, currentSplitRat
   if (venueName) {
     climateAdj = climateAdjustment(effHomeName, venueName) - climateAdjustment(effAwayName, venueName);
   }
-  const homeAdvantageElo = neutralVenue ? 0 : 100; // group-stage non-host-vs-host match number tapering not modelled here for simplicity - see note in output
+  // FIXED: was a hardcoded flat 100 regardless of match number - now
+  // correctly tapers via hostGroupMatchMultiplier, matching
+  // existingEnginePrediction's own (also-fixed) use of the same function,
+  // so both models are evaluated under the same home-advantage assumption
+  // rather than NegBin silently getting a stronger home boost.
+  const homeAdvMultiplier = neutralVenue ? 0 : hostGroupMatchMultiplier(hostMatchNumber);
+  const homeAdvantageElo = 100 * homeAdvMultiplier;
   const homeAdj = homeAdvantageElo + climateAdj;
   const awayAdj = -climateAdj;
 
@@ -226,8 +249,16 @@ function main() {
       continue;
     }
 
-    const existing = existingEnginePrediction(m.home, m.away, m.group, currentOverallByName, 1);
-    const negbin = negBinEnginePrediction(m.home, m.away, m.group, currentSplit.ratings, params);
+    // Host advantage only matters if one side is actually a host nation -
+    // compute that side's real upcoming group-match number from
+    // results.json rather than assuming every fixture is a host's 1st
+    // group match (the previous hardcoded `1`, a real bug - see
+    // computeGroupMatchNumber's own comment).
+    const hostSide = HOST_NATIONS.has(m.home) ? m.home : HOST_NATIONS.has(m.away) ? m.away : null;
+    const hostMatchNumber = hostSide ? computeGroupMatchNumber(hostSide, results) : 1;
+
+    const existing = existingEnginePrediction(m.home, m.away, m.group, currentOverallByName, hostMatchNumber);
+    const negbin = negBinEnginePrediction(m.home, m.away, m.group, currentSplit.ratings, params, hostMatchNumber);
 
     console.log(`=== ${m.home} vs ${m.away} (Group ${m.group}, ${m.date || '?'}) ===`);
     console.log(`  Existing engine: pWin=${existing.pWin} pDraw=${existing.pDraw} pLoss=${existing.pLoss} -> outcome decided first: ${existing.predictedOutcome}`);
@@ -239,7 +270,7 @@ function main() {
     console.log(`    Top 5: ${negbin.top5Scorelines.map((s) => `${s.h}-${s.a} (${(s.prob*100).toFixed(1)}%)`).join(', ')}`);
     console.log();
 
-    output.push({ home: m.home, away: m.away, group: m.group, date: m.date || null, existing, negbin });
+    output.push({ home: m.home, away: m.away, group: m.group, date: m.date || null, hostSide, hostMatchNumber: hostSide ? hostMatchNumber : null, existing, negbin });
   }
 
   // Only write the JSON file for the full-batch run (no specific fixture
