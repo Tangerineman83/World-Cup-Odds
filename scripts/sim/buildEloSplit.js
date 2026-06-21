@@ -197,11 +197,80 @@ function verifyTeamCoverage(rows, canonicalNames) {
 
 // --- GF/GA computation -----------------------------------------------------
 //
+// --- Opponent-strength weighting ------------------------------------------
+//
+// PROBLEM THIS SOLVES: a flat (unweighted) average of GF/GA over a team's
+// last 20 historical matches treats a clean sheet against a top-10 side
+// identically to a clean sheet against a side ranked 80th. Traced, real
+// case: Canada's baseline gaPerMatch (0.55 over 20 matches) was already
+// elevating their pre-tournament defense rating to within range of
+// genuine elite sides (~1830, comparable to Germany's OVERALL rating)
+// despite Canada's own overall rating (1767) correctly showing them as a
+// clearly weaker side - because a flat average can't distinguish "20
+// matches of genuinely world-class defending" from "20 matches against a
+// schedule that happens to be weaker on average than Germany's or the
+// Netherlands' schedule". This is the more rigorous fix, beyond
+// GOAL_MARGIN_CAP (which only catches a few extreme single-match outliers,
+// and was confirmed - via cappedMatchCount - to barely move Canada's
+// number at all).
+//
+// METHOD: each historical match's contribution to a team's gf/ga average
+// is weighted by how strong the opponent was, RELATIVE to the 48-team
+// World Cup pool's own average overall Elo (elo_baseline.json - already
+// the trusted, in-use rating for the live site, not a new external
+// source). A match against an opponent ABOVE the pool average gets weight
+// > 1 (counts for more); a match against an opponent BELOW the pool
+// average gets weight < 1 (counts for less). This directly fixes the
+// Canada-style case: their many low-GA results, mostly presumably against
+// weaker CONCACAF opposition, will now be down-weighted rather than taken
+// at full face value.
+//
+// HONEST LIMITATION 1 - COVERAGE: elo_baseline.json only contains the 48
+// teams that qualified for THIS World Cup, not the full universe of
+// national teams Canada (or any team) actually played historically -
+// e.g. Caribbean/Central American sides that didn't qualify won't be
+// found. An opponent not found in elo_baseline.json gets NEUTRAL weight
+// (1.0, the pool average) rather than being dropped or assumed weak/strong
+// - "no information" should not silently bias the result in either
+// direction. opponentCoverage in the output reports exactly what
+// fraction of each team's window had a real (non-neutral-fallback) weight
+// applied, so this gap is visible, not hidden.
+//
+// HONEST LIMITATION 2 - CURRENT, NOT HISTORICAL, OPPONENT STRENGTH:
+// elo_baseline.json is a single CURRENT snapshot (pre-2026-tournament),
+// used here even for matches played 1-2 years earlier in a team's
+// calibration window. This assumes opponents' relative strength hasn't
+// shifted dramatically over that window - reasonable for most teams over
+// ~1-2 years, weaker for any team whose rating has moved a lot recently. A
+// genuinely time-varying historical rating source was investigated
+// (FIFA's own historical rankings via third-party mirrors) but the best
+// available free source only covers up to September 2024, leaving a real
+// gap for the more recent half of most teams' windows - using
+// elo_baseline.json was chosen as the more consistent single limitation
+// over two different partial-coverage data sources compounding each
+// other.
+const OPPONENT_WEIGHT_SCALE = 400; // Elo points - how strongly opponent strength affects the weight; matches the conventional Elo expected-score scale (eloModel.js's own logistic uses a similar order of magnitude)
+const OPPONENT_WEIGHT_MIN = 0.4; // floor, so an extremely weak known opponent doesn't reduce a match's weight to near-zero
+const OPPONENT_WEIGHT_MAX = 2.5; // ceiling, so an extremely strong known opponent doesn't dominate the average
+
+function computeOpponentWeight(opponentCanonicalName, overallEloByName, poolAverageElo) {
+  if (!opponentCanonicalName || overallEloByName[opponentCanonicalName] == null) {
+    // Unknown opponent (not in our 48-team pool, e.g. a non-qualified
+    // CONCACAF/regional side) - neutral weight, not a penalty or bonus.
+    return { weight: 1, knownOpponent: false };
+  }
+  const opponentElo = overallEloByName[opponentCanonicalName];
+  const eloDiff = opponentElo - poolAverageElo;
+  const rawWeight = 1 + eloDiff / OPPONENT_WEIGHT_SCALE;
+  const weight = Math.max(OPPONENT_WEIGHT_MIN, Math.min(OPPONENT_WEIGHT_MAX, rawWeight));
+  return { weight, knownOpponent: true };
+}
+
 // For each canonical team, walk the dataset (filtered to before the
 // tournament cutoff), take the most recent CALIBRATION_WINDOW_MATCHES
 // matches the team played (as either home or away), and compute average
 // goals-for and goals-against per match over that window.
-function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize) {
+function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize, overallEloByName) {
   const byTeam = {}; // canonical name -> array of { date, gf, ga }
   // Initialize every canonical team up front (not just ones with matches),
   // so a team with zero matches in the data still gets a proper { matchesUsed: 0 }
@@ -234,20 +303,41 @@ function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize) {
     const wasCapped = cappedHomeGoals !== homeGoals || cappedAwayGoals !== awayGoals;
 
     if (homeCanonical) {
-      byTeam[homeCanonical].push({ date: r.date, gf: cappedHomeGoals, ga: cappedAwayGoals, wasCapped });
+      byTeam[homeCanonical].push({ date: r.date, gf: cappedHomeGoals, ga: cappedAwayGoals, wasCapped, opponent: awayCanonical || null });
     }
     if (awayCanonical) {
-      byTeam[awayCanonical].push({ date: r.date, gf: cappedAwayGoals, ga: cappedHomeGoals, wasCapped });
+      byTeam[awayCanonical].push({ date: r.date, gf: cappedAwayGoals, ga: cappedHomeGoals, wasCapped, opponent: homeCanonical || null });
     }
   }
 
   const stats = {};
+  const poolAverageElo = average(Object.values(overallEloByName));
   for (const [canonical, matches] of Object.entries(byTeam)) {
     matches.sort((a, b) => a.date.localeCompare(b.date));
     const windowMatches = matches.slice(-windowSize);
     const n = windowMatches.length;
-    const gfTotal = windowMatches.reduce((sum, m) => sum + m.gf, 0);
-    const gaTotal = windowMatches.reduce((sum, m) => sum + m.ga, 0);
+
+    // Weighted average: each match's gf/ga contributes proportionally to
+    // its opponent-strength weight (see computeOpponentWeight), not
+    // equally. A weight of 1.5 means that match counts 1.5x as much toward
+    // the average as a neutral (weight-1.0) match would.
+    let weightedGfSum = 0;
+    let weightedGaSum = 0;
+    let totalWeight = 0;
+    let knownOpponentCount = 0;
+    for (const m of windowMatches) {
+      const { weight, knownOpponent } = computeOpponentWeight(m.opponent, overallEloByName, poolAverageElo);
+      weightedGfSum += m.gf * weight;
+      weightedGaSum += m.ga * weight;
+      totalWeight += weight;
+      if (knownOpponent) knownOpponentCount++;
+    }
+    // Weighted average per match - totalWeight, not n, is the correct
+    // denominator here (using n would silently under/over-count relative
+    // to the weights actually applied).
+    const gfPerMatchWeighted = n > 0 ? weightedGfSum / totalWeight : null;
+    const gaPerMatchWeighted = n > 0 ? weightedGaSum / totalWeight : null;
+    const opponentCoverage = n > 0 ? round2(knownOpponentCount / n) : null;
     const cappedCount = windowMatches.filter((m) => m.wasCapped).length;
     const windowStart = n > 0 ? windowMatches[0].date : null;
     const windowEnd = n > 0 ? windowMatches[n - 1].date : null;
@@ -259,12 +349,13 @@ function computeTeamGoalStats(rows, resolvedNames, cutoffDate, windowSize) {
     const spanYears = (n > 1) ? (new Date(windowEnd) - new Date(windowStart)) / (1000 * 60 * 60 * 24 * 365) : 0;
     stats[canonical] = {
       matchesUsed: n,
-      gfPerMatch: n > 0 ? gfTotal / n : null,
-      gaPerMatch: n > 0 ? gaTotal / n : null,
+      gfPerMatch: gfPerMatchWeighted,
+      gaPerMatch: gaPerMatchWeighted,
       windowStart,
       windowEnd,
       thinHistory: spanYears > 3,
       cappedMatchCount: cappedCount,
+      opponentCoverage,
     };
   }
   return stats;
@@ -343,6 +434,7 @@ function deriveEloSplit(overallRatings, goalStats, kappa, windowSize) {
       windowEnd: g.windowEnd,
       thinHistory: g.thinHistory,
       cappedMatchCount: g.cappedMatchCount,
+      opponentCoverage: g.opponentCoverage,
     };
   }
 
@@ -393,7 +485,7 @@ async function main() {
   }
 
   console.log(`Computing GF/GA over the last ${CALIBRATION_WINDOW_MATCHES} matches per team (before ${TOURNAMENT_CUTOFF_DATE})...`);
-  const goalStats = computeTeamGoalStats(rows, resolved, TOURNAMENT_CUTOFF_DATE, CALIBRATION_WINDOW_MATCHES);
+  const goalStats = computeTeamGoalStats(rows, resolved, TOURNAMENT_CUTOFF_DATE, CALIBRATION_WINDOW_MATCHES, overallRatings);
 
   const sparse = Object.entries(goalStats).filter(([, s]) => s.matchesUsed < CALIBRATION_WINDOW_MATCHES || s.thinHistory);
   if (sparse.length > 0) {
@@ -419,6 +511,21 @@ async function main() {
     const sortedByCapped = teamsWithCappedMatches.sort((a, b) => b[1].cappedMatchCount - a[1].cappedMatchCount);
     console.log('  Most-affected teams:', sortedByCapped.slice(0, 8).map(([team, s]) => `${team} (${s.cappedMatchCount})`).join(', '));
   }
+
+  // Opponent-strength weighting coverage summary - see
+  // computeOpponentWeight's own comment for why low coverage matters: a
+  // team whose historical opponents are mostly OUTSIDE our 48-team pool
+  // (e.g. a heavy CONCACAF/regional schedule) gets little real benefit
+  // from this weighting, since most of their matches fall back to neutral
+  // weight 1.0 for lack of a known opponent rating - surfaced here so
+  // that's visible per-team, not just assumed to have helped.
+  const coverageEntries = Object.entries(goalStats).filter(([, s]) => s.opponentCoverage != null);
+  const avgCoverage = coverageEntries.length > 0
+    ? round2(coverageEntries.reduce((sum, [, s]) => sum + s.opponentCoverage, 0) / coverageEntries.length)
+    : null;
+  console.log(`  Opponent-strength weighting coverage: ${Math.round((avgCoverage || 0) * 100)}% average across the field (i.e. this fraction of each team's window had an opponent found in our 48-team pool and thus a real, non-neutral weight).`);
+  const lowestCoverage = coverageEntries.sort((a, b) => a[1].opponentCoverage - b[1].opponentCoverage).slice(0, 8);
+  console.log('  Lowest-coverage teams (weighting has least to work with for these):', lowestCoverage.map(([team, s]) => `${team} (${Math.round(s.opponentCoverage * 100)}%)`).join(', '));
 
   console.log('Deriving ELOa / ELOd split with confidence-weighted shrinkage (kappa is a placeholder - see header comment)...');
   const { split, gfBaseline, gaBaseline } = deriveEloSplit(overallRatings, goalStats, KAPPA_PLACEHOLDER, CALIBRATION_WINDOW_MATCHES);
@@ -457,5 +564,6 @@ module.exports = {
   computeTeamGoalStats,
   deriveEloSplit,
   capMatchMargin,
+  computeOpponentWeight,
   CANONICAL_TO_DATASET_NAME,
 };
