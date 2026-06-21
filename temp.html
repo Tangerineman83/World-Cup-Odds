@@ -25,9 +25,10 @@
 </head>
 <body>
 
-<h1>temp.html &mdash; pre-tournament ELO vs ELOa / ELOd (Phase 1 review)</h1>
+<h1>temp.html &mdash; pre-tournament ELO vs ELOa / ELOd, baseline vs current (Phase 1 + 2 review)</h1>
 <p style="font-size:12px;"><a href="predictions.html">&larr; back to predictions.html</a></p>
 <div class="meta" id="meta">Loading elo_baseline_split.json...</div>
+<div class="meta" id="meta2"></div>
 <div id="error"></div>
 
 <input type="text" id="filterBox" placeholder="Filter by team name..." style="display:none;">
@@ -37,10 +38,14 @@
     <tr>
       <th data-key="name" data-type="string">Team</th>
       <th data-key="overall" data-type="number">Overall</th>
-      <th data-key="attack" data-type="number">ELOa</th>
-      <th data-key="defense" data-type="number">ELOd</th>
-      <th data-key="attackDelta" data-type="number">&Delta;a</th>
-      <th data-key="defenseDelta" data-type="number">&Delta;d</th>
+      <th data-key="attack" data-type="number">ELOa (baseline)</th>
+      <th data-key="defense" data-type="number">ELOd (baseline)</th>
+      <th data-key="currentAttack" data-type="number">ELOa (current)</th>
+      <th data-key="currentDefense" data-type="number">ELOd (current)</th>
+      <th data-key="attackMoveSinceBaseline" data-type="number" title="Current ELOa minus baseline ELOa - movement from in-tournament results">&Delta;a (tourney)</th>
+      <th data-key="defenseMoveSinceBaseline" data-type="number" title="Current ELOd minus baseline ELOd - movement from in-tournament results">&Delta;d (tourney)</th>
+      <th data-key="attackDelta" data-type="number" title="Baseline ELOa minus overall - the pre-tournament attack/defense split itself">&Delta;a (split)</th>
+      <th data-key="defenseDelta" data-type="number" title="Baseline ELOd minus overall - the pre-tournament attack/defense split itself">&Delta;d (split)</th>
       <th data-key="gfPerMatch" data-type="number">GF/match</th>
       <th data-key="gaPerMatch" data-type="number">GA/match</th>
       <th data-key="matchesUsed" data-type="number">Matches used</th>
@@ -56,12 +61,22 @@
   <span style="background:#fff3cd;"></span> thin/wide-spanning history (matchesUsed &lt; window size, or matches span &gt; 3 years)
   &nbsp;&nbsp;
   <span style="background:#f8d7da;"></span> zero matches found &mdash; attack/defense fell back to overall (shrinkFactor 0)
+  <br><br>
+  <strong>Column note:</strong> "(split)" deltas are the pre-tournament attack/defense decomposition itself
+  (baseline ELOa/ELOd vs overall - see Phase 1). "(tourney)" deltas are how much ELOa/ELOd have moved
+  <em>since</em> the baseline due to actual played results (Phase 2) - this is the column that should move
+  as results.json gets updated and <code>scripts/sim/updateEloSplit.js</code> is re-run. If "(tourney)"
+  columns show <code>-</code> for every team, <code>elo_current_split.json</code> hasn't been generated yet.
 </div>
 
 <p style="font-size:12px;color:#777;margin-top:20px;">
   This is a working/review page only, not part of the live site. It reads <code>elo_baseline_split.json</code>
-  (output of <code>scripts/sim/buildEloSplit.js</code>) directly via fetch, so re-run the script and refresh this
-  page to see updated numbers. Nothing here is wired into <code>index.html</code> / <code>predictions.html</code>.
+  (output of <code>scripts/sim/buildEloSplit.js</code>, Phase 1) and <code>elo_current_split.json</code>
+  (output of <code>scripts/sim/updateEloSplit.js</code>, Phase 2, applied on top of the baseline) directly via
+  fetch, so re-run the relevant script and refresh this page to see updated numbers. The current-rating file
+  is optional - if it's missing (e.g. before Phase 2 has been run), the "(current)" and "(tourney)" columns
+  just show baseline values / dashes rather than the page failing to load. Nothing here is wired into
+  <code>index.html</code> / <code>predictions.html</code>.
 </p>
 
 <script>
@@ -71,6 +86,7 @@ let sortDir = 'desc';
 
 async function load() {
   const metaEl = document.getElementById('meta');
+  const meta2El = document.getElementById('meta2');
   const errEl = document.getElementById('error');
   try {
     const res = await fetch('elo_baseline_split.json?_=' + Date.now());
@@ -85,22 +101,50 @@ async function load() {
       '<span><b>GF baseline:</b> ' + data.gfBaseline + '</span>' +
       '<span><b>GA baseline:</b> ' + data.gaBaseline + '</span>';
 
-    rawRows = Object.entries(data.ratings || {}).map(([name, r]) => ({
-      name,
-      overall: r.overall,
-      attack: r.attack,
-      defense: r.defense,
-      attackDelta: (r.attack != null && r.overall != null) ? round2(r.attack - r.overall) : null,
-      defenseDelta: (r.defense != null && r.overall != null) ? round2(r.defense - r.overall) : null,
-      gfPerMatch: r.gfPerMatch != null ? r.gfPerMatch : null,
-      gaPerMatch: r.gaPerMatch != null ? r.gaPerMatch : null,
-      matchesUsed: r.matchesUsed,
-      shrinkFactor: r.shrinkFactor != null ? r.shrinkFactor : null,
-      windowStart: r.windowStart || '',
-      windowEnd: r.windowEnd || '',
-      thinHistory: !!r.thinHistory,
-      zeroMatches: r.matchesUsed === 0,
-    }));
+    // elo_current_split.json (Phase 2) is OPTIONAL - it may not exist yet
+    // (Phase 2 not yet run) or before any matches are played. Fetch
+    // separately so a missing/failed fetch here doesn't break the baseline
+    // table that already works.
+    let currentData = null;
+    try {
+      const res2 = await fetch('elo_current_split.json?_=' + Date.now());
+      if (res2.ok) {
+        currentData = await res2.json();
+        meta2El.innerHTML =
+          '<span><b>Current (Phase 2) generated:</b> ' + (currentData.generatedAt || '?') + '</span>' +
+          '<span><b>Results applied:</b> ' + (currentData.resultsApplied != null ? currentData.resultsApplied : '?') + '</span>' +
+          '<span><b>Constants:</b> alpha=' + currentData.constants?.alpha?.toFixed(3) + ' gamma=' + currentData.constants?.gamma + ' sigma=' + currentData.constants?.sigma + ' kGoals=' + currentData.constants?.kGoals + '</span>';
+      } else {
+        meta2El.innerHTML = '<span style="color:#a66;">elo_current_split.json not found (HTTP ' + res2.status + ') - run scripts/sim/updateEloSplit.js (Phase 2) to see in-tournament movement. Showing baseline only.</span>';
+      }
+    } catch (e2) {
+      meta2El.innerHTML = '<span style="color:#a66;">elo_current_split.json not found - run scripts/sim/updateEloSplit.js (Phase 2) to see in-tournament movement. Showing baseline only.</span>';
+    }
+    const currentRatings = (currentData && currentData.ratings) || {};
+
+    rawRows = Object.entries(data.ratings || {}).map(([name, r]) => {
+      const cur = currentRatings[name] || null;
+      return {
+        name,
+        overall: r.overall,
+        attack: r.attack,
+        defense: r.defense,
+        attackDelta: (r.attack != null && r.overall != null) ? round2(r.attack - r.overall) : null,
+        defenseDelta: (r.defense != null && r.overall != null) ? round2(r.defense - r.overall) : null,
+        currentAttack: cur ? cur.attack : null,
+        currentDefense: cur ? cur.defense : null,
+        attackMoveSinceBaseline: (cur && cur.attack != null && r.attack != null) ? round2(cur.attack - r.attack) : null,
+        defenseMoveSinceBaseline: (cur && cur.defense != null && r.defense != null) ? round2(cur.defense - r.defense) : null,
+        gfPerMatch: r.gfPerMatch != null ? r.gfPerMatch : null,
+        gaPerMatch: r.gaPerMatch != null ? r.gaPerMatch : null,
+        matchesUsed: r.matchesUsed,
+        shrinkFactor: r.shrinkFactor != null ? r.shrinkFactor : null,
+        windowStart: r.windowStart || '',
+        windowEnd: r.windowEnd || '',
+        thinHistory: !!r.thinHistory,
+        zeroMatches: r.matchesUsed === 0,
+      };
+    });
 
     document.getElementById('filterBox').style.display = '';
     document.getElementById('eloTable').style.display = '';
@@ -148,6 +192,10 @@ function render() {
       '<td>' + fmt(r.overall) + '</td>' +
       '<td>' + fmt(r.attack) + '</td>' +
       '<td>' + fmt(r.defense) + '</td>' +
+      '<td>' + fmt(r.currentAttack) + '</td>' +
+      '<td>' + fmt(r.currentDefense) + '</td>' +
+      '<td style="' + moveStyle(r.attackMoveSinceBaseline) + '">' + fmtSigned(r.attackMoveSinceBaseline) + '</td>' +
+      '<td style="' + moveStyle(r.defenseMoveSinceBaseline) + '">' + fmtSigned(r.defenseMoveSinceBaseline) + '</td>' +
       '<td>' + fmtSigned(r.attackDelta) + '</td>' +
       '<td>' + fmtSigned(r.defenseDelta) + '</td>' +
       '<td>' + fmt(r.gfPerMatch) + '</td>' +
@@ -174,6 +222,12 @@ function fmt(v) {
 function fmtSigned(v) {
   if (v === null || v === undefined) return '-';
   return (v > 0 ? '+' : '') + v;
+}
+function moveStyle(v) {
+  if (v === null || v === undefined) return '';
+  if (v > 0) return 'color:#2a7;font-weight:bold;';
+  if (v < 0) return 'color:#c33;font-weight:bold;';
+  return '';
 }
 
 document.querySelectorAll('th').forEach((th) => {
