@@ -27,6 +27,14 @@
       </div>
     </header>
 
+    <div class="groups-toggle-wrap">
+      <div class="groups-toggle" id="model-toggle" role="tablist" aria-label="Choose prediction model">
+        <button class="groups-toggle-btn is-active" id="model-toggle-negbin" role="tab" aria-selected="true">New model</button>
+        <button class="groups-toggle-btn" id="model-toggle-existing" role="tab" aria-selected="false">Original model</button>
+      </div>
+      <p class="groups-toggle-hint">New model: goals are simulated directly from each team's separate attack and defense ratings (more realistic, still being refined). Original model: a single overall rating per team, decides who wins first and fits a scoreline after.</p>
+    </div>
+
     <div class="instructions">
       <p>
         <span class="hint-pill">Tap a team</span> to follow them through the whole

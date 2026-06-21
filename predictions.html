@@ -19,10 +19,16 @@
         <span id="meta-sims"></span>
         <span class="meta-sep">·</span>
         <a href="index.html">← Groups & knockout rounds</a>
-        <span class="meta-sep">·</span>
-        <a href="temp.html" title="Working page: dual-Elo (attack/defense) model in progress, not live yet">Model dev (WIP)</a>
       </div>
     </header>
+
+    <div class="groups-toggle-wrap">
+      <div class="groups-toggle" id="model-toggle" role="tablist" aria-label="Choose prediction model">
+        <button class="groups-toggle-btn is-active" id="model-toggle-negbin" role="tab" aria-selected="true">New model</button>
+        <button class="groups-toggle-btn" id="model-toggle-existing" role="tab" aria-selected="false">Original model</button>
+      </div>
+      <p class="groups-toggle-hint">New model: goals are simulated directly from each team's separate attack and defense ratings (more realistic, still being refined). Original model: a single overall rating per team, decides who wins first and fits a scoreline after.</p>
+    </div>
 
     <section class="legend">
       <div class="legend-item">

@@ -8,6 +8,8 @@
   const scenarioModalClose = document.getElementById('scenario-modal-close');
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
+  const modelToggleNegbinBtn = document.getElementById('model-toggle-negbin');
+  const modelToggleExistingBtn = document.getElementById('model-toggle-existing');
 
   let currentData = null;
   let sortKey = 'eloRating';
@@ -15,6 +17,34 @@
   let selectedTeamName = null;
   let selectedFlowCol = null; // column index (0-3) of the selected node, or null
   let selectedFlowKey = null;
+
+  // Model toggle: 'existing' (Poisson + single-Elo, predictions.json) or
+  // 'negbin' (dual-Elo Negative Binomial, predictions_negbin.json).
+  // Persisted via localStorage so the choice survives a page reload/revisit
+  // (this is the live deployed site, not a sandboxed artifact - localStorage
+  // is fine here). Defaults to 'negbin' per the integration decision to make
+  // it the default the user sees, with a link back to the existing model.
+  const MODEL_STORAGE_KEY = 'worldCupOdds.model';
+  let currentModel = localStorage.getItem(MODEL_STORAGE_KEY) || 'negbin';
+
+  // Normalizes a NegBin team record onto the SAME field names render()
+  // already expects from predictions.json (eloRating/eloChange/eloBaseline),
+  // rather than scattering "if negbin..." branches through render() itself.
+  // NegBin has no single overall-Elo "change" figure the way the existing
+  // engine does (eloUpdate.js's single-number delta) - eloOverall here is
+  // the pre-tournament baseline Elo unmodified by in-tournament form (the
+  // dual-Elo split only moves attack/defense, not the shared overall
+  // number - see updateEloSplit.js), so eloChange is always shown as null
+  // (no arrow) for NegBin rows rather than a misleading invented number.
+  function normalizeTeam(t, model) {
+    if (model === 'existing') return t;
+    return {
+      ...t,
+      eloRating: t.eloOverall,
+      eloChange: null,
+      eloBaseline: null,
+    };
+  }
 
   const PCT_KEYS = new Set([
     'pRoundOf16', 'pQuarterFinal', 'pSemiFinal', 'pFinal', 'pChampion',
@@ -32,7 +62,7 @@
 
   function render() {
     if (!currentData) return;
-    const rows = [...currentData.teams];
+    const rows = currentData.teams.map((t) => normalizeTeam(t, currentModel));
 
     rows.sort((a, b) => {
       let av = a[sortKey];
@@ -125,15 +155,36 @@
   }
 
   async function load() {
+    const filename = currentModel === 'existing' ? 'predictions.json' : 'predictions_negbin.json';
+    const scriptName = currentModel === 'existing' ? 'runSimulation.js' : 'runFullNegBinPipeline.js';
     try {
-      const res = await fetch('predictions.json?_=' + Date.now());
-      if (!res.ok) throw new Error('predictions.json not found (HTTP ' + res.status + ')');
+      const res = await fetch(filename + '?_=' + Date.now());
+      if (!res.ok) throw new Error(filename + ' not found (HTTP ' + res.status + ')');
       currentData = await res.json();
       renderMeta();
       render();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="9" class="error-row">Couldn't load predictions.json: ${e.message}. Run <code>node scripts/sim/runSimulation.js</code> and commit the result.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="error-row">Couldn't load ${filename}: ${e.message}. Run <code>node scripts/sim/${scriptName}</code> and commit the result.</td></tr>`;
     }
+  }
+
+  function setModel(model) {
+    if (model === currentModel) return;
+    currentModel = model;
+    localStorage.setItem(MODEL_STORAGE_KEY, model);
+    selectedTeamName = null;
+    selectedFlowCol = null;
+    selectedFlowKey = null;
+    updateModelToggleUI();
+    load();
+  }
+
+  function updateModelToggleUI() {
+    if (!modelToggleNegbinBtn || !modelToggleExistingBtn) return;
+    modelToggleNegbinBtn.classList.toggle('is-active', currentModel === 'negbin');
+    modelToggleExistingBtn.classList.toggle('is-active', currentModel === 'existing');
+    modelToggleNegbinBtn.setAttribute('aria-selected', String(currentModel === 'negbin'));
+    modelToggleExistingBtn.setAttribute('aria-selected', String(currentModel === 'existing'));
   }
 
   table.querySelectorAll('th.sortable').forEach((th) => {
@@ -203,5 +254,11 @@
     scenarioModalBackdrop.hidden = false;
   }
 
+  if (modelToggleNegbinBtn && modelToggleExistingBtn) {
+    modelToggleNegbinBtn.addEventListener('click', () => setModel('negbin'));
+    modelToggleExistingBtn.addEventListener('click', () => setModel('existing'));
+  }
+
+  updateModelToggleUI();
   load();
 })();

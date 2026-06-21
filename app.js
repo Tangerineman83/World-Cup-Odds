@@ -23,9 +23,19 @@
   const thirdsDisclaimer = document.getElementById('thirds-disclaimer');
   const metaResults = document.getElementById('meta-results');
   const scenarioModalTitle = document.getElementById('scenario-modal-title');
+  const modelToggleNegbinBtn = document.getElementById('model-toggle-negbin');
+  const modelToggleExistingBtn = document.getElementById('model-toggle-existing');
   let groupsViewMode = 'projected'; // 'projected' | 'actual' | 'off-the-fence' | 'next-match'
   let scenarioFlowCol = null;
   let scenarioFlowKey = null;
+
+  // Model toggle: 'existing' (Poisson + single-Elo, scenario.json) or
+  // 'negbin' (dual-Elo Negative Binomial, scenario_negbin.json). Shares the
+  // SAME localStorage key as predictions.js's toggle, so the choice made on
+  // either page carries over to the other - a single site-wide model
+  // preference, not two independent ones a user could get out of sync.
+  const MODEL_STORAGE_KEY = 'worldCupOdds.model';
+  let currentModel = localStorage.getItem(MODEL_STORAGE_KEY) || 'negbin';
 
   let data = null;
   let selectedTeam = null; // team name, or null
@@ -270,7 +280,6 @@
   // Opens the "road to the Last 32" Sankey popup.
   // Uses the shared scenarioFlow.js renderer (window.ScenarioFlow).
   function openScenarioModal(team) {
-    if (!team.pooledScenarios || team.pooledScenarios.length === 0) return;
     scenarioFlowCol = null;
     scenarioFlowKey = null;
     scenarioModalTitle.innerHTML = teamButton(team);
@@ -284,8 +293,40 @@
       pct: team.pQualifyGiven3rd,
       label: `is the table's "Chance" number. It only counts games where they finish 3rd.`,
     } : null;
+    // The gauge only needs pGroupWinner/pRunnerUp/pRoundOf32 (and degrades
+    // to 0% for the "top-8 third" share if outcomeScenarios is missing -
+    // see scenarioFlow.js's bucketTotal) - these are present for every team
+    // under BOTH engines, so the gauge always renders correctly regardless
+    // of model.
     window.ScenarioFlow.renderGauge(scenarioModalGauge, team, gaugeContext);
-    renderModalFlow(team);
+
+    // The Sankey flow diagram below the gauge needs pooledScenarios (the
+    // (points,gd)-bucketed path data) - NegBin's predictions_negbin.json is
+    // deliberately scoped down and doesn't compute this yet (see
+    // runSimulationNegBin.js's own header for the rationale: building the
+    // full Sankey-equivalent breakdown was out of scope for the initial
+    // integration). Previously, missing pooledScenarios caused this whole
+    // function to return early BEFORE even showing the title/gauge - a
+    // silent no-op a user would experience as "nothing happens when I tap
+    // this team". Now the gauge always shows, and the flow diagram area
+    // shows a clear, honest message instead of either a broken empty
+    // diagram or no feedback at all.
+    if (team.pooledScenarios && team.pooledScenarios.length > 0) {
+      scenarioModalFlow.style.display = '';
+      renderModalFlow(team);
+      const note = scenarioModalFlow.parentElement.querySelector('.flow-unavailable-note');
+      if (note) note.style.display = 'none';
+    } else {
+      scenarioModalFlow.style.display = 'none';
+      let note = scenarioModalFlow.parentElement.querySelector('.flow-unavailable-note');
+      if (!note) {
+        note = document.createElement('p');
+        note.className = 'flow-unavailable-note';
+        scenarioModalFlow.insertAdjacentElement('afterend', note);
+      }
+      note.textContent = "The step-by-step path breakdown isn't available yet for the new model - the headline number above is still accurate.";
+      note.style.display = '';
+    }
     scenarioModalBackdrop.hidden = false;
   }
 
@@ -340,8 +381,9 @@
   let predictionsByName = null; // team name -> predictions.json team record
 
   async function loadPredictions() {
+    const filename = currentModel === 'existing' ? 'predictions.json' : 'predictions_negbin.json';
     try {
-      const res = await fetch('predictions.json?_=' + Date.now());
+      const res = await fetch(filename + '?_=' + Date.now());
       const json = await res.json();
       predictionsByName = new Map((json.teams || []).map((t) => [t.name, t]));
     } catch (e) {
@@ -1152,10 +1194,12 @@
     resizeTimer = setTimeout(drawConnectors, 80);
   }
 
-  async function load() {
+  async function loadScenarioData() {
+    const filename = currentModel === 'existing' ? 'scenario.json' : 'scenario_negbin.json';
+    const scriptName = currentModel === 'existing' ? 'runScenario.js' : 'runFullNegBinPipeline.js';
     try {
-      const res = await fetch('scenario.json?_=' + Date.now());
-      if (!res.ok) throw new Error('scenario.json not found (HTTP ' + res.status + ')');
+      const res = await fetch(filename + '?_=' + Date.now());
+      if (!res.ok) throw new Error(filename + ' not found (HTTP ' + res.status + ')');
       data = await res.json();
       cachedRounds = null;
       cachedRankByName = null;
@@ -1164,43 +1208,75 @@
       renderGroups();
       renderThirds();
       renderBracket();
-
-      // Initial connector draw after layout settles
       requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
-
-      window.addEventListener('resize', scheduleRedraw);
-      // Single scroll listener: redraws connectors on every scroll, and
-      // also hides the scroll hint the first time the user scrolls past 20px.
-      let scrollHintHidden = bracketWrap.scrollWidth <= bracketWrap.clientWidth + 4;
-      if (scrollHintHidden) scrollHint.classList.add('hidden');
-      bracketWrap.addEventListener('scroll', () => {
-        scheduleRedraw();
-        if (!scrollHintHidden && bracketWrap.scrollLeft > 20) {
-          scrollHint.classList.add('hidden');
-          scrollHintHidden = true;
-        }
-      });
-
-      document.body.addEventListener('click', onTeamClick);
-      clearBtn.addEventListener('click', () => {
-        selectedTeam = null;
-        applyHighlight();
-      });
-
-      toggleActualBtn.addEventListener('click', () => setGroupsViewMode('actual'));
-      toggleProjectedBtn.addEventListener('click', () => setGroupsViewMode('projected'));
-      toggleOffFenceBtn.addEventListener('click', () => setGroupsViewMode('off-the-fence'));
-      toggleNextMatchBtn.addEventListener('click', () => setGroupsViewMode('next-match'));
-
-      scenarioModalClose.addEventListener('click', closeScenarioModal);
-      scenarioModalBackdrop.addEventListener('click', (e) => {
-        if (e.target === scenarioModalBackdrop) closeScenarioModal();
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !scenarioModalBackdrop.hidden) closeScenarioModal();
-      });
     } catch (e) {
-      groupsGrid.innerHTML = `<p class="error-row">Couldn't load scenario.json: ${e.message}. Run <code>node scripts/sim/runScenario.js</code> and commit the result.</p>`;
+      groupsGrid.innerHTML = `<p class="error-row">Couldn't load ${filename}: ${e.message}. Run <code>node scripts/sim/${scriptName}</code> and commit the result.</p>`;
+    }
+  }
+
+  function setModel(model) {
+    if (model === currentModel) return;
+    currentModel = model;
+    localStorage.setItem(MODEL_STORAGE_KEY, model);
+    selectedTeam = null;
+    updateModelToggleUI();
+    loadScenarioData();
+  }
+
+  function updateModelToggleUI() {
+    if (!modelToggleNegbinBtn || !modelToggleExistingBtn) return;
+    modelToggleNegbinBtn.classList.toggle('is-active', currentModel === 'negbin');
+    modelToggleExistingBtn.classList.toggle('is-active', currentModel === 'existing');
+    modelToggleNegbinBtn.setAttribute('aria-selected', String(currentModel === 'negbin'));
+    modelToggleExistingBtn.setAttribute('aria-selected', String(currentModel === 'existing'));
+  }
+
+  async function load() {
+    updateModelToggleUI();
+    await loadScenarioData();
+
+    // One-time listener setup - attached ONCE here, not inside
+    // loadScenarioData (which re-runs on every model toggle) - re-attaching
+    // these on every toggle would stack duplicate handlers (e.g. multiple
+    // resize listeners firing drawConnectors multiple times per resize, or
+    // multiple click handlers on the same team firing the popup logic
+    // repeatedly). This mirrors the same fix applied to predictions.js's
+    // toggle for the same underlying risk.
+    window.addEventListener('resize', scheduleRedraw);
+    // Single scroll listener: redraws connectors on every scroll, and
+    // also hides the scroll hint the first time the user scrolls past 20px.
+    let scrollHintHidden = bracketWrap.scrollWidth <= bracketWrap.clientWidth + 4;
+    if (scrollHintHidden) scrollHint.classList.add('hidden');
+    bracketWrap.addEventListener('scroll', () => {
+      scheduleRedraw();
+      if (!scrollHintHidden && bracketWrap.scrollLeft > 20) {
+        scrollHint.classList.add('hidden');
+        scrollHintHidden = true;
+      }
+    });
+
+    document.body.addEventListener('click', onTeamClick);
+    clearBtn.addEventListener('click', () => {
+      selectedTeam = null;
+      applyHighlight();
+    });
+
+    toggleActualBtn.addEventListener('click', () => setGroupsViewMode('actual'));
+    toggleProjectedBtn.addEventListener('click', () => setGroupsViewMode('projected'));
+    toggleOffFenceBtn.addEventListener('click', () => setGroupsViewMode('off-the-fence'));
+    toggleNextMatchBtn.addEventListener('click', () => setGroupsViewMode('next-match'));
+
+    scenarioModalClose.addEventListener('click', closeScenarioModal);
+    scenarioModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === scenarioModalBackdrop) closeScenarioModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !scenarioModalBackdrop.hidden) closeScenarioModal();
+    });
+
+    if (modelToggleNegbinBtn && modelToggleExistingBtn) {
+      modelToggleNegbinBtn.addEventListener('click', () => setModel('negbin'));
+      modelToggleExistingBtn.addEventListener('click', () => setModel('existing'));
     }
   }
 
