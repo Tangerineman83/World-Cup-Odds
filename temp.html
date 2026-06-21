@@ -124,6 +124,47 @@
   the existing live workflow.
 </p>
 
+<h2>Next-match scoreline predictions: existing vs NegBin</h2>
+<div class="meta" id="meta4">Loading next_match_scores.json...</div>
+<div id="error3"></div>
+
+<input type="text" id="filterBox3" placeholder="Filter by team name..." style="display:none;">
+
+<div id="scoreCards" style="display:none;"></div>
+
+<style>
+  .score-card {
+    border: 1px solid #ccc; border-radius: 6px; padding: 10px 14px; margin-bottom: 10px;
+    font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+  }
+  .score-card .fixture { font-weight: bold; min-width: 220px; }
+  .score-card .model-pick { display: flex; flex-direction: column; gap: 2px; }
+  .score-card .model-pick .label { font-size: 11px; color: #777; }
+  .score-card .model-pick .pick { font-size: 16px; font-weight: bold; }
+  .score-card .top5 { font-size: 11px; color: #555; flex-basis: 100%; }
+  .score-card .diverge { border-left: 4px solid #e0a800; }
+</style>
+
+<p class="legend" id="scoreLegend" style="display:none;">
+  Each card shows one unplayed fixture's modal (most likely) scoreline under both models. "Existing" is the
+  outcome-decided-first, constrained-Poisson pick (<code>runScenario.js</code>'s own logic, replicated exactly -
+  see <code>scripts/sim/compareNextMatchScores.js</code>). "NegBin" is the highest-joint-probability scoreline
+  with no outcome pre-decision, using current ELOa/ELOd directly. Cards with a <span style="border-left:4px
+  solid #e0a800;padding-left:4px;">left amber border</span> are fixtures where the two models picked a
+  <em>different result</em> (not just a different scoreline for the same result) - these are the most
+  interesting cases to look at first. "Top 5" lists each model's 5 most likely scorelines with their
+  probabilities, so you can see the shape of the distribution behind the single headline pick, not just the
+  pick itself.
+</p>
+
+<p style="font-size:12px;color:#777;margin-top:20px;">
+  This reads <code>next_match_scores.json</code> (from <code>scripts/sim/compareNextMatchScores.js</code>,
+  bundled into the same GitHub Action as <code>runSimulationNegBin.js</code> so both files always reflect the
+  same calibration constants - see that script's own header for why this matters). Covers every unplayed
+  fixture in <code>results.json</code> at the time it was last generated, not just group-stage matches still to
+  come for one team.
+</p>
+
 <script>
 let rawRows = [];
 let sortKey = 'overall';
@@ -336,6 +377,82 @@ document.querySelectorAll('#compareTable th').forEach((th) => {
 document.getElementById('filterBox2').addEventListener('input', renderComparison);
 
 loadComparison();
+
+// --- Next-match scoreline comparison (next_match_scores.json) -------------
+//
+// Same defensive-independence pattern as the other two sections: own load
+// function, own state, a failure here never affects the ELO tables or the
+// model comparison table above it.
+let scoreFixtures = [];
+
+async function loadNextMatchScores() {
+  const meta4El = document.getElementById('meta4');
+  const err3El = document.getElementById('error3');
+  try {
+    const res = await fetch('next_match_scores.json?_=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' - run scripts/sim/compareNextMatchScores.js (or its GitHub Action) first');
+    const data = await res.json();
+
+    meta4El.innerHTML =
+      '<span><b>Generated:</b> ' + (data.generatedAt || '?') + '</span>' +
+      '<span><b>NegBin constants:</b> ' + JSON.stringify(data.negBinConstants || {}) + '</span>' +
+      '<span><b>Fixtures:</b> ' + (data.fixtures ? data.fixtures.length : 0) + '</span>';
+
+    scoreFixtures = data.fixtures || [];
+
+    document.getElementById('filterBox3').style.display = '';
+    document.getElementById('scoreCards').style.display = '';
+    document.getElementById('scoreLegend').style.display = '';
+    renderScoreCards();
+  } catch (e) {
+    err3El.textContent = 'Could not load next_match_scores.json - ' + e.message;
+    meta4El.textContent = '';
+  }
+}
+
+function outcomeOf(h, a) {
+  return h > a ? 'home' : h < a ? 'away' : 'draw';
+}
+
+function renderScoreCards() {
+  const filter = document.getElementById('filterBox3').value.trim().toLowerCase();
+  const container = document.getElementById('scoreCards');
+  container.innerHTML = '';
+
+  const rows = scoreFixtures.filter((f) =>
+    f.home.toLowerCase().includes(filter) || f.away.toLowerCase().includes(filter)
+  );
+
+  for (const f of rows) {
+    const existingOutcome = outcomeOf(f.existing.constrainedPick.h, f.existing.constrainedPick.a);
+    const negbinOutcome = f.negbin.impliedOutcome === 'home' ? 'home' : f.negbin.impliedOutcome === 'away' ? 'away' : 'draw';
+    const diverges = existingOutcome !== negbinOutcome;
+
+    const card = document.createElement('div');
+    card.className = 'score-card' + (diverges ? ' diverge' : '');
+    card.innerHTML =
+      '<div class="fixture">' + f.home + ' vs ' + f.away + '<br><span style="font-weight:normal;font-size:11px;color:#777;">Group ' + (f.group || '-') + (f.date ? ', ' + f.date : '') + '</span></div>' +
+      '<div class="model-pick">' +
+        '<span class="label">Existing (pWin=' + f.existing.pWin + ' pDraw=' + f.existing.pDraw + ' pLoss=' + f.existing.pLoss + ')</span>' +
+        '<span class="pick">' + f.existing.constrainedPick.h + ' - ' + f.existing.constrainedPick.a + '</span>' +
+      '</div>' +
+      '<div class="model-pick">' +
+        '<span class="label">NegBin (muHome=' + f.negbin.muHome + ' muAway=' + f.negbin.muAway + ')</span>' +
+        '<span class="pick">' + f.negbin.modalPick.h + ' - ' + f.negbin.modalPick.a + '</span>' +
+      '</div>' +
+      '<div class="top5"><b>Existing top 5:</b> ' + f.existing.top5Scorelines.map((s) => s.h + '-' + s.a + ' (' + (s.prob*100).toFixed(1) + '%)').join(', ') + '</div>' +
+      '<div class="top5"><b>NegBin top 5:</b> ' + f.negbin.top5Scorelines.map((s) => s.h + '-' + s.a + ' (' + (s.prob*100).toFixed(1) + '%)').join(', ') + '</div>';
+    container.appendChild(card);
+  }
+
+  if (rows.length === 0) {
+    container.innerHTML = '<p style="color:#777;font-size:13px;">No fixtures match this filter.</p>';
+  }
+}
+
+document.getElementById('filterBox3').addEventListener('input', renderScoreCards);
+
+loadNextMatchScores();
 
 function render() {
   const filter = document.getElementById('filterBox').value.trim().toLowerCase();
