@@ -1,1 +1,98 @@
+name: Build ELO attack/defense split
+
+# Manual trigger only (workflow_dispatch), not on a schedule or push.
+#
+# Why manual: buildEloSplit.js fetches a third-party historical dataset over
+# the network (martj42/international_results on GitHub) and is still Phase 1
+# / under review (feeds temp.html, not the live site - see
+# elo-negbin-revised.md and the ongoing dual-Elo project). Re-run it
+# deliberately when you want to refresh elo_baseline_split.json (e.g. after
+# tweaking CALIBRATION_WINDOW_MATCHES or KAPPA_PLACEHOLDER in the script, or
+# to pick up new upstream data), not on every commit. This mirrors
+# refresh-predictions.yml's own note that network-dependent scripts
+# (compareToLive.js) are deliberately kept out of automatic/scheduled runs.
+#
+# This workflow is intentionally separate from refresh-predictions.yml - it
+# has no dependency on runSimulation.js / runScenario.js output and they have
+# none on this, so there's no ordering requirement between them, and a
+# failure here can never block or break the live predictions refresh.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-elo-split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run buildEloSplit.js
+        run: node scripts/sim/buildEloSplit.js
+        # No install step: this script only uses Node core modules (fs,
+        # path, fetch) - no dependencies to install. If that changes, add
+        # an install step here.
+
+      - name: Sanity-check output
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('elo_baseline_split.json')) {
+              console.error('ERROR: elo_baseline_split.json was not written. Refusing to commit.');
+              process.exit(1);
+            }
+            const data = require('./elo_baseline_split.json');
+            const teams = Object.keys(data.ratings || {});
+            console.log('Teams in output:', teams.length, '(expect 48)');
+            if (teams.length !== 48) {
+              console.error('ERROR: expected 48 teams, got ' + teams.length + '. Refusing to commit.');
+              process.exit(1);
+            }
+            const zeroMatch = teams.filter(t => data.ratings[t].matchesUsed === 0);
+            const thin = teams.filter(t => data.ratings[t].thinHistory);
+            console.log('Teams with zero matches found (fell back to overall):', zeroMatch.length, zeroMatch);
+            console.log('Teams with thin/wide-spanning history:', thin.length, thin);
+            console.log('kappa:', data.kappa, '(' + data.kappaStatus + ')');
+          "
+
+      - name: Commit updated elo_baseline_split.json if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add elo_baseline_split.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update elo_baseline_split.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+
+          # Same rebase-retry approach as refresh-predictions.yml, in case
+          # main has moved since checkout. Our changes are only to a single
+          # generated JSON file, so a rebase here should not conflict in
+          # normal use.
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase origin/main; then
+              if git push origin main; then
+                echo "Pushed successfully."
+                exit 0
+              fi
+            else
+              echo "Rebase conflict - aborting rebase. Manual intervention needed."
+              git rebase --abort
+              exit 1
+            fi
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+
+          echo "ERROR: failed to push after retries."
+          exit 1
 
