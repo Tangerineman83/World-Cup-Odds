@@ -1,9 +1,21 @@
 name: Run NegBin tournament simulation
 
 # Runs the dual-Elo Negative Binomial Monte Carlo (scripts/sim/runSimulationNegBin.js)
-# and writes predictions_negbin.json - the NegBin-engine counterpart to
-# refresh-predictions.yml's predictions.json, for side-by-side comparison
-# via temp.html.
+# AND the next-match scoreline comparison (scripts/sim/compareNextMatchScores.js)
+# in the same job, writing predictions_negbin.json and next_match_scores.json -
+# the NegBin-engine counterparts to refresh-predictions.yml's predictions.json,
+# for side-by-side comparison via temp.html.
+#
+# WHY BOTH SCRIPTS RUN IN ONE WORKFLOW: both runSimulationNegBin.js and
+# compareNextMatchScores.js call the same loadCalibratedParams() (in
+# groupStageNegBin.js), which reads whatever negbin_calibration.json is
+# currently checked into the repo. If these ran as two separate scheduled
+# workflows, there's a real window where calibrate-negbin.yml updates
+# negbin_calibration.json BETWEEN the two runs - producing a
+# predictions_negbin.json and a next_match_scores.json that silently used
+# different constants, even though both would look "current". Running them
+# in the same job, against the same checkout, guarantees both outputs are
+# always internally consistent with each other.
 #
 # DEPENDS ON (but does not itself run):
 #   - elo_current_split.json (Phase 2, update-elo-split.yml)
@@ -14,10 +26,10 @@ name: Run NegBin tournament simulation
 # the two ever diverge. Instead this just reads whatever's already
 # committed, the same relationship refresh-predictions.yml already has to
 # the scalar engine's own inputs. If elo_current_split.json is missing,
-# runSimulationNegBin.js fails clearly (see its own error handling) rather
-# than silently using stale or placeholder data. If negbin_calibration.json
-# is missing, it falls back to placeholder constants with a clear warning
-# in the log (does not fail the run) - see groupStageNegBin.js's
+# both scripts fail clearly (see their own error handling) rather than
+# silently using stale or placeholder data. If negbin_calibration.json is
+# missing, both fall back to placeholder constants with a clear warning in
+# the log (does not fail the run) - see groupStageNegBin.js's
 # loadCalibratedParams().
 #
 # No network dependency - safe on a schedule as well as manual trigger,
@@ -53,7 +65,7 @@ jobs:
         # script's own check) - does not fail if negbin_calibration.json
         # is missing, just warns and falls back to placeholder constants.
 
-      - name: Sanity-check output
+      - name: Sanity-check tournament simulation output
         run: |
           node -e "
             const fs = require('fs');
@@ -77,17 +89,53 @@ jobs:
             console.log('Constants source:', data.negBinConstantsSource);
           "
 
-      - name: Commit updated predictions_negbin.json if changed
+      - name: Run compareNextMatchScores.js
+        run: node scripts/sim/compareNextMatchScores.js
+        # Run with no arguments - this produces the full-batch JSON output
+        # (next_match_scores.json) covering every unplayed fixture, not a
+        # single ad hoc console-only check. Runs in the SAME checkout as
+        # runSimulationNegBin.js above, so both outputs share identical
+        # negbin_calibration.json / elo_current_split.json inputs - see
+        # the top-of-file comment on why that consistency matters.
+
+      - name: Sanity-check next-match scores output
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('next_match_scores.json')) {
+              console.error('ERROR: next_match_scores.json was not written. Refusing to commit.');
+              process.exit(1);
+            }
+            const data = require('./next_match_scores.json');
+            console.log('Fixtures:', data.fixtures.length);
+            if (data.fixtures.length === 0) {
+              console.log('Note: zero unplayed fixtures found - tournament may be complete, or results.json has no remaining fixtures. Not an error.');
+            }
+            // Cross-check: this run's constants should match
+            // predictions_negbin.json's constants from the step above,
+            // since both were generated from the same checkout - if they
+            // ever differ, something is wrong with the workflow itself,
+            // not just the data.
+            const predData = require('./predictions_negbin.json');
+            const sameConstants = JSON.stringify(data.negBinConstants) === JSON.stringify(predData.negBinConstants);
+            console.log('Constants match predictions_negbin.json:', sameConstants);
+            if (!sameConstants) {
+              console.error('ERROR: next_match_scores.json and predictions_negbin.json used DIFFERENT constants despite running in the same job - this should be impossible and indicates a bug. Refusing to commit.');
+              process.exit(1);
+            }
+          "
+
+      - name: Commit updated output files if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add predictions_negbin.json
+          git add predictions_negbin.json next_match_scores.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Update predictions_negbin.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          git commit -m "Update predictions_negbin.json + next_match_scores.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
 
           for i in 1 2 3 4 5; do
             git fetch origin main
@@ -107,4 +155,3 @@ jobs:
 
           echo "ERROR: failed to push after retries."
           exit 1
-
