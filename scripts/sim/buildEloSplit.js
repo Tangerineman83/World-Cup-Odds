@@ -61,21 +61,28 @@ const KAPPA_PLACEHOLDER = 120;
 // --- Team name reconciliation -----------------------------------------
 //
 // Canonical names (this project's names, matching countryMap.js values and
-// elo_baseline.json keys) -> the name(s) this dataset uses. Most of the 48
-// teams match directly; this table only needs entries where they differ.
-// Compiled from the dataset's documented "current name" convention plus
-// known FIFA naming differences. MUST be verified against actual fetched
-// data (see verifyTeamCoverage below) before trusting the output - this
-// table is a best-effort starting point, not a guarantee.
+// elo_baseline.json keys) -> a LIST of candidate names this dataset might
+// use, tried in order. Most of the 48 teams match directly (no entry
+// needed); this table only needs entries where the canonical name might
+// differ from the dataset's name. Using a list (not a single guess) means
+// a wrong first guess degrades to "try the next candidate" instead of a
+// hard failure - verifyTeamCoverage records exactly which candidate
+// actually matched, so the resolution is logged, not silently assumed.
 const CANONICAL_TO_DATASET_NAME = {
-  'USA': 'United States',
-  'South Korea': 'South Korea', // dataset uses "South Korea" not "Korea Republic" - verify
-  'Ivory Coast': "Ivory Coast", // dataset may use "Côte d'Ivoire" - verify
-  'Congo DR': 'DR Congo', // dataset may use "DR Congo" or "Congo DR" - verify
-  'Turkiye': 'Turkey', // dataset predates the 2022 FIFA rebrand to "Turkiye" - verify
-  'Curacao': 'Curaçao', // accented in source data - normalized on match, see normalizeName
-  'Bosnia-Herzegovina': 'Bosnia and Herzegovina', // verify exact dataset spelling
-  'Czechia': 'Czechia', // dataset may still use "Czech Republic" pre-rename - verify
+  'USA': ['United States'],
+  'South Korea': ['South Korea', 'Korea Republic', 'Korea South'],
+  'Ivory Coast': ['Ivory Coast', "Côte d'Ivoire", "Cote d'Ivoire"],
+  'Congo DR': ['DR Congo', 'Congo DR', 'Democratic Republic of the Congo'],
+  'Turkiye': ['Turkey', 'Türkiye', 'Turkiye'],
+  'Curacao': ['Curaçao', 'Curacao'],
+  'Bosnia-Herzegovina': ['Bosnia and Herzegovina', 'Bosnia-Herzegovina'],
+  // First failure encountered in practice: "Czechia" alone did not match
+  // (confirmed via a real GitHub Actions run, 2026-06-21) - the dataset
+  // most likely retains the pre-2016-rename "Czech Republic", per its own
+  // documented "current name as of when the dataset entry was last
+  // updated" convention not always being perfectly current for every
+  // recent rename. Trying both, in this order, rather than guessing again.
+  'Czechia': ['Czech Republic', 'Czechia'],
 };
 
 function normalizeName(name) {
@@ -118,10 +125,12 @@ async function fetchResultsCsv() {
 // --- Team coverage verification ------------------------------------------
 //
 // Before computing anything, confirm every one of the 48 canonical team
-// names (or their aliased dataset equivalent) actually appears in the
-// fetched data. Fails loudly rather than silently producing a baseline with
-// missing/zero teams - this is the safeguard against the alias table above
-// being wrong or incomplete.
+// names resolves to SOME name actually present in the fetched data, trying
+// each candidate in CANONICAL_TO_DATASET_NAME (or the canonical name itself
+// if no entry exists) in order and recording which one matched. Fails
+// loudly only if NONE of a team's candidates match - this is the safeguard
+// against the alias table being wrong, while no longer hard-failing on a
+// single wrong first guess the way a single-string table would.
 function verifyTeamCoverage(rows, canonicalNames) {
   const datasetNames = new Set();
   for (const r of rows) {
@@ -131,17 +140,25 @@ function verifyTeamCoverage(rows, canonicalNames) {
 
   const missing = [];
   const resolved = {};
+  const resolutionLog = []; // for visibility into which candidate matched, per team
   for (const canonical of canonicalNames) {
-    const aliasTarget = CANONICAL_TO_DATASET_NAME[canonical] || canonical;
-    const normalized = normalizeName(aliasTarget);
-    if (datasetNames.has(normalized)) {
-      resolved[canonical] = aliasTarget;
+    const candidates = CANONICAL_TO_DATASET_NAME[canonical] || [canonical];
+    let matched = null;
+    for (const candidate of candidates) {
+      if (datasetNames.has(normalizeName(candidate))) {
+        matched = candidate;
+        break;
+      }
+    }
+    if (matched) {
+      resolved[canonical] = matched;
+      resolutionLog.push({ canonical, matched, triedFirst: candidates[0], usedFallback: matched !== candidates[0] });
     } else {
-      missing.push({ canonical, triedAs: aliasTarget });
+      missing.push({ canonical, triedAs: candidates });
     }
   }
 
-  return { resolved, missing };
+  return { resolved, missing, resolutionLog };
 }
 
 // --- GF/GA computation -----------------------------------------------------
@@ -309,18 +326,25 @@ async function main() {
   console.log(`  ${rows.length} rows parsed`);
 
   console.log('Verifying team name coverage against canonical 48...');
-  const { resolved, missing } = verifyTeamCoverage(rows, canonicalNames);
+  const { resolved, missing, resolutionLog } = verifyTeamCoverage(rows, canonicalNames);
   if (missing.length > 0) {
-    console.error('ERROR: the following teams could not be matched in the dataset:');
+    console.error('ERROR: the following teams could not be matched in the dataset (none of their candidate names found):');
     for (const m of missing) {
-      console.error(`  - ${m.canonical} (tried as "${m.triedAs}")`);
+      console.error(`  - ${m.canonical} (tried: ${m.triedAs.map((c) => `"${c}"`).join(', ')})`);
     }
-    console.error('Add/fix entries in CANONICAL_TO_DATASET_NAME and re-run.');
+    console.error('Add another candidate to CANONICAL_TO_DATASET_NAME[<team>] and re-run.');
     console.error('Aborting - no output written, to avoid a baseline with missing teams.');
     process.exitCode = 1;
     return;
   }
   console.log(`  All ${canonicalNames.length} teams matched.`);
+  const usedFallback = resolutionLog.filter((r) => r.usedFallback);
+  if (usedFallback.length > 0) {
+    console.log(`  Note: ${usedFallback.length} team(s) matched via a fallback candidate, not the first guess:`);
+    for (const r of usedFallback) {
+      console.log(`    - ${r.canonical}: matched as "${r.matched}" (first guess "${r.triedFirst}" did not match)`);
+    }
+  }
 
   console.log(`Computing GF/GA over the last ${CALIBRATION_WINDOW_MATCHES} matches per team (before ${TOURNAMENT_CUTOFF_DATE})...`);
   const goalStats = computeTeamGoalStats(rows, resolved, TOURNAMENT_CUTOFF_DATE, CALIBRATION_WINDOW_MATCHES);
