@@ -1,42 +1,43 @@
-name: Calibrate Negative Binomial constants
+name: Update ELO split + calibrate NegBin
 
-# Fits alpha, gamma, sigma, kappa, and r jointly by maximum likelihood
-# against every played result in results.json - see Phase 3a of the
-# dual-Elo project, scripts/sim/calibrateNegBin.js for the full
-# methodology. Writes negbin_calibration.json.
+# Runs scripts/sim/updateEloSplit.js (Phase 2: applies every played result
+# in results.json to the Phase 1 baseline, producing current in-tournament
+# ELOa/ELOd) AND scripts/sim/calibrateNegBin.js (Phase 3a: fits
+# alpha/gamma/sigma/kappa/r against those same results) in sequence, in one
+# workflow, writing elo_current_split.json and negbin_calibration.json.
 #
-# Like update-elo-split.yml (Phase 2), this script has NO network
-# dependency - it only reads elo_baseline_split.json and results.json, both
-# already in the repo - so it's safe to run on a schedule as well as
-# manually, same trigger pattern as refresh-predictions.yml and
-# update-elo-split.yml.
+# COMBINES what were two separate workflows (update-elo-split.yml,
+# calibrate-negbin.yml) into one. Reasons for combining, specifically:
+#   1. Both scripts are network-free and read/write files already in the
+#      repo - neither has Phase 1's reason (third-party network fetch) for
+#      staying separate and manual-only.
+#   2. calibrateNegBin.js's calibration is naturally meant to run AFTER
+#      ratings are current, not before - running them as two independently
+#      schedulable workflows meant relying on remembering to trigger them
+#      in the right order every time, which in practice was missed more
+#      than once. A single workflow with updateEloSplit.js as an earlier
+#      step than calibrateNegBin.js makes the correct order automatic
+#      rather than a manual habit.
+#   3. run-simulation-negbin.js's own header already explains why its two
+#      scripts run together in one job for internal-consistency reasons -
+#      same logic applies here one level up the dependency chain.
 #
-# INDEPENDENT of update-elo-split.yml: calibrateNegBin.js reads
-# elo_baseline_split.json directly (Phase 1's output), NOT
-# elo_current_split.json (Phase 2's output) - it replays its own
-# chronological pre-match-rating sequence internally rather than relying on
-# Phase 2's already-applied current ratings (see the script's own header
-# comment on why pre-match, not post-match, ratings matter for a fair fit).
-# This means there's no dependency or ordering requirement between this
-# workflow and update-elo-split.yml; both can run in any order, on
-# different schedules, and a failure in one never blocks the other. Still
-# depends on build-elo-split.yml (Phase 1) having been run at least once -
-# fails clearly, not silently, if elo_baseline_split.json is missing.
+# Each script keeps its OWN sanity-check step (not merged into one combined
+# check) - this preserves each script's existing, already-tested validation
+# logic (team count checks, log-likelihood regression check, etc.)
+# unchanged, rather than risking new bugs in a rewritten combined check.
 #
-# Re-run whenever results.json gains new played matches (more data
-# generally improves/stabilizes the fit - see the script's own
-# small-sample warnings in its output), or rely on the schedule below.
+# This workflow's two outputs are then consumed by run-simulation-negbin.yml,
+# which still does NOT re-run either script itself (see that workflow's own
+# header) - if you want predictions_negbin.json / next_match_scores.json to
+# reflect a fresh run of THIS workflow, run this one first, then that one,
+# manually, in that order. The schedule below doesn't guarantee that
+# ordering across workflows.
 #
-# Nothing currently depends on this workflow's output - still Phase 3a /
-# under review, feeds temp.html only (once temp.html is updated to read
-# negbin_calibration.json - not yet wired in as of this workflow's
-# creation).
+# No network dependency - safe on a schedule as well as manual trigger.
 
 on:
   schedule:
-    # Twice daily, same cadence as the other in-tournament workflows -
-    # safety net; the main trigger is workflow_dispatch after updating
-    # results.json.
     - cron: '0 6,18 * * *'
   workflow_dispatch: {}
 
@@ -44,7 +45,7 @@ permissions:
   contents: write
 
 jobs:
-  calibrate-negbin:
+  update-ratings-and-calibration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,15 +54,44 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run calibrateNegBin.js
-        run: node scripts/sim/calibrateNegBin.js
-        # No install step: this script only uses Node core modules - no
-        # dependencies to install.
-        # If elo_baseline_split.json doesn't exist yet (Phase 1 hasn't been
-        # run), this step fails with a clear error pointing at
-        # build-elo-split.yml, rather than silently producing nothing.
+      - name: Run updateEloSplit.js (Phase 2)
+        run: node scripts/sim/updateEloSplit.js
+        # No install step: only uses Node core modules.
+        # Fails clearly if elo_baseline_split.json is missing (Phase 1 not
+        # yet run) - see the script's own error handling.
 
-      - name: Sanity-check output
+      - name: Sanity-check elo_current_split.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('elo_current_split.json')) {
+              console.error('ERROR: elo_current_split.json was not written. Refusing to commit.');
+              process.exit(1);
+            }
+            const data = require('./elo_current_split.json');
+            const teams = Object.keys(data.ratings || {});
+            console.log('Teams in output:', teams.length, '(expect 48)');
+            if (teams.length !== 48) {
+              console.error('ERROR: expected 48 teams, got ' + teams.length + '. Refusing to commit.');
+              process.exit(1);
+            }
+            console.log('Results applied:', data.resultsApplied);
+            console.log('Constants:', JSON.stringify(data.constants));
+          "
+
+      - name: Run calibrateNegBin.js (Phase 3a)
+        run: node scripts/sim/calibrateNegBin.js
+        # Runs in the SAME checkout/job as updateEloSplit.js above, so it
+        # always calibrates against the ratings this same run just
+        # produced - no risk of calibrating against a stale
+        # elo_baseline_split.json relative to what was just written.
+        # (calibrateNegBin.js itself reads elo_baseline_split.json, not
+        # elo_current_split.json - see that script's own header on why
+        # pre-match, not post-match, ratings matter for a fair fit - so
+        # this ordering is about logical/workflow consistency, not a literal
+        # data dependency between the two scripts.)
+
+      - name: Sanity-check negbin_calibration.json
         run: |
           node -e "
             const fs = require('fs');
@@ -75,7 +105,10 @@ jobs:
               console.log('Sample size note:', data.sampleSizeWarning);
             }
             if (data.pinnedAtBound && data.pinnedAtBound.length > 0) {
-              console.log('Pinned at search bound (using recommendedParams fallback for these):', data.pinnedAtBound.join(', '));
+              console.log('Pinned at search bound:', data.pinnedAtBound.join(', '));
+            }
+            if (data.overriddenParams && data.overriddenParams.length > 0) {
+              console.log('Overridden in recommendedParams:', data.overriddenParams.join(', '));
             }
             console.log('Fitted params:', JSON.stringify(data.fittedParams));
             console.log('Recommended params (for actual use):', JSON.stringify(data.recommendedParams));
@@ -86,20 +119,18 @@ jobs:
             }
           "
 
-      - name: Commit updated negbin_calibration.json if changed
+      - name: Commit updated files if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add negbin_calibration.json
+          git add elo_current_split.json negbin_calibration.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Update negbin_calibration.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          git commit -m "Update elo_current_split.json + negbin_calibration.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
 
-          # Same rebase-retry approach as the other workflows, in case main
-          # has moved since checkout.
           for i in 1 2 3 4 5; do
             git fetch origin main
             if git rebase origin/main; then
@@ -118,4 +149,3 @@ jobs:
 
           echo "ERROR: failed to push after retries."
           exit 1
-
