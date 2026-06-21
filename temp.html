@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>temp - ELO split review</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  h1 { font-size: 18px; }
+  .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
+  .meta span { margin-right: 16px; }
+  input[type=text] { padding: 4px; margin-bottom: 10px; width: 250px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #eee; cursor: pointer; position: sticky; top: 0; user-select: none; }
+  th.sorted-asc::after { content: " \25B2"; }
+  th.sorted-desc::after { content: " \25BC"; }
+  tr:nth-child(even) { background: #fafafa; }
+  .thin { background: #fff3cd; }
+  .warn { background: #f8d7da; }
+  .legend { font-size: 12px; margin-top: 10px; }
+  .legend span { display: inline-block; width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; }
+  #error { color: #b00; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>temp.html &mdash; pre-tournament ELO vs ELOa / ELOd (Phase 1 review)</h1>
+<div class="meta" id="meta">Loading elo_baseline_split.json...</div>
+<div id="error"></div>
+
+<input type="text" id="filterBox" placeholder="Filter by team name..." style="display:none;">
+
+<table id="eloTable" style="display:none;">
+  <thead>
+    <tr>
+      <th data-key="name" data-type="string">Team</th>
+      <th data-key="overall" data-type="number">Overall</th>
+      <th data-key="attack" data-type="number">ELOa</th>
+      <th data-key="defense" data-type="number">ELOd</th>
+      <th data-key="attackDelta" data-type="number">&Delta;a</th>
+      <th data-key="defenseDelta" data-type="number">&Delta;d</th>
+      <th data-key="gfPerMatch" data-type="number">GF/match</th>
+      <th data-key="gaPerMatch" data-type="number">GA/match</th>
+      <th data-key="matchesUsed" data-type="number">Matches used</th>
+      <th data-key="shrinkFactor" data-type="number">Shrink</th>
+      <th data-key="windowStart" data-type="string">Window start</th>
+      <th data-key="windowEnd" data-type="string">Window end</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="legend">
+  <span style="background:#fff3cd;"></span> thin/wide-spanning history (matchesUsed &lt; window size, or matches span &gt; 3 years)
+  &nbsp;&nbsp;
+  <span style="background:#f8d7da;"></span> zero matches found &mdash; attack/defense fell back to overall (shrinkFactor 0)
+</div>
+
+<p style="font-size:12px;color:#777;margin-top:20px;">
+  This is a working/review page only, not part of the live site. It reads <code>elo_baseline_split.json</code>
+  (output of <code>scripts/sim/buildEloSplit.js</code>) directly via fetch, so re-run the script and refresh this
+  page to see updated numbers. Nothing here is wired into <code>index.html</code> / <code>predictions.html</code>.
+</p>
+
+<script>
+let rawRows = [];
+let sortKey = 'overall';
+let sortDir = 'desc';
+
+async function load() {
+  const metaEl = document.getElementById('meta');
+  const errEl = document.getElementById('error');
+  try {
+    const res = await fetch('elo_baseline_split.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    metaEl.innerHTML =
+      '<span><b>Source:</b> ' + (data.source || '?') + '</span>' +
+      '<span><b>Generated:</b> ' + (data.generatedAt || '?') + '</span>' +
+      '<span><b>Window:</b> last ' + (data.calibrationWindowMatches || '?') + ' matches before ' + (data.tournamentCutoffDate || '?') + '</span>' +
+      '<span><b>kappa:</b> ' + data.kappa + ' (' + (data.kappaStatus || 'status unknown') + ')</span>' +
+      '<span><b>GF baseline:</b> ' + data.gfBaseline + '</span>' +
+      '<span><b>GA baseline:</b> ' + data.gaBaseline + '</span>';
+
+    rawRows = Object.entries(data.ratings || {}).map(([name, r]) => ({
+      name,
+      overall: r.overall,
+      attack: r.attack,
+      defense: r.defense,
+      attackDelta: (r.attack != null && r.overall != null) ? round2(r.attack - r.overall) : null,
+      defenseDelta: (r.defense != null && r.overall != null) ? round2(r.defense - r.overall) : null,
+      gfPerMatch: r.gfPerMatch != null ? r.gfPerMatch : null,
+      gaPerMatch: r.gaPerMatch != null ? r.gaPerMatch : null,
+      matchesUsed: r.matchesUsed,
+      shrinkFactor: r.shrinkFactor != null ? r.shrinkFactor : null,
+      windowStart: r.windowStart || '',
+      windowEnd: r.windowEnd || '',
+      thinHistory: !!r.thinHistory,
+      zeroMatches: r.matchesUsed === 0,
+    }));
+
+    document.getElementById('filterBox').style.display = '';
+    document.getElementById('eloTable').style.display = '';
+    render();
+  } catch (e) {
+    errEl.textContent = 'Could not load elo_baseline_split.json - run scripts/sim/buildEloSplit.js first, ' +
+      'and serve this page from the project root (not file://, since fetch needs http). Error: ' + e.message;
+    metaEl.textContent = '';
+  }
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function render() {
+  const filter = document.getElementById('filterBox').value.trim().toLowerCase();
+  const tbody = document.querySelector('#eloTable tbody');
+  tbody.innerHTML = '';
+
+  let rows = rawRows.filter((r) => r.name.toLowerCase().includes(filter));
+
+  rows.sort((a, b) => {
+    const av = a[sortKey];
+    const bv = b[sortKey];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    let cmp;
+    if (typeof av === 'string') {
+      cmp = av.localeCompare(bv);
+    } else {
+      cmp = av - bv;
+    }
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    if (r.zeroMatches) tr.className = 'warn';
+    else if (r.thinHistory) tr.className = 'thin';
+
+    tr.innerHTML =
+      '<td>' + r.name + '</td>' +
+      '<td>' + fmt(r.overall) + '</td>' +
+      '<td>' + fmt(r.attack) + '</td>' +
+      '<td>' + fmt(r.defense) + '</td>' +
+      '<td>' + fmtSigned(r.attackDelta) + '</td>' +
+      '<td>' + fmtSigned(r.defenseDelta) + '</td>' +
+      '<td>' + fmt(r.gfPerMatch) + '</td>' +
+      '<td>' + fmt(r.gaPerMatch) + '</td>' +
+      '<td>' + fmt(r.matchesUsed) + '</td>' +
+      '<td>' + fmt(r.shrinkFactor) + '</td>' +
+      '<td>' + r.windowStart + '</td>' +
+      '<td>' + r.windowEnd + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  // update header sort indicator classes
+  document.querySelectorAll('th').forEach((th) => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.key === sortKey) {
+      th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    }
+  });
+}
+
+function fmt(v) {
+  return (v === null || v === undefined) ? '-' : v;
+}
+function fmtSigned(v) {
+  if (v === null || v === undefined) return '-';
+  return (v > 0 ? '+' : '') + v;
+}
+
+document.querySelectorAll('th').forEach((th) => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = th.dataset.type === 'string' ? 'asc' : 'desc';
+    }
+    render();
+  });
+});
+
+document.getElementById('filterBox').addEventListener('input', render);
+
+load();
+</script>
+
+</body>
+</html>
