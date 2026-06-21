@@ -30,7 +30,7 @@
 // increasingly anchored to its actual tournament performance.
 
 const { expectedResult, HOME_ADVANTAGE } = require('./eloModel');
-const { HOST_NATIONS, hostGroupMatchMultiplier } = require('./tournament');
+const { HOST_NATIONS, hostGroupMatchMultiplier, KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER } = require('./tournament');
 
 const WORLD_CUP_K = 60;
 
@@ -100,24 +100,46 @@ function applyResultToElo(teamsByName, homeTeam, awayTeam, homeGoals, awayGoals,
 // through to applyResultToElo for every result.
 //
 // For each result involving a host nation (USA/Canada/Mexico), tracks how
-// many group-stage matches that host has played so far (in the order given -
+// many GROUP-STAGE matches that host has played so far (in the order given -
 // results should be pre-sorted chronologically by date, as eloBaseline.js
 // does) and applies HOME_ADVANTAGE_SCHEDULE accordingly (1st group match =
-// full advantage, 2nd = 75%, 3rd = 50%). Results aren't currently tagged as
-// group/knockout, but results.json only contains group-stage fixtures at
-// present (knockout fixtures will need this revisited once they appear -
-// KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER should apply to those instead).
+// full advantage, 2nd = 75%, 3rd = 50%).
+//
+// FIXED: previously used a single running match counter with no group/
+// knockout distinction (results.json only contained group-stage fixtures
+// at the time this was first written, so the gap was deliberately deferred
+// - see the prior version of this comment). Once a host nation's 4th
+// overall match (their first KNOCKOUT match) is processed, the old code
+// called hostGroupMatchMultiplier(4), which doesn't have a 4th array
+// entry and falls back to HOME_ADVANTAGE_SCHEDULE's LAST element (0.5,
+// the 3rd-group-match tier) - silently applying the wrong tier to every
+// knockout match a host nation plays, instead of the intended
+// KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER (0.25). Confirmed this had not yet
+// affected any real output (no host nation had reached a 4th match at
+// time of fix), but needed correcting before group stage concludes.
+//
+// Now uses the presence of a `group` field on each result to distinguish
+// group-stage (apply the tapered per-match-number schedule, tracked via
+// its own counter) from knockout (apply the flat
+// KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER, regardless of how many matches that
+// host has played) - same group-field convention already used elsewhere
+// (e.g. compareNextMatchScores.js's computeGroupMatchNumber).
 function applyResultsToElo(teamsByName, results, deltaMultiplier = 1) {
-  const hostMatchCounts = new Map(); // host name -> number of matches processed so far
+  const hostGroupMatchCounts = new Map(); // host name -> number of GROUP-STAGE matches processed so far (knockout matches do not increment this)
 
   const changes = [];
   for (const r of results) {
     const host = HOST_NATIONS.has(r.home) ? r.home : HOST_NATIONS.has(r.away) ? r.away : null;
     let homeAdvantageMultiplier = 1;
     if (host) {
-      const matchNumber = (hostMatchCounts.get(host) || 0) + 1;
-      homeAdvantageMultiplier = hostGroupMatchMultiplier(matchNumber);
-      hostMatchCounts.set(host, matchNumber);
+      const isGroupMatch = r.group != null;
+      if (isGroupMatch) {
+        const matchNumber = (hostGroupMatchCounts.get(host) || 0) + 1;
+        homeAdvantageMultiplier = hostGroupMatchMultiplier(matchNumber);
+        hostGroupMatchCounts.set(host, matchNumber);
+      } else {
+        homeAdvantageMultiplier = KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER;
+      }
     }
 
     const { homeEloChange, awayEloChange } = applyResultToElo(

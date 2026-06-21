@@ -71,6 +71,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { HOME_ADVANTAGE_SCHEDULE, KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER } = require('./tournament');
 
 const SPLIT_BASELINE_PATH = path.join(__dirname, '..', '..', 'elo_baseline_split.json');
 const RESULTS_PATH = path.join(__dirname, '..', '..', 'results.json');
@@ -162,7 +163,7 @@ function matchCountWeight(matchNumberForTeam) {
 
 const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
-function expectedGoals(attackElo, defenseElo, isHomeAdvantage) {
+function expectedGoals(attackElo, defenseElo, homeAdvantageMultiplier) {
   // The raw (attackElo - defenseElo) / SIGMA term grows unboundedly with
   // the Elo gap, and because it sits inside exp(), an extreme mismatch
   // (e.g. Scotland vs Haiti, a ~400+ point gap) can push expected goals
@@ -175,10 +176,20 @@ function expectedGoals(attackElo, defenseElo, isHomeAdvantage) {
   // realistic matchup, rather than letting it grow without limit. This is
   // a stopgap for Phase 2's placeholder formula, not a substitute for
   // properly fitting ALPHA/GAMMA/SIGMA against real data (Section 5).
+  //
+  // homeAdvantageMultiplier: a continuous 0-1 value (0 = no home
+  // advantage, 1 = full strength), NOT a boolean - changed from a boolean
+  // isHomeAdvantage flag to fix a real bug where every played host-nation
+  // match was scored against a FULL home-advantage expectation regardless
+  // of group match number, ignoring the same HOME_ADVANTAGE_SCHEDULE taper
+  // (1, 0.75, 0.5) already applied correctly elsewhere for unplayed
+  // fixtures (groupStageNegBin.js/groupStage.js) - see applyResultToSplit's
+  // own comment for the full explanation and a concrete example (Canada vs
+  // Qatar) of the bug this fixes.
   const rawGapTerm = (attackElo - defenseElo) / SIGMA_PLACEHOLDER;
   const cappedGapTerm = Math.max(-1.5, Math.min(1.5, rawGapTerm));
   const logMu = ALPHA_PLACEHOLDER
-    + (isHomeAdvantage ? GAMMA_PLACEHOLDER : 0)
+    + (GAMMA_PLACEHOLDER * homeAdvantageMultiplier)
     + cappedGapTerm;
   return Math.exp(logMu);
 }
@@ -223,8 +234,62 @@ function applyResultToSplit(ratingsByTeam, result) {
   const homeIsHost = HOST_NATIONS.has(home);
   const awayIsHost = HOST_NATIONS.has(away);
 
-  const expectedHomeGoals = expectedGoals(homeRating.attack, awayRating.defense, homeIsHost);
-  const expectedAwayGoals = expectedGoals(awayRating.attack, homeRating.defense, awayIsHost);
+  // FIXED (two issues, both now corrected):
+  // (1) previously passed the flat boolean homeIsHost/awayIsHost straight
+  // into expectedGoals, applying FULL host advantage to every played
+  // host-nation match regardless of match number - ignoring the same
+  // HOME_ADVANTAGE_SCHEDULE taper (1, 0.75, 0.5) already applied correctly
+  // for UNPLAYED group fixtures elsewhere (groupStageNegBin.js/
+  // groupStage.js). E.g. Canada's 6-0 win over Qatar (their 2nd group
+  // match) was scored against expectedHomeGoals=6.4, assuming FULL
+  // strength rather than the correct 0.75.
+  // (2) the first fix (above) used matchesPlayed directly as a proxy for
+  // "which group match number is this", clamped via
+  // Math.min(matchesPlayed, HOME_ADVANTAGE_SCHEDULE.length - 1) - this
+  // silently broke once a host nation's matchesPlayed reached 3+ via a
+  // KNOCKOUT match (not just a 3rd+ group match), since the clamp has no
+  // way to distinguish the two - it would keep applying the 3rd-group-
+  // match tier (0.5) to every knockout match indefinitely, instead of the
+  // correct flat KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER (0.25). This mirrors a
+  // near-identical bug found and fixed the same way in eloUpdate.js's
+  // applyResultsToElo - see that function's own comment for the full
+  // explanation. Fixed by using result.group's presence (the same
+  // convention used elsewhere, e.g. compareNextMatchScores.js) to decide
+  // which constant applies, and tracking GROUP-STAGE match number
+  // separately (hostGroupMatchesPlayed, scoped to this function only) from
+  // the general matchesPlayed counter - the latter legitimately keeps
+  // counting through knockout matches for confidence-ramp purposes
+  // (matchCountWeight), which is a different concern from home-advantage
+  // tapering and should not share one counter.
+  const isGroupMatch = result.group != null;
+  let homeAdvMultiplier;
+  if (isGroupMatch) {
+    // matchesPlayed has NOT yet been incremented for THIS match at this
+    // point (that happens below) - but matchesPlayed only counts ALL
+    // matches (group + knockout) for a team, which isn't the right number
+    // for a group-match-number lookup once knockouts are mixed in. Use
+    // hostGroupMatchesPlayed instead, a count scoped to group matches only.
+    homeAdvMultiplier = HOME_ADVANTAGE_SCHEDULE[
+      Math.min(
+        (homeIsHost ? homeRating.hostGroupMatchesPlayed : awayRating.hostGroupMatchesPlayed) || 0,
+        HOME_ADVANTAGE_SCHEDULE.length - 1
+      )
+    ];
+  } else {
+    homeAdvMultiplier = KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER;
+  }
+  // homeIsHost and awayIsHost should never both be true (HOST_NATIONS
+  // teams don't play each other at a "home" venue for either side in the
+  // group stage under this tournament's structure) - if they were, only
+  // the home side's own taper would currently be used; not handled as a
+  // distinct case since it doesn't occur in practice for this tournament.
+
+  const expectedHomeGoals = expectedGoals(homeRating.attack, awayRating.defense, homeIsHost ? homeAdvMultiplier : 0);
+  const expectedAwayGoals = expectedGoals(awayRating.attack, homeRating.defense, awayIsHost ? homeAdvMultiplier : 0);
+  if (isGroupMatch) {
+    if (homeIsHost) homeRating.hostGroupMatchesPlayed = (homeRating.hostGroupMatchesPlayed || 0) + 1;
+    if (awayIsHost) awayRating.hostGroupMatchesPlayed = (awayRating.hostGroupMatchesPlayed || 0) + 1;
+  }
 
   // This is each team's Nth tournament match (1-indexed, including this
   // one) - drives the confidence ramp below. Incremented BEFORE computing
@@ -251,6 +316,8 @@ function applyResultToSplit(ratingsByTeam, result) {
 
   return {
     home, away, homeGoals, awayGoals,
+    isGroupMatch,
+    homeAdvMultiplier: (homeIsHost || awayIsHost) ? round2(homeAdvMultiplier) : null,
     expectedHomeGoals: round2(expectedHomeGoals),
     expectedAwayGoals: round2(expectedAwayGoals),
     homeMatchNumber: homeRating.matchesPlayed,
@@ -286,6 +353,7 @@ function main() {
       defense: r.defense != null ? r.defense : r.overall,
       overall: r.overall,
       matchesPlayed: 0,
+      hostGroupMatchesPlayed: 0,
     });
   }
 
@@ -321,6 +389,7 @@ function main() {
       attack: round2(r.attack),
       defense: round2(r.defense),
       matchesPlayed: r.matchesPlayed,
+      hostGroupMatchesPlayed: r.hostGroupMatchesPlayed,
     };
   }
 
