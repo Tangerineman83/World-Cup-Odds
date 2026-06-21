@@ -215,6 +215,110 @@ function totalLogLikelihood(rawBaselineRatings, gfBaseline, gaBaseline, playedMa
   return total;
 }
 
+// --- Split-aware observation builder, for out-of-sample validation --------
+//
+// Same replay logic as buildObservations, but takes the FULL chronological
+// match list plus a trainCutoffIndex, and tags each observation with
+// isTrain. This is essential for a correct out-of-sample evaluation: a
+// test-set match still needs its PRE-MATCH rating to reflect everything
+// that happened before it chronologically (including training-set
+// matches) - simply calling buildObservations on the test slice alone
+// would evaluate test matches against baseline (pre-tournament) ratings,
+// not against ratings updated through the end of the training period,
+// which would understate how much the model actually knows by that point.
+// So this always replays the FULL sequence in order, and only the
+// observation tagging (not the replay itself) differs between train/test.
+function buildSplitObservations(rawBaselineRatings, gfBaseline, gaBaseline, allPlayedMatches, trainCutoffIndex, params) {
+  const rederived = rederiveBaselineRatings(rawBaselineRatings, gfBaseline, gaBaseline, params.kappa);
+  const ratingsByTeam = new Map();
+  for (const [name, r] of Object.entries(rederived)) {
+    ratingsByTeam.set(name, { attack: r.attack, defense: r.defense });
+  }
+
+  const observations = [];
+  for (let i = 0; i < allPlayedMatches.length; i++) {
+    const m = allPlayedMatches[i];
+    const home = ratingsByTeam.get(m.home);
+    const away = ratingsByTeam.get(m.away);
+    if (!home || !away) continue;
+
+    const homeIsHost = HOST_NATIONS.has(m.home);
+    const awayIsHost = HOST_NATIONS.has(m.away);
+
+    const muHome = expectedGoals(home.attack, away.defense, homeIsHost, params);
+    const muAway = expectedGoals(away.attack, home.defense, awayIsHost, params);
+
+    const isTrain = i < trainCutoffIndex;
+    observations.push({ mu: muHome, k: m.homeGoals, isTrain });
+    observations.push({ mu: muAway, k: m.awayGoals, isTrain });
+
+    const homeAttackDelta = K_GOALS_FOR_REPLAY * (m.homeGoals - muHome);
+    const homeDefenseDelta = K_GOALS_FOR_REPLAY * (muAway - m.awayGoals);
+    const awayAttackDelta = K_GOALS_FOR_REPLAY * (m.awayGoals - muAway);
+    const awayDefenseDelta = K_GOALS_FOR_REPLAY * (muHome - m.homeGoals);
+    home.attack += homeAttackDelta;
+    home.defense += homeDefenseDelta;
+    away.attack += awayAttackDelta;
+    away.defense += awayDefenseDelta;
+  }
+  return observations;
+}
+
+// Total log-likelihood restricted to either the train or test portion of a
+// split-aware observation set.
+function splitLogLikelihood(observations, onlyTrain, params) {
+  let total = 0;
+  let count = 0;
+  for (const obs of observations) {
+    if (obs.isTrain !== onlyTrain) continue;
+    total += negBinLogPmf(obs.k, obs.mu, params.r);
+    count++;
+  }
+  return { total, count };
+}
+
+// Fits the model using ONLY the training portion's log-likelihood as the
+// optimization objective (test observations are computed via the same
+// replay but never influence which params are chosen) - this is what makes
+// the resulting test-set score genuinely out-of-sample.
+function gridRefineSearchTrainOnly(rawBaselineRatings, gfBaseline, gaBaseline, allPlayedMatches, trainCutoffIndex, initialParams, bounds, rounds) {
+  let params = { ...initialParams };
+  const log = [];
+
+  function trainLL(p) {
+    const obs = buildSplitObservations(rawBaselineRatings, gfBaseline, gaBaseline, allPlayedMatches, trainCutoffIndex, p);
+    return splitLogLikelihood(obs, true, p).total;
+  }
+
+  for (let round = 0; round < rounds; round++) {
+    for (const key of Object.keys(bounds)) {
+      const [lo, hi] = bounds[key];
+      const steps = 12;
+      let bestVal = params[key];
+      let bestLL = trainLL(params);
+
+      const span = (hi - lo) / Math.pow(2, round);
+      const center = params[key];
+      const rangeLo = Math.max(lo, center - span / 2);
+      const rangeHi = Math.min(hi, center + span / 2);
+
+      for (let i = 0; i <= steps; i++) {
+        const candidate = rangeLo + (rangeHi - rangeLo) * (i / steps);
+        const testParams = { ...params, [key]: candidate };
+        const ll = trainLL(testParams);
+        if (ll > bestLL) {
+          bestLL = ll;
+          bestVal = candidate;
+        }
+      }
+      params[key] = bestVal;
+      log.push({ round, param: key, value: round2(bestVal), trainLogLikelihood: round2(bestLL) });
+    }
+  }
+
+  return { params, log };
+}
+
 // --- Coordinate-wise grid-refine optimizer ---------------------------------
 
 function gridRefineSearch(rawBaselineRatings, gfBaseline, gaBaseline, playedMatches, initialParams, bounds, rounds) {
@@ -414,4 +518,5 @@ if (require.main === module) {
 module.exports = {
   negBinLogPmf, expectedGoals, rederiveBaselineRatings, buildObservations,
   totalLogLikelihood, gridRefineSearch, logGamma,
+  buildSplitObservations, splitLogLikelihood, gridRefineSearchTrainOnly,
 };
