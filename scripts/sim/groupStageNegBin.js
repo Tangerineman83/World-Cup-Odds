@@ -55,6 +55,7 @@ const path = require('path');
 const { HOST_NATIONS, HOME_ADVANTAGE_SCHEDULE } = require('./tournament');
 const { climateAdjustment, GROUP_VENUE } = require('./venues');
 const { FIFA_RANK } = require('../fifaRankings');
+const { negBinLogPmf } = require('./calibrateNegBin');
 
 const CALIBRATION_PATH = path.join(__dirname, '..', '..', 'negbin_calibration.json');
 
@@ -84,6 +85,20 @@ function loadCalibratedParams() {
     cachedParamsSource = 'FALLBACK PLACEHOLDER constants - negbin_calibration.json not found. Run scripts/sim/calibrateNegBin.js (Phase 3a) first for a real fit.';
   }
   return { params: cachedParams, source: cachedParamsSource };
+}
+
+// Clears the module-level params cache, forcing the NEXT loadCalibratedParams()
+// call to re-read negbin_calibration.json from disk. Needed specifically by
+// runFullNegBinPipeline.js (the orchestrator): when multiple phases run in
+// ONE Node process (require()'d, not separate CLI invocations), this
+// module's cache would otherwise silently persist a stale read across
+// calibrateNegBin.js writing a FRESH negbin_calibration.json mid-pipeline -
+// a real risk caught while building the orchestrator, not a hypothetical
+// one. Each standalone CLI script (runSimulationNegBin.js etc.) never needs
+// this, since a fresh process always starts with cachedParams=null.
+function clearParamsCache() {
+  cachedParams = null;
+  cachedParamsSource = null;
 }
 
 // --- Expected goals (same structural form as updateEloSplit.js / calibrateNegBin.js) ---
@@ -157,6 +172,48 @@ function poissonSampleFromLambda(lambda, rand) {
 function sampleNegativeBinomial(mu, r, rand) {
   const lambda = sampleGamma(r, mu / r, rand);
   return poissonSampleFromLambda(lambda, rand);
+}
+
+// Computes the FULL joint win/draw/loss probability for a single match
+// from its two expected-goals values (muHome, muAway) under the NegBin
+// distribution - exhaustive sum over the joint (h,a) grid, NOT a single
+// sampled scoreline. This is the same calculation that's been done
+// manually/inline several times this session (compareNextMatchScores.js's
+// win/draw/loss breakdown, and ad hoc traces e.g. Canada vs Portugal,
+// USA vs Turkiye) - pulled out here as a single tested, reusable function
+// so mostLikelyNegBin.js's chalkWinnerNegBin (and anything else that needs
+// a genuine win probability rather than one sampled outcome) doesn't
+// re-derive it. Grid bound of 0-10 goals per side is generous (covers
+// >99.9% of realistic probability mass for any plausible mu in this
+// model) without the performance cost of an unbounded sum.
+function negBinJointWinProbability(muHome, muAway, r, maxGoals = 10) {
+  let pHomeWin = 0, pDraw = 0, pAwayWin = 0;
+  for (let h = 0; h <= maxGoals; h++) {
+    for (let a = 0; a <= maxGoals; a++) {
+      const p = Math.exp(negBinLogPmf(h, muHome, r) + negBinLogPmf(a, muAway, r));
+      if (h > a) pHomeWin += p;
+      else if (h === a) pDraw += p;
+      else pAwayWin += p;
+    }
+  }
+  return { pHomeWin, pDraw, pAwayWin };
+}
+
+// Finds the single highest-probability (h,a) scoreline under the NegBin
+// distribution given muHome/muAway - the modal pick used for "Next Match"
+// style single-scoreline predictions. Same pattern already proven in
+// compareNextMatchScores.js (and the modal-pick test cases verified
+// earlier this session) - pulled out here as a shared, tested utility
+// rather than re-derived per caller. Returns { h, a }.
+function negBinModalScore(muHome, muAway, r, maxGoals = 7) {
+  let best = null, bestProb = -1;
+  for (let h = 0; h <= maxGoals; h++) {
+    for (let a = 0; a <= maxGoals; a++) {
+      const p = Math.exp(negBinLogPmf(h, muHome, r) + negBinLogPmf(a, muAway, r));
+      if (p > bestProb) { bestProb = p; best = { h, a }; }
+    }
+  }
+  return best;
 }
 
 // --- Group simulation, mirroring groupStage.js's simulateGroup exactly ----
@@ -279,5 +336,6 @@ function applyResult(homeStats, awayStats, gHome, gAway, resultForHome) {
 
 module.exports = {
   simulateGroup, expectedGoals, sampleNegativeBinomial, sampleGamma,
-  poissonSampleFromLambda, loadCalibratedParams,
+  poissonSampleFromLambda, loadCalibratedParams, clearParamsCache,
+  negBinJointWinProbability, negBinModalScore,
 };

@@ -425,6 +425,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  main,
   expectedGoals,
   applyResultToSplit,
   matchCountWeight,

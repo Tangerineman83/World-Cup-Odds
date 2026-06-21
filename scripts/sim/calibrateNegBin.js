@@ -548,6 +548,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  main,
   negBinLogPmf, expectedGoals, rederiveBaselineRatings, buildObservations,
   totalLogLikelihood, gridRefineSearch, logGamma,
   buildSplitObservations, splitLogLikelihood, gridRefineSearchTrainOnly,

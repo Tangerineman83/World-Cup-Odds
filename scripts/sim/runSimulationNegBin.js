@@ -50,6 +50,18 @@ const { simulateTournamentNegBin } = require('./simulateTournamentNegBin');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { loadCalibratedParams } = require('./groupStageNegBin');
 const { FIFA_RANK } = require('../fifaRankings');
+const { ELO_TO_NAME } = require('../countryMap');
+
+// FOUND WHILE WIRING UP THE FRONTEND TOGGLE: predictions.json (existing
+// engine) includes a `code` field per team (flag/abbreviation code, used by
+// predictions.js's flagImgHtml) - predictions_negbin.json didn't have this
+// at all, since this script was originally written purely for model-vs-
+// model comparison (temp.html), not for direct frontend consumption. Added
+// here, same derivation as runSimulation.js's own ELO_TO_NAME usage, so
+// predictions_negbin.json is a genuine drop-in for anything that reads
+// predictions.json's team records.
+const NAME_TO_CODE = {};
+for (const [code, name] of Object.entries(ELO_TO_NAME)) NAME_TO_CODE[name] = code;
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const CURRENT_SPLIT_PATH = path.join(__dirname, '..', '..', 'elo_current_split.json');
@@ -64,7 +76,19 @@ function mulberry32(seed) {
   };
 }
 
-(async () => {
+// REFACTORED from a top-level IIFE into an exported main(numSimulations)
+// function - needed so an orchestrator (runFullNegBinPipeline.js) can call
+// this in-process, in sequence with the other phases, rather than via
+// child_process or letting it run uncontrolled on require(). Behavior is
+// otherwise UNCHANGED from the original IIFE - same logic, same file I/O,
+// same console output - only the invocation mechanism changed. CLI usage
+// (node scripts/sim/runSimulationNegBin.js [N]) is preserved via the
+// require.main guard at the bottom of this file, which calls
+// main(N_SIMULATIONS_FROM_ARGV) exactly as the IIFE used to run
+// automatically.
+async function main(numSimulations) {
+  const N_SIMULATIONS = numSimulations || 20000;
+
   if (!fs.existsSync(CURRENT_SPLIT_PATH)) {
     console.error('ERROR: elo_current_split.json not found. Run scripts/sim/updateEloSplit.js (Phase 2) first.');
     process.exitCode = 1;
@@ -169,6 +193,7 @@ function mulberry32(seed) {
     const r = currentSplit.ratings[name];
     return {
       name,
+      code: NAME_TO_CODE[name] || null,
       group: Object.entries(GROUPS).find(([, members]) => members.includes(name))[0],
       fifaRank: FIFA_RANK[name] != null ? FIFA_RANK[name] : null,
       eloOverall: r.overall,
@@ -207,4 +232,13 @@ function mulberry32(seed) {
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2));
   console.log(`Wrote NegBin-engine predictions for ${teams.length} teams to ${OUTPUT_PATH}`);
-})();
+}
+
+if (require.main === module) {
+  main(N_SIMULATIONS).catch((e) => {
+    console.error('FATAL:', e);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { main };
