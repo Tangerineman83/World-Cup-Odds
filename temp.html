@@ -26,6 +26,7 @@
 <body>
 
 <h1>temp.html &mdash; pre-tournament ELO vs ELOa / ELOd (Phase 1 review)</h1>
+<p style="font-size:12px;"><a href="predictions.html">&larr; back to predictions.html</a></p>
 <div class="meta" id="meta">Loading elo_baseline_split.json...</div>
 <div id="error"></div>
 
@@ -72,7 +73,7 @@ async function load() {
   const metaEl = document.getElementById('meta');
   const errEl = document.getElementById('error');
   try {
-    const res = await fetch('elo_baseline_split.json');
+    const res = await fetch('elo_baseline_split.json?_=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
