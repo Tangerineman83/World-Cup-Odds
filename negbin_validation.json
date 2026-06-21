@@ -1,0 +1,141 @@
+{
+  "generatedAt": "2026-06-21T12:21:33.657Z",
+  "totalPlayedMatches": 36,
+  "totalMatchdays": 10,
+  "cutoffStartMatchday": 5,
+  "referenceRValues": [
+    3,
+    5,
+    8,
+    12,
+    20,
+    33.04,
+    60,
+    1000
+  ],
+  "splits": [
+    {
+      "cutoffMatchday": 6,
+      "trainCount": 20,
+      "testCount": 16,
+      "fittedParams": {
+        "alpha": 0.349,
+        "gamma": 0.313,
+        "sigma": 800,
+        "kappa": 250,
+        "r": 27.21
+      },
+      "testLogLikelihoodAtFittedR": -45.652,
+      "referenceRScores": {
+        "3": -46.452,
+        "5": -45.967,
+        "8": -45.765,
+        "12": -45.689,
+        "20": -45.657,
+        "60": -45.657,
+        "1000": -45.672,
+        "33.04": -45.652
+      },
+      "bestScoringR": 33.04
+    },
+    {
+      "cutoffMatchday": 7,
+      "trainCount": 24,
+      "testCount": 12,
+      "fittedParams": {
+        "alpha": 0.379,
+        "gamma": 0.296,
+        "sigma": 862.269,
+        "kappa": 250,
+        "r": 39.563
+      },
+      "testLogLikelihoodAtFittedR": -33.729,
+      "referenceRScores": {
+        "3": -33.991,
+        "5": -33.759,
+        "8": -33.689,
+        "12": -33.681,
+        "20": -33.698,
+        "60": -33.743,
+        "1000": -33.777,
+        "33.04": -33.721
+      },
+      "bestScoringR": 12
+    },
+    {
+      "cutoffMatchday": 8,
+      "trainCount": 28,
+      "testCount": 8,
+      "fittedParams": {
+        "alpha": 0.342,
+        "gamma": 0.421,
+        "sigma": 725,
+        "kappa": 250,
+        "r": 43.865
+      },
+      "testLogLikelihoodAtFittedR": -21.67,
+      "referenceRScores": {
+        "3": -21.747,
+        "5": -21.65,
+        "8": -21.628,
+        "12": -21.633,
+        "20": -21.648,
+        "60": -21.676,
+        "1000": -21.695,
+        "33.04": -21.663
+      },
+      "bestScoringR": 8
+    },
+    {
+      "cutoffMatchday": 9,
+      "trainCount": 32,
+      "testCount": 4,
+      "fittedParams": {
+        "alpha": 0.272,
+        "gamma": 0.475,
+        "sigma": 679.167,
+        "kappa": 250,
+        "r": 43.865
+      },
+      "testLogLikelihoodAtFittedR": -11.605,
+      "referenceRScores": {
+        "3": -11.683,
+        "5": -11.596,
+        "8": -11.574,
+        "12": -11.575,
+        "20": -11.587,
+        "60": -11.61,
+        "1000": -11.627,
+        "33.04": -11.599
+      },
+      "bestScoringR": 8
+    }
+  ],
+  "aggregate": {
+    "totalTestLogLikelihoodAtEachSplitsFittedR": -112.656,
+    "totalTestLogLikelihoodByFixedReferenceR": {
+      "3": -113.873,
+      "5": -112.972,
+      "8": -112.656,
+      "12": -112.578,
+      "20": -112.59,
+      "60": -112.686,
+      "1000": -112.771,
+      "33.04": -112.635
+    },
+    "bestOverallFixedR": 12,
+    "fittedRWinCount": 0,
+    "referenceRWinCounts": {
+      "3": 0,
+      "5": 0,
+      "8": 2,
+      "12": 1,
+      "20": 0,
+      "60": 0,
+      "1000": 0,
+      "33.04": 1
+    },
+    "splitCount": 4
+  },
+  "limitation": "Only 4 rolling-origin split(s) from 36 total matches - small-sample result, treat as suggestive not conclusive. Re-run as more matchdays are played; more splits with larger held-out sets will give a more reliable answer."
+}
