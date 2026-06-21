@@ -1,0 +1,689 @@
+{
+  "generatedAt": "2026-06-21T09:35:30.383Z",
+  "baselineSource": "https://raw.githubusercontent.com/martj42/international_results/master/results.csv",
+  "baselineGeneratedAt": "2026-06-21T09:29:55.861Z",
+  "resultsApplied": 36,
+  "constants": {
+    "alpha": 0.26236426446749106,
+    "gamma": 0.15,
+    "sigma": 250,
+    "kGoals": 12,
+    "status": "PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md"
+  },
+  "ratings": {
+    "Mexico": {
+      "overall": 1881,
+      "attack": 1805.15,
+      "defense": 1930.57
+    },
+    "South Africa": {
+      "overall": 1511,
+      "attack": 1484.4,
+      "defense": 1594.85
+    },
+    "South Korea": {
+      "overall": 1786,
+      "attack": 1772.88,
+      "defense": 1794.76
+    },
+    "Czechia": {
+      "overall": 1712,
+      "attack": 1706.54,
+      "defense": 1682.78
+    },
+    "Canada": {
+      "overall": 1767,
+      "attack": 1728.89,
+      "defense": 1830.43
+    },
+    "Bosnia-Herzegovina": {
+      "overall": 1616,
+      "attack": 1600.1,
+      "defense": 1583.06
+    },
+    "Qatar": {
+      "overall": 1421,
+      "attack": 1364.54,
+      "defense": 1397.91
+    },
+    "Switzerland": {
+      "overall": 1891,
+      "attack": 1847.95,
+      "defense": 1839.07
+    },
+    "Brazil": {
+      "overall": 1991,
+      "attack": 1954.28,
+      "defense": 1985.58
+    },
+    "Morocco": {
+      "overall": 1827,
+      "attack": 1833.86,
+      "defense": 1960.93
+    },
+    "Haiti": {
+      "overall": 1548,
+      "attack": 1561.36,
+      "defense": 1589.44
+    },
+    "Scotland": {
+      "overall": 1782,
+      "attack": 1736.11,
+      "defense": 1771.63
+    },
+    "USA": {
+      "overall": 1780,
+      "attack": 1805.64,
+      "defense": 1741
+    },
+    "Paraguay": {
+      "overall": 1780,
+      "attack": 1732.64,
+      "defense": 1783.55
+    },
+    "Australia": {
+      "overall": 1777,
+      "attack": 1745.52,
+      "defense": 1810.54
+    },
+    "Turkiye": {
+      "overall": 1911,
+      "attack": 1872.39,
+      "defense": 1875.24
+    },
+    "Germany": {
+      "overall": 1932,
+      "attack": 1978.09,
+      "defense": 1912.4
+    },
+    "Curacao": {
+      "overall": 1434,
+      "attack": 1449.28,
+      "defense": 1478.35
+    },
+    "Ivory Coast": {
+      "overall": 1695,
+      "attack": 1706.43,
+      "defense": 1804.85
+    },
+    "Ecuador": {
+      "overall": 1938,
+      "attack": 1772.56,
+      "defense": 2053.44
+    },
+    "Netherlands": {
+      "overall": 1948,
+      "attack": 1995.37,
+      "defense": 1929.69
+    },
+    "Japan": {
+      "overall": 1906,
+      "attack": 1927.45,
+      "defense": 1990.62
+    },
+    "Sweden": {
+      "overall": 1712,
+      "attack": 1770.28,
+      "defense": 1661.44
+    },
+    "Tunisia": {
+      "overall": 1628,
+      "attack": 1610.69,
+      "defense": 1600.51
+    },
+    "Belgium": {
+      "overall": 1894,
+      "attack": 1911.46,
+      "defense": 1871.1
+    },
+    "Egypt": {
+      "overall": 1696,
+      "attack": 1650.77,
+      "defense": 1749.15
+    },
+    "Iran": {
+      "overall": 1772,
+      "attack": 1755.6,
+      "defense": 1783.36
+    },
+    "New Zealand": {
+      "overall": 1562,
+      "attack": 1598.45,
+      "defense": 1546.87
+    },
+    "Spain": {
+      "overall": 2157,
+      "attack": 2131.1,
+      "defense": 2161.01
+    },
+    "Cape Verde": {
+      "overall": 1578,
+      "attack": 1537.59,
+      "defense": 1648.44
+    },
+    "Saudi Arabia": {
+      "overall": 1576,
+      "attack": 1517.43,
+      "defense": 1583.33
+    },
+    "Uruguay": {
+      "overall": 1892,
+      "attack": 1769.83,
+      "defense": 1897.35
+    },
+    "France": {
+      "overall": 2063,
+      "attack": 2088.86,
+      "defense": 2042.28
+    },
+    "Senegal": {
+      "overall": 1860,
+      "attack": 1893.24,
+      "defense": 1887.4
+    },
+    "Iraq": {
+      "overall": 1607,
+      "attack": 1542.58,
+      "defense": 1611.84
+    },
+    "Norway": {
+      "overall": 1914,
+      "attack": 1948.97,
+      "defense": 1919.35
+    },
+    "Argentina": {
+      "overall": 2115,
+      "attack": 2121.09,
+      "defense": 2208.67
+    },
+    "Algeria": {
+      "overall": 1772,
+      "attack": 1790.19,
+      "defense": 1845.95
+    },
+    "Austria": {
+      "overall": 1830,
+      "attack": 1851.43,
+      "defense": 1853.81
+    },
+    "Jordan": {
+      "overall": 1680,
+      "attack": 1660.8,
+      "defense": 1628.65
+    },
+    "Portugal": {
+      "overall": 1989,
+      "attack": 1976.32,
+      "defense": 1974.95
+    },
+    "Congo DR": {
+      "overall": 1652,
+      "attack": 1623.49,
+      "defense": 1742.86
+    },
+    "Uzbekistan": {
+      "overall": 1714,
+      "attack": 1675.09,
+      "defense": 1741.71
+    },
+    "Colombia": {
+      "overall": 1982,
+      "attack": 1979.52,
+      "defense": 1957.68
+    },
+    "England": {
+      "overall": 2024,
+      "attack": 2072.81,
+      "defense": 2111.24
+    },
+    "Croatia": {
+      "overall": 1912,
+      "attack": 1942.28,
+      "defense": 1881.3
+    },
+    "Ghana": {
+      "overall": 1510,
+      "attack": 1478.96,
+      "defense": 1528.88
+    },
+    "Panama": {
+      "overall": 1730,
+      "attack": 1689.6,
+      "defense": 1701.71
+    }
+  },
+  "matchLog": [
+    {
+      "home": "Mexico",
+      "away": "South Africa",
+      "homeGoals": 2,
+      "awayGoals": 0,
+      "expectedHomeGoals": 5.28,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": -39.33,
+      "homeDefenseDelta": 3.48,
+      "awayAttackDelta": -3.48,
+      "awayDefenseDelta": 39.33
+    },
+    {
+      "home": "South Korea",
+      "away": "Czechia",
+      "homeGoals": 2,
+      "awayGoals": 1,
+      "expectedHomeGoals": 1.87,
+      "expectedAwayGoals": 1.01,
+      "homeAttackDelta": 1.59,
+      "homeDefenseDelta": 0.06,
+      "awayAttackDelta": -0.06,
+      "awayDefenseDelta": -1.59
+    },
+    {
+      "home": "Canada",
+      "away": "Bosnia-Herzegovina",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 3.16,
+      "expectedAwayGoals": 0.49,
+      "homeAttackDelta": -25.98,
+      "homeDefenseDelta": -6.16,
+      "awayAttackDelta": 6.16,
+      "awayDefenseDelta": 25.98
+    },
+    {
+      "home": "USA",
+      "away": "Paraguay",
+      "homeGoals": 4,
+      "awayGoals": 1,
+      "expectedHomeGoals": 1.4,
+      "expectedAwayGoals": 1.39,
+      "homeAttackDelta": 31.26,
+      "homeDefenseDelta": 4.62,
+      "awayAttackDelta": -4.62,
+      "awayDefenseDelta": -31.26
+    },
+    {
+      "home": "Haiti",
+      "away": "Scotland",
+      "homeGoals": 0,
+      "awayGoals": 1,
+      "expectedHomeGoals": 0.63,
+      "expectedAwayGoals": 3.49,
+      "homeAttackDelta": -7.53,
+      "homeDefenseDelta": 29.92,
+      "awayAttackDelta": -29.92,
+      "awayDefenseDelta": 7.53
+    },
+    {
+      "home": "Australia",
+      "away": "Turkiye",
+      "homeGoals": 2,
+      "awayGoals": 0,
+      "expectedHomeGoals": 0.73,
+      "expectedAwayGoals": 2.24,
+      "homeAttackDelta": 15.28,
+      "homeDefenseDelta": 26.9,
+      "awayAttackDelta": -26.9,
+      "awayDefenseDelta": -15.28
+    },
+    {
+      "home": "Brazil",
+      "away": "Morocco",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 1.57,
+      "expectedAwayGoals": 0.73,
+      "homeAttackDelta": -6.88,
+      "homeDefenseDelta": -3.27,
+      "awayAttackDelta": 3.27,
+      "awayDefenseDelta": 6.88
+    },
+    {
+      "home": "Switzerland",
+      "away": "Qatar",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 5.83,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": -57.91,
+      "homeDefenseDelta": -8.52,
+      "awayAttackDelta": 8.52,
+      "awayDefenseDelta": 57.91
+    },
+    {
+      "home": "Ivory Coast",
+      "away": "Ecuador",
+      "homeGoals": 1,
+      "awayGoals": 0,
+      "expectedHomeGoals": 0.3,
+      "expectedAwayGoals": 1.88,
+      "homeAttackDelta": 8.39,
+      "homeDefenseDelta": 22.59,
+      "awayAttackDelta": -22.59,
+      "awayDefenseDelta": -8.39
+    },
+    {
+      "home": "Germany",
+      "away": "Curacao",
+      "homeGoals": 7,
+      "awayGoals": 1,
+      "expectedHomeGoals": 5.83,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": 14.09,
+      "homeDefenseDelta": -8.52,
+      "awayAttackDelta": 8.52,
+      "awayDefenseDelta": -14.09
+    },
+    {
+      "home": "Netherlands",
+      "away": "Japan",
+      "homeGoals": 2,
+      "awayGoals": 2,
+      "expectedHomeGoals": 1.24,
+      "expectedAwayGoals": 1.28,
+      "homeAttackDelta": 9.08,
+      "homeDefenseDelta": -8.66,
+      "awayAttackDelta": 8.66,
+      "awayDefenseDelta": -9.08
+    },
+    {
+      "home": "Sweden",
+      "away": "Tunisia",
+      "homeGoals": 5,
+      "awayGoals": 1,
+      "expectedHomeGoals": 2.05,
+      "expectedAwayGoals": 1.08,
+      "homeAttackDelta": 35.35,
+      "homeDefenseDelta": 0.95,
+      "awayAttackDelta": -0.95,
+      "awayDefenseDelta": -35.35
+    },
+    {
+      "home": "Iran",
+      "away": "New Zealand",
+      "homeGoals": 2,
+      "awayGoals": 2,
+      "expectedHomeGoals": 3.44,
+      "expectedAwayGoals": 0.54,
+      "homeAttackDelta": -17.28,
+      "homeDefenseDelta": -17.53,
+      "awayAttackDelta": 17.53,
+      "awayDefenseDelta": 17.28
+    },
+    {
+      "home": "Belgium",
+      "away": "Egypt",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 3.02,
+      "expectedAwayGoals": 0.51,
+      "homeAttackDelta": -24.26,
+      "homeDefenseDelta": -5.83,
+      "awayAttackDelta": 5.83,
+      "awayDefenseDelta": 24.26
+    },
+    {
+      "home": "Spain",
+      "away": "Cape Verde",
+      "homeGoals": 0,
+      "awayGoals": 0,
+      "expectedHomeGoals": 5.83,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": -69.91,
+      "homeDefenseDelta": 3.48,
+      "awayAttackDelta": -3.48,
+      "awayDefenseDelta": 69.91
+    },
+    {
+      "home": "Saudi Arabia",
+      "away": "Uruguay",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 0.29,
+      "expectedAwayGoals": 3.48,
+      "homeAttackDelta": 8.52,
+      "homeDefenseDelta": 29.73,
+      "awayAttackDelta": -29.73,
+      "awayDefenseDelta": -8.52
+    },
+    {
+      "home": "France",
+      "away": "Senegal",
+      "homeGoals": 3,
+      "awayGoals": 1,
+      "expectedHomeGoals": 2.88,
+      "expectedAwayGoals": 0.7,
+      "homeAttackDelta": 1.49,
+      "homeDefenseDelta": -3.65,
+      "awayAttackDelta": 3.65,
+      "awayDefenseDelta": -1.49
+    },
+    {
+      "home": "Iraq",
+      "away": "Norway",
+      "homeGoals": 1,
+      "awayGoals": 4,
+      "expectedHomeGoals": 0.29,
+      "expectedAwayGoals": 5.83,
+      "homeAttackDelta": 8.52,
+      "homeDefenseDelta": 21.91,
+      "awayAttackDelta": -21.91,
+      "awayDefenseDelta": -8.52
+    },
+    {
+      "home": "Argentina",
+      "away": "Algeria",
+      "homeGoals": 3,
+      "awayGoals": 0,
+      "expectedHomeGoals": 4.52,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": -18.28,
+      "homeDefenseDelta": 3.48,
+      "awayAttackDelta": -3.48,
+      "awayDefenseDelta": 18.28
+    },
+    {
+      "home": "Austria",
+      "away": "Jordan",
+      "homeGoals": 3,
+      "awayGoals": 1,
+      "expectedHomeGoals": 3.24,
+      "expectedAwayGoals": 0.58,
+      "homeAttackDelta": -2.94,
+      "homeDefenseDelta": -5.08,
+      "awayAttackDelta": 5.08,
+      "awayDefenseDelta": 2.94
+    },
+    {
+      "home": "Portugal",
+      "away": "Congo DR",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 4.73,
+      "expectedAwayGoals": 0.3,
+      "homeAttackDelta": -44.8,
+      "homeDefenseDelta": -8.42,
+      "awayAttackDelta": 8.42,
+      "awayDefenseDelta": 44.8
+    },
+    {
+      "home": "Uzbekistan",
+      "away": "Colombia",
+      "homeGoals": 1,
+      "awayGoals": 3,
+      "expectedHomeGoals": 0.4,
+      "expectedAwayGoals": 3.55,
+      "homeAttackDelta": 7.25,
+      "homeDefenseDelta": 6.56,
+      "awayAttackDelta": -6.56,
+      "awayDefenseDelta": -7.25
+    },
+    {
+      "home": "England",
+      "away": "Croatia",
+      "homeGoals": 4,
+      "awayGoals": 2,
+      "expectedHomeGoals": 2.4,
+      "expectedAwayGoals": 0.58,
+      "homeAttackDelta": 19.22,
+      "homeDefenseDelta": -17.08,
+      "awayAttackDelta": 17.08,
+      "awayDefenseDelta": -19.22
+    },
+    {
+      "home": "Ghana",
+      "away": "Panama",
+      "homeGoals": 1,
+      "awayGoals": 0,
+      "expectedHomeGoals": 0.51,
+      "expectedAwayGoals": 3.44,
+      "homeAttackDelta": 5.89,
+      "homeDefenseDelta": 41.28,
+      "awayAttackDelta": -41.28,
+      "awayDefenseDelta": -5.89
+    },
+    {
+      "home": "South Africa",
+      "away": "Czechia",
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "expectedHomeGoals": 0.56,
+      "expectedAwayGoals": 2.3,
+      "homeAttackDelta": 5.23,
+      "homeDefenseDelta": 15.64,
+      "awayAttackDelta": -15.64,
+      "awayDefenseDelta": -5.23
+    },
+    {
+      "home": "Mexico",
+      "away": "South Korea",
+      "homeGoals": 1,
+      "awayGoals": 0,
+      "expectedHomeGoals": 1.68,
+      "expectedAwayGoals": 0.74,
+      "homeAttackDelta": -8.17,
+      "homeDefenseDelta": 8.92,
+      "awayAttackDelta": -8.92,
+      "awayDefenseDelta": 8.17
+    },
+    {
+      "home": "Bosnia-Herzegovina",
+      "away": "Switzerland",
+      "homeGoals": 1,
+      "awayGoals": 4,
+      "expectedHomeGoals": 0.48,
+      "expectedAwayGoals": 3.61,
+      "homeAttackDelta": 6.3,
+      "homeDefenseDelta": -4.63,
+      "awayAttackDelta": 4.63,
+      "awayDefenseDelta": -6.3
+    },
+    {
+      "home": "Canada",
+      "away": "Qatar",
+      "homeGoals": 6,
+      "awayGoals": 0,
+      "expectedHomeGoals": 5.31,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": 8.22,
+      "homeDefenseDelta": 3.48,
+      "awayAttackDelta": -3.48,
+      "awayDefenseDelta": -8.22
+    },
+    {
+      "home": "Morocco",
+      "away": "Scotland",
+      "homeGoals": 1,
+      "awayGoals": 0,
+      "expectedHomeGoals": 1.8,
+      "expectedAwayGoals": 0.56,
+      "homeAttackDelta": -9.61,
+      "homeDefenseDelta": 6.7,
+      "awayAttackDelta": -6.7,
+      "awayDefenseDelta": 9.61
+    },
+    {
+      "home": "Brazil",
+      "away": "Haiti",
+      "homeGoals": 3,
+      "awayGoals": 0,
+      "expectedHomeGoals": 5.83,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": -33.91,
+      "homeDefenseDelta": 3.48,
+      "awayAttackDelta": -3.48,
+      "awayDefenseDelta": 33.91
+    },
+    {
+      "home": "USA",
+      "away": "Australia",
+      "homeGoals": 2,
+      "awayGoals": 0,
+      "expectedHomeGoals": 1.4,
+      "expectedAwayGoals": 1.53,
+      "homeAttackDelta": 7.23,
+      "homeDefenseDelta": 18.4,
+      "awayAttackDelta": -18.4,
+      "awayDefenseDelta": -7.23
+    },
+    {
+      "home": "Paraguay",
+      "away": "Turkiye",
+      "homeGoals": 1,
+      "awayGoals": 0,
+      "expectedHomeGoals": 0.72,
+      "expectedAwayGoals": 2.32,
+      "homeAttackDelta": 3.42,
+      "homeDefenseDelta": 27.8,
+      "awayAttackDelta": -27.8,
+      "awayDefenseDelta": -3.42
+    },
+    {
+      "home": "Netherlands",
+      "away": "Sweden",
+      "homeGoals": 5,
+      "awayGoals": 1,
+      "expectedHomeGoals": 4.89,
+      "expectedAwayGoals": 0.67,
+      "homeAttackDelta": 1.28,
+      "homeDefenseDelta": -4.02,
+      "awayAttackDelta": 4.02,
+      "awayDefenseDelta": -1.28
+    },
+    {
+      "home": "Germany",
+      "away": "Ivory Coast",
+      "homeGoals": 2,
+      "awayGoals": 1,
+      "expectedHomeGoals": 2.81,
+      "expectedAwayGoals": 0.55,
+      "homeAttackDelta": -9.72,
+      "homeDefenseDelta": -5.45,
+      "awayAttackDelta": 5.45,
+      "awayDefenseDelta": 9.72
+    },
+    {
+      "home": "Curacao",
+      "away": "Ecuador",
+      "homeGoals": 0,
+      "awayGoals": 0,
+      "expectedHomeGoals": 0.29,
+      "expectedAwayGoals": 5.83,
+      "homeAttackDelta": -3.48,
+      "homeDefenseDelta": 69.91,
+      "awayAttackDelta": -69.91,
+      "awayDefenseDelta": 3.48
+    },
+    {
+      "home": "Japan",
+      "away": "Tunisia",
+      "homeGoals": 4,
+      "awayGoals": 0,
+      "expectedHomeGoals": 5.61,
+      "expectedAwayGoals": 0.29,
+      "homeAttackDelta": -19.34,
+      "homeDefenseDelta": 3.51,
+      "awayAttackDelta": -3.51,
+      "awayDefenseDelta": 19.34
+    }
+  ]
+}
