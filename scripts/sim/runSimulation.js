@@ -17,20 +17,10 @@ const { simulateTournament } = require('./simulateTournament');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { computeCurrentRatings, loadBaseline } = require('./eloBaseline');
 const { FIFA_RANK } = require('../fifaRankings');
+const { mulberry32, buildNameToCode } = require('./shared');
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
-
-// Simple, fast PRNG (mulberry32) so runs are fast and reproducible per-seed
-// if needed. Re-seeded per run from Math.random for non-determinism by default.
-function mulberry32(seed) {
-  return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 (async () => {
   const allTeams = Object.values(GROUPS).flat();
@@ -162,9 +152,7 @@ function mulberry32(seed) {
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`Done in ${elapsed}s`);
 
-  const { ELO_TO_NAME } = require('../countryMap');
-  const nameToCode = {};
-  for (const [code, name] of Object.entries(ELO_TO_NAME)) nameToCode[name] = code;
+  const nameToCode = buildNameToCode();
 
   const { ratings: baselineRatings } = loadBaseline();
 

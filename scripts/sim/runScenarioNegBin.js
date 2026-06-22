@@ -32,38 +32,20 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ELO_TO_NAME } = require('../countryMap');
 const { GROUPS, HOST_NATIONS, KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER, hostGroupMatchMultiplier } = require('./tournament');
 const { computeGroupResultsNegBin, buildBracketNegBin } = require('./mostLikelyNegBin');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { FIFA_RANK } = require('../fifaRankings');
 const { expectedGoals, negBinModalScore, negBinJointWinProbability, loadCalibratedParams } = require('./groupStageNegBin');
 const { climateAdjustment, GROUP_VENUE } = require('./venues');
+const { buildNameToCode, cleanTeam, cleanMatch } = require('./shared');
 
 const CURRENT_SPLIT_PATH = path.join(__dirname, '..', '..', 'elo_current_split.json');
 const PREDICTIONS_NEGBIN_PATH = path.join(__dirname, '..', '..', 'predictions_negbin.json');
 const RESULTS_PATH = path.join(__dirname, '..', '..', 'results.json');
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario_negbin.json');
 
-const NAME_TO_CODE = {};
-for (const [code, name] of Object.entries(ELO_TO_NAME)) NAME_TO_CODE[name] = code;
-
-function cleanTeam(t, codeOf, { includeGroup = false } = {}) {
-  if (!t) return null;
-  const out = { name: t.name, code: codeOf[t.name] || null, elo: t.elo };
-  if (includeGroup && t.group) out.group = t.group;
-  return out;
-}
-
-function cleanMatch(m, codeOf) {
-  return {
-    id: m.id,
-    home: cleanTeam(m.home, codeOf),
-    away: cleanTeam(m.away, codeOf),
-    winner: cleanTeam(m.winner, codeOf),
-    pWin: m.pWin,
-  };
-}
+const NAME_TO_CODE = buildNameToCode();
 
 // Predicts a single fixture's score using the NegBin engine DIRECTLY (goals
 // sampled from the calibrated NegBin distribution via expectedGoals, then

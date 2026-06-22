@@ -20,28 +20,22 @@
 // groupStageNegBin.js's own hard dependency on negbin_calibration.json
 // existing for a real (non-placeholder) fit.
 //
-// --- OUTPUT SCOPE: SCOPED DOWN FROM predictions.json, DELIBERATELY ---
+// --- PRODUCTION OUTPUT - DRIVES predictions.html'S MODEL TOGGLE ---
 //
-// predictions.json's full shape (Sankey scenario breakdowns, points-node
-// histograms, third-place scenario tables) exists to drive predictions.html's
-// rich UI - building the full equivalent here would be substantial work
-// mostly aimed at production UI features that don't apply yet, since this
-// output is for temp.html model comparison, not a production page. This
-// script outputs ONLY the core stage-probability fields needed for a
-// like-for-like comparison against predictions.json's same fields
-// (pGroupWinner, pRunnerUp, pRoundOf32, pRoundOf16, pQuarterFinal,
-// pSemiFinal, pFinal, pChampion) - same field names deliberately, so
-// temp.html (once wired up) can diff the two files directly without a
-// translation layer. If/when this engine is integrated into the live site
-// (Phase 4), the full Sankey/scenario output can be built out then -
-// premature to build it now for a comparison-only script.
+// predictions_negbin.json IS the live data source for predictions.html
+// when the "New model" toggle is selected (see predictions.js's
+// normalizeTeam/setModel) - this is NOT a comparison-only or diagnostic
+// script. (Earlier in this project, before the toggle existed, this
+// script's output was scoped down for a planned standalone comparison
+// page, temp.html, which was never built out and has since been removed -
+// any references to that plan elsewhere in this codebase are stale.)
 //
 // --- STANDALONE and ADDITIVE ---
 //
 // Reads elo_current_split.json, negbin_calibration.json (via
-// groupStageNegBin.js), and results.json. Writes a NEW file
-// (predictions_negbin.json). Does not touch predictions.json or anything
-// currently driving the live site.
+// groupStageNegBin.js), and results.json. Writes predictions_negbin.json.
+// Does not touch predictions.json (the existing engine's own output) or
+// anything specific to that engine.
 
 const fs = require('fs');
 const path = require('path');
@@ -50,31 +44,21 @@ const { simulateTournamentNegBin } = require('./simulateTournamentNegBin');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { loadCalibratedParams } = require('./groupStageNegBin');
 const { FIFA_RANK } = require('../fifaRankings');
-const { ELO_TO_NAME } = require('../countryMap');
+const { mulberry32, buildNameToCode } = require('./shared');
 
 // FOUND WHILE WIRING UP THE FRONTEND TOGGLE: predictions.json (existing
 // engine) includes a `code` field per team (flag/abbreviation code, used by
 // predictions.js's flagImgHtml) - predictions_negbin.json didn't have this
 // at all, since this script was originally written purely for model-vs-
 // model comparison (temp.html), not for direct frontend consumption. Added
-// here, same derivation as runSimulation.js's own ELO_TO_NAME usage, so
+// here, same derivation as runSimulation.js's own usage, so
 // predictions_negbin.json is a genuine drop-in for anything that reads
 // predictions.json's team records.
-const NAME_TO_CODE = {};
-for (const [code, name] of Object.entries(ELO_TO_NAME)) NAME_TO_CODE[name] = code;
+const NAME_TO_CODE = buildNameToCode();
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const CURRENT_SPLIT_PATH = path.join(__dirname, '..', '..', 'elo_current_split.json');
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions_negbin.json');
-
-function mulberry32(seed) {
-  return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 // REFACTORED from a top-level IIFE into an exported main(numSimulations)
 // function - needed so an orchestrator (runFullNegBinPipeline.js) can call
@@ -221,7 +205,7 @@ async function main(numSimulations) {
     negBinConstantsSource: source,
     methodology: {
       ratingSource: 'eloOverall/eloAttack/eloDefense are each team\'s CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json\'s scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.',
-      scopeNote: 'This output is intentionally scoped down from predictions.json: it has the same core stage-probability fields (for direct comparison) but does NOT include the Sankey/scenario-breakdown fields (pooledScenarios, outcomeScenarios, pointsNodes, thirdPlaceScenarios) that drive predictions.html\'s UI - this file is for model-vs-model comparison (temp.html), not a production page.',
+      scopeNote: 'This output is intentionally scoped down from predictions.json: it has the same core stage-probability fields, but does NOT yet include the Sankey/scenario-breakdown fields (pooledScenarios, outcomeScenarios, pointsNodes, thirdPlaceScenarios) that drive the team detail popup\'s flow diagram on predictions.html/index.html - the popup degrades gracefully (shows the gauge, hides the flow diagram with an explanatory note) when these are absent. This file otherwise IS the live production data source when the "New model" toggle is selected.',
       knockoutModel: 'Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren\'t a goals-from-form event either model claims to predict).',
       liveResults: resultsCount > 0
         ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated) in every simulation run.`

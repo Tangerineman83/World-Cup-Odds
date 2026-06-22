@@ -122,8 +122,7 @@ function applyResultToElo(teamsByName, homeTeam, awayTeam, homeGoals, awayGoals,
 // group-stage (apply the tapered per-match-number schedule, tracked via
 // its own counter) from knockout (apply the flat
 // KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER, regardless of how many matches that
-// host has played) - same group-field convention already used elsewhere
-// (e.g. compareNextMatchScores.js's computeGroupMatchNumber).
+// host has played).
 function applyResultsToElo(teamsByName, results, deltaMultiplier = 1) {
   const hostGroupMatchCounts = new Map(); // host name -> number of GROUP-STAGE matches processed so far (knockout matches do not increment this)
 

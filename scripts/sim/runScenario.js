@@ -11,7 +11,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ELO_TO_NAME } = require('../countryMap');
 const { GROUPS } = require('./tournament');
 const { computeGroupResults, buildBracket } = require('./mostLikely');
 const { getKnownResultsByGroup } = require('./resultsSource');
@@ -20,33 +19,11 @@ const { FIFA_RANK } = require('../fifaRankings');
 const { matchProbabilities } = require('./eloModel');
 const { HOST_NATIONS, hostGroupMatchMultiplier } = require('./tournament');
 const { climateAdjustment, GROUP_VENUE } = require('./venues');
+const { buildNameToCode, cleanTeam, cleanMatch } = require('./shared');
 
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'scenario.json');
 
-// Inverse of ELO_TO_NAME (code -> name), for displaying each team's code.
-const NAME_TO_CODE = {};
-for (const [code, name] of Object.entries(ELO_TO_NAME)) NAME_TO_CODE[name] = code;
-
-// Strips a team object down to plain { name, code, elo } for JSON output,
-// dropping any internal proxy fields (points/gd/gf used for third-place ranking).
-// Optionally preserves `.group` (used for bestThirds, to show which group
-// each qualifying third-place team came from).
-function cleanTeam(t, codeOf, { includeGroup = false } = {}) {
-  if (!t) return null;
-  const out = { name: t.name, code: codeOf[t.name] || null, elo: t.elo };
-  if (includeGroup && t.group) out.group = t.group;
-  return out;
-}
-
-function cleanMatch(m, codeOf) {
-  return {
-    id: m.id,
-    home: cleanTeam(m.home, codeOf),
-    away: cleanTeam(m.away, codeOf),
-    winner: cleanTeam(m.winner, codeOf),
-    pWin: m.pWin,
-  };
-}
+const NAME_TO_CODE = buildNameToCode();
 
 // Poisson goal-model constants — must match groupStage.js exactly.
 // See the CALIBRATION comment in that file for the derivation and

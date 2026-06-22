@@ -27,10 +27,10 @@
 // sequence, which was missed more than once (see project history). Calling
 // each phase's exported main() directly, in one process, in this fixed
 // order, makes the correct sequence structural rather than a manual habit -
-// the same reasoning that motivated combining update-elo-split.yml +
-// calibrate-negbin.yml into update-ratings-and-calibration.yml earlier in
-// this project, now extended to cover the full chain through to the
-// scenario output.
+// the same reasoning previously motivated combining several separate
+// per-phase workflows into one (see refresh-negbin-predictions.yml, which
+// now runs this entire script as its single step), now extended one level
+// deeper to cover the full chain through to the scenario output too.
 //
 // DOES NOT run buildEloSplit.js (Phase 1) - that script fetches a live
 // third-party dataset over the network and is deliberately kept
