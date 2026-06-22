@@ -305,18 +305,11 @@ async function main() {
     points: t.points,
     gd: t.gd,
     gf: t.gf,
-    // NegBin's predictions_negbin.json is intentionally scoped down (see
-    // runSimulationNegBin.js's header) and does NOT include
-    // thirdPlaceScenarios/outcomeScenarios/pooledScenarios/pointsNodes -
-    // those drive predictions.html's Sankey popup, which is existing-engine
-    // only for now. Fields kept here (empty/null) so allThirds has the SAME
-    // SHAPE as the existing engine's, for index.html compatibility - just
-    // without that data populated yet.
-    thirdPlaceScenarios: [],
-    outcomeScenarios: null,
-    pooledScenarios: [],
+    thirdPlaceScenarios: (predictionsByName.get(t.name) || {}).thirdPlaceScenarios || [],
+    outcomeScenarios: (predictionsByName.get(t.name) || {}).outcomeScenarios || null,
+    pooledScenarios: (predictionsByName.get(t.name) || {}).pooledScenarios || [],
     currentStanding: (predictionsByName.get(t.name) || {}).currentStanding || null,
-    pointsNodes: [],
+    pointsNodes: (predictionsByName.get(t.name) || {}).pointsNodes || [],
     pGroupWinner: (predictionsByName.get(t.name) || {}).pGroupWinner,
     pRunnerUp: (predictionsByName.get(t.name) || {}).pRunnerUp,
     pRoundOf32: (predictionsByName.get(t.name) || {}).pRoundOf32,
