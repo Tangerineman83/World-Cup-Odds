@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-22T06:13:24.470Z",
+  "generatedAt": "2026-06-22T06:43:42.943Z",
   "resultsApplied": 40,
   "model": "dual-Elo Negative Binomial (Phase 3/4) - see elo-negbin-revised.md",
   "negBinConstants": {
@@ -8,9 +8,9 @@
     "sigma": 622.92,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 40 matches, generated 2026-06-22T06:13:19.597Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 40 matches, generated 2026-06-22T06:43:38.006Z)",
   "methodology": {
-    "ratingSource": "Ratings are each team's CURRENT in-tournament ELOa (attack) / ELOd (defense), from elo_current_split.json (Phase 2), already reflecting every played result via a match-count-aware confidence ramp (see updateEloSplit.js). Unlike scenario.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (params: {\"alpha\":0.27,\"gamma\":0.48,\"sigma\":622.92,\"r\":12}, source: negbin_calibration.json (fitted against 40 matches, generated 2026-06-22T06:13:19.597Z)) - not decided via win-probability first, then forced-fit Poisson goals after. See groupStageNegBin.js and elo-negbin-revised.md Section 4.",
+    "ratingSource": "Ratings are each team's CURRENT in-tournament ELOa (attack) / ELOd (defense), from elo_current_split.json (Phase 2), already reflecting every played result via a match-count-aware confidence ramp (see updateEloSplit.js). Unlike scenario.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (params: {\"alpha\":0.27,\"gamma\":0.48,\"sigma\":622.92,\"r\":12}, source: negbin_calibration.json (fitted against 40 matches, generated 2026-06-22T06:43:38.006Z)) - not decided via win-probability first, then forced-fit Poisson goals after. See groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "worldRank": "Each team's worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions_negbin.json) - i.e. the rank matches the same model used for the odds table, not raw rating.",
     "groupOrdering": "modal (most frequent) full 1st-4th ordering across 20,000 group simulations per group, using the NegBin engine (groupStageNegBin.js)",
     "groupModalStats": "each team in groups[letter].order also carries points/gd/gf (and played, always 3) - taken from the single most common JOINT final table among the 20,000-simulation runs that produced this group's modal ordering, same approach as the existing engine's scenario.json (see that file's methodology.groupModalStats for full detail) - just using NegBin-sampled goals instead of Poisson.",
@@ -33,8 +33,8 @@
           "worldRank": 10,
           "fifaRank": 15,
           "positionProbabilities": [
-            0.9634,
-            0.0366,
+            0.96605,
+            0.03395,
             0,
             0
           ],
@@ -50,10 +50,10 @@
           "worldRank": 22,
           "fifaRank": 25,
           "positionProbabilities": [
-            0.0366,
-            0.76985,
-            0.17485,
-            0.0187
+            0.03395,
+            0.7715,
+            0.1753,
+            0.01925
           ],
           "points": 6,
           "gd": 1,
@@ -64,13 +64,13 @@
           "name": "Czechia",
           "code": "CZ",
           "elo": 1712,
-          "worldRank": 38,
+          "worldRank": 37,
           "fifaRank": 41,
           "positionProbabilities": [
             0,
-            0.03455,
-            0.52225,
-            0.4432
+            0.0353,
+            0.5228,
+            0.4419
           ],
           "points": 1,
           "gd": -3,
@@ -81,13 +81,13 @@
           "name": "South Africa",
           "code": "ZA",
           "elo": 1511,
-          "worldRank": 42,
+          "worldRank": 40,
           "fifaRank": 60,
           "positionProbabilities": [
             0,
-            0.159,
-            0.3029,
-            0.5381
+            0.15925,
+            0.3019,
+            0.53885
           ],
           "points": 1,
           "gd": -3,
@@ -95,7 +95,7 @@
           "played": 3
         }
       ],
-      "probability": 0.4835,
+      "probability": 0.48685,
       "nextFixtures": [
         {
           "home": "Mexico",
@@ -125,9 +125,9 @@
           "worldRank": 6,
           "fifaRank": 30,
           "positionProbabilities": [
-            0.6296,
-            0.3688,
-            0.0016,
+            0.6267,
+            0.37205,
+            0.00125,
             0
           ],
           "points": 5,
@@ -142,9 +142,9 @@
           "worldRank": 18,
           "fifaRank": 19,
           "positionProbabilities": [
-            0.3704,
-            0.6064,
-            0.0232,
+            0.3733,
+            0.60205,
+            0.02465,
             0
           ],
           "points": 5,
@@ -156,13 +156,13 @@
           "name": "Bosnia-Herzegovina",
           "code": "BA",
           "elo": 1616,
-          "worldRank": 37,
+          "worldRank": 38,
           "fifaRank": 65,
           "positionProbabilities": [
             0,
-            0.02465,
-            0.77675,
-            0.1986
+            0.02585,
+            0.7788,
+            0.19535
           ],
           "points": 4,
           "gd": -2,
@@ -173,13 +173,13 @@
           "name": "Qatar",
           "code": "QA",
           "elo": 1421,
-          "worldRank": 43,
+          "worldRank": 45,
           "fifaRank": 55,
           "positionProbabilities": [
             0,
-            0.00015,
-            0.19845,
-            0.8014
+            0.00005,
+            0.1953,
+            0.80465
           ],
           "points": 1,
           "gd": -7,
@@ -187,7 +187,7 @@
           "played": 3
         }
       ],
-      "probability": 0.481,
+      "probability": 0.48025,
       "nextFixtures": [
         {
           "home": "Bosnia-Herzegovina",
@@ -214,12 +214,12 @@
           "name": "Brazil",
           "code": "BR",
           "elo": 1991,
-          "worldRank": 9,
+          "worldRank": 11,
           "fifaRank": 6,
           "positionProbabilities": [
-            0.6079,
-            0.2221,
-            0.17,
+            0.6124,
+            0.2153,
+            0.1723,
             0
           ],
           "points": 7,
@@ -231,17 +231,17 @@
           "name": "Morocco",
           "code": "MA",
           "elo": 1827,
-          "worldRank": 15,
+          "worldRank": 16,
           "fifaRank": 8,
           "positionProbabilities": [
-            0.32365,
-            0.6387,
-            0.03765,
+            0.3191,
+            0.64215,
+            0.03875,
             0
           ],
           "points": 7,
-          "gd": 3,
-          "gf": 4,
+          "gd": 2,
+          "gf": 3,
           "played": 3
         },
         {
@@ -251,10 +251,10 @@
           "worldRank": 30,
           "fifaRank": 43,
           "positionProbabilities": [
-            0.06845,
-            0.1392,
-            0.7701,
-            0.02225
+            0.0685,
+            0.14255,
+            0.76655,
+            0.0224
           ],
           "points": 3,
           "gd": -1,
@@ -265,21 +265,21 @@
           "name": "Haiti",
           "code": "HT",
           "elo": 1548,
-          "worldRank": 44,
+          "worldRank": 46,
           "fifaRank": 83,
           "positionProbabilities": [
             0,
             0,
-            0.02225,
-            0.97775
+            0.0224,
+            0.9776
           ],
           "points": 0,
-          "gd": -6,
+          "gd": -5,
           "gf": 0,
           "played": 3
         }
       ],
-      "probability": 0.5742,
+      "probability": 0.57875,
       "nextFixtures": [
         {
           "home": "Brazil",
@@ -309,8 +309,8 @@
           "worldRank": 7,
           "fifaRank": 16,
           "positionProbabilities": [
-            0.9793,
-            0.0207,
+            0.97995,
+            0.02005,
             0,
             0
           ],
@@ -323,16 +323,16 @@
           "name": "Australia",
           "code": "AU",
           "elo": 1777,
-          "worldRank": 29,
+          "worldRank": 26,
           "fifaRank": 27,
           "positionProbabilities": [
-            0.01725,
-            0.60395,
-            0.27555,
-            0.10325
+            0.0172,
+            0.60625,
+            0.27055,
+            0.106
           ],
-          "points": 4,
-          "gd": 0,
+          "points": 6,
+          "gd": 1,
           "gf": 3,
           "played": 3
         },
@@ -340,30 +340,30 @@
           "name": "Paraguay",
           "code": "PY",
           "elo": 1780,
-          "worldRank": 26,
+          "worldRank": 28,
           "fifaRank": 40,
           "positionProbabilities": [
-            0.00345,
-            0.37535,
-            0.46705,
-            0.15415
+            0.00285,
+            0.3737,
+            0.47165,
+            0.1518
           ],
-          "points": 4,
-          "gd": -2,
-          "gf": 3,
+          "points": 3,
+          "gd": -3,
+          "gf": 2,
           "played": 3
         },
         {
           "name": "Turkiye",
           "code": "TR",
           "elo": 1911,
-          "worldRank": 28,
+          "worldRank": 25,
           "fifaRank": 22,
           "positionProbabilities": [
             0,
             0,
-            0.2574,
-            0.7426
+            0.2578,
+            0.7422
           ],
           "points": 1,
           "gd": -3,
@@ -371,7 +371,7 @@
           "played": 3
         }
       ],
-      "probability": 0.46705,
+      "probability": 0.47165,
       "nextFixtures": [
         {
           "home": "Paraguay",
@@ -401,27 +401,27 @@
           "worldRank": 14,
           "fifaRank": 10,
           "positionProbabilities": [
-            0.9954,
-            0.0046,
+            0.9955,
+            0.0045,
             0,
             0
           ],
-          "points": 7,
-          "gd": 7,
-          "gf": 9,
+          "points": 9,
+          "gd": 8,
+          "gf": 10,
           "played": 3
         },
         {
           "name": "Ivory Coast",
           "code": "CI",
           "elo": 1695,
-          "worldRank": 27,
+          "worldRank": 29,
           "fifaRank": 34,
           "positionProbabilities": [
-            0.0046,
-            0.80455,
-            0.1378,
-            0.05305
+            0.0045,
+            0.80635,
+            0.13565,
+            0.0535
           ],
           "points": 6,
           "gd": 1,
@@ -436,12 +436,12 @@
           "fifaRank": 23,
           "positionProbabilities": [
             0,
-            0.09415,
-            0.7294,
-            0.17645
+            0.0926,
+            0.7284,
+            0.179
           ],
-          "points": 2,
-          "gd": -1,
+          "points": 1,
+          "gd": -2,
           "gf": 0,
           "played": 3
         },
@@ -449,13 +449,13 @@
           "name": "Curacao",
           "code": "CW",
           "elo": 1434,
-          "worldRank": 40,
+          "worldRank": 47,
           "fifaRank": 82,
           "positionProbabilities": [
             0,
-            0.0967,
-            0.1328,
-            0.7705
+            0.09655,
+            0.13595,
+            0.7675
           ],
           "points": 1,
           "gd": -7,
@@ -463,7 +463,7 @@
           "played": 3
         }
       ],
-      "probability": 0.7248,
+      "probability": 0.72385,
       "nextFixtures": [
         {
           "home": "Curacao",
@@ -490,12 +490,12 @@
           "name": "Japan",
           "code": "JP",
           "elo": 1906,
-          "worldRank": 11,
+          "worldRank": 13,
           "fifaRank": 18,
           "positionProbabilities": [
-            0.5152,
-            0.3797,
-            0.1051,
+            0.51165,
+            0.3836,
+            0.10475,
             0
           ],
           "points": 7,
@@ -507,12 +507,12 @@
           "name": "Netherlands",
           "code": "NL",
           "elo": 1948,
-          "worldRank": 13,
+          "worldRank": 12,
           "fifaRank": 7,
           "positionProbabilities": [
-            0.4388,
-            0.5534,
-            0.0078,
+            0.4425,
+            0.54985,
+            0.00765,
             0
           ],
           "points": 7,
@@ -527,10 +527,10 @@
           "worldRank": 32,
           "fifaRank": 38,
           "positionProbabilities": [
-            0.046,
-            0.0669,
-            0.88475,
-            0.00235
+            0.04585,
+            0.06655,
+            0.88535,
+            0.00225
           ],
           "points": 3,
           "gd": -2,
@@ -541,13 +541,13 @@
           "name": "Tunisia",
           "code": "TN",
           "elo": 1628,
-          "worldRank": 45,
+          "worldRank": 48,
           "fifaRank": 44,
           "positionProbabilities": [
             0,
             0,
-            0.00235,
-            0.99765
+            0.00225,
+            0.99775
           ],
           "points": 0,
           "gd": -9,
@@ -555,7 +555,7 @@
           "played": 3
         }
       ],
-      "probability": 0.5122,
+      "probability": 0.50915,
       "nextFixtures": [
         {
           "home": "Japan",
@@ -585,9 +585,9 @@
           "worldRank": 31,
           "fifaRank": 29,
           "positionProbabilities": [
-            0.46725,
-            0.2094,
-            0.32335,
+            0.46795,
+            0.2058,
+            0.32625,
             0
           ],
           "points": 5,
@@ -599,17 +599,17 @@
           "name": "Belgium",
           "code": "BE",
           "elo": 1894,
-          "worldRank": 17,
+          "worldRank": 15,
           "fifaRank": 9,
           "positionProbabilities": [
-            0.26605,
-            0.49875,
-            0.1263,
-            0.1089
+            0.2618,
+            0.4997,
+            0.12995,
+            0.10855
           ],
           "points": 5,
-          "gd": 1,
-          "gf": 2,
+          "gd": 2,
+          "gf": 3,
           "played": 3
         },
         {
@@ -619,10 +619,10 @@
           "worldRank": 23,
           "fifaRank": 21,
           "positionProbabilities": [
-            0.2667,
-            0.2092,
-            0.4917,
-            0.0324
+            0.27025,
+            0.21425,
+            0.48285,
+            0.03265
           ],
           "points": 3,
           "gd": 0,
@@ -633,16 +633,16 @@
           "name": "New Zealand",
           "code": "NZ",
           "elo": 1562,
-          "worldRank": 46,
+          "worldRank": 41,
           "fifaRank": 85,
           "positionProbabilities": [
             0,
-            0.08265,
-            0.05865,
-            0.8587
+            0.08025,
+            0.06095,
+            0.8588
           ],
           "points": 1,
-          "gd": -3,
+          "gd": -4,
           "gf": 3,
           "played": 3
         }
@@ -677,14 +677,14 @@
           "worldRank": 2,
           "fifaRank": 2,
           "positionProbabilities": [
-            0.85305,
-            0.0896,
-            0.05735,
+            0.8601,
+            0.08575,
+            0.05415,
             0
           ],
           "points": 7,
-          "gd": 6,
-          "gf": 6,
+          "gd": 5,
+          "gf": 5,
           "played": 3
         },
         {
@@ -694,10 +694,10 @@
           "worldRank": 35,
           "fifaRank": 69,
           "positionProbabilities": [
-            0.02815,
-            0.5541,
-            0.1966,
-            0.22115
+            0.02625,
+            0.5529,
+            0.19615,
+            0.2247
           ],
           "points": 3,
           "gd": 0,
@@ -708,16 +708,16 @@
           "name": "Uruguay",
           "code": "UY",
           "elo": 1892,
-          "worldRank": 24,
+          "worldRank": 27,
           "fifaRank": 17,
           "positionProbabilities": [
-            0.1188,
-            0.07395,
-            0.6878,
-            0.11945
+            0.11365,
+            0.0723,
+            0.6905,
+            0.12355
           ],
           "points": 2,
-          "gd": -2,
+          "gd": -1,
           "gf": 3,
           "played": 3
         },
@@ -725,13 +725,13 @@
           "name": "Saudi Arabia",
           "code": "SA",
           "elo": 1576,
-          "worldRank": 39,
+          "worldRank": 42,
           "fifaRank": 61,
           "positionProbabilities": [
             0,
-            0.28235,
-            0.05825,
-            0.6594
+            0.28905,
+            0.0592,
+            0.65175
           ],
           "points": 2,
           "gd": -4,
@@ -739,7 +739,7 @@
           "played": 3
         }
       ],
-      "probability": 0.5085,
+      "probability": 0.50875,
       "nextFixtures": [
         {
           "home": "Cape Verde",
@@ -769,31 +769,31 @@
           "worldRank": 4,
           "fifaRank": 1,
           "positionProbabilities": [
-            0.6921,
-            0.27255,
-            0.0336,
-            0.00175
+            0.6923,
+            0.2709,
+            0.0352,
+            0.0016
           ],
-          "points": 9,
-          "gd": 5,
-          "gf": 6,
+          "points": 7,
+          "gd": 4,
+          "gf": 7,
           "played": 3
         },
         {
           "name": "Norway",
           "code": "NO",
           "elo": 1914,
-          "worldRank": 12,
+          "worldRank": 9,
           "fifaRank": 31,
           "positionProbabilities": [
-            0.2834,
-            0.47575,
-            0.2368,
-            0.00405
+            0.28425,
+            0.47835,
+            0.23285,
+            0.00455
           ],
-          "points": 6,
+          "points": 5,
           "gd": 3,
-          "gf": 6,
+          "gf": 7,
           "played": 3
         },
         {
@@ -803,35 +803,35 @@
           "worldRank": 19,
           "fifaRank": 14,
           "positionProbabilities": [
-            0.0234,
-            0.2404,
-            0.59865,
-            0.13755
+            0.0217,
+            0.2375,
+            0.6012,
+            0.1396
           ],
-          "points": 3,
-          "gd": -2,
-          "gf": 3,
+          "points": 4,
+          "gd": 0,
+          "gf": 5,
           "played": 3
         },
         {
           "name": "Iraq",
           "code": "IQ",
           "elo": 1607,
-          "worldRank": 47,
+          "worldRank": 43,
           "fifaRank": 57,
           "positionProbabilities": [
-            0.0011,
-            0.0113,
-            0.13095,
-            0.85665
+            0.00175,
+            0.01325,
+            0.13075,
+            0.85425
           ],
           "points": 0,
-          "gd": -6,
-          "gf": 1,
+          "gd": -7,
+          "gf": 2,
           "played": 3
         }
       ],
-      "probability": 0.38895,
+      "probability": 0.3916,
       "nextFixtures": [
         {
           "home": "France",
@@ -861,14 +861,14 @@
           "worldRank": 1,
           "fifaRank": 3,
           "positionProbabilities": [
-            0.8561,
-            0.123,
-            0.01905,
-            0.00185
+            0.85505,
+            0.1256,
+            0.0182,
+            0.00115
           ],
-          "points": 7,
-          "gd": 4,
-          "gf": 5,
+          "points": 9,
+          "gd": 6,
+          "gf": 6,
           "played": 3
         },
         {
@@ -878,10 +878,10 @@
           "worldRank": 20,
           "fifaRank": 24,
           "positionProbabilities": [
-            0.12235,
-            0.5252,
-            0.32815,
-            0.0243
+            0.1209,
+            0.5269,
+            0.3269,
+            0.0253
           ],
           "points": 4,
           "gd": 1,
@@ -892,16 +892,16 @@
           "name": "Algeria",
           "code": "DZ",
           "elo": 1772,
-          "worldRank": 25,
+          "worldRank": 24,
           "fifaRank": 28,
           "positionProbabilities": [
-            0.01745,
-            0.3056,
-            0.41735,
-            0.2596
+            0.01895,
+            0.3031,
+            0.41785,
+            0.2601
           ],
-          "points": 4,
-          "gd": -2,
+          "points": 2,
+          "gd": -3,
           "gf": 2,
           "played": 3
         },
@@ -909,21 +909,21 @@
           "name": "Jordan",
           "code": "JO",
           "elo": 1680,
-          "worldRank": 41,
+          "worldRank": 39,
           "fifaRank": 63,
           "positionProbabilities": [
-            0.0041,
-            0.0462,
-            0.23545,
-            0.71425
+            0.0051,
+            0.0444,
+            0.23705,
+            0.71345
           ],
           "points": 1,
-          "gd": -3,
+          "gd": -4,
           "gf": 2,
           "played": 3
         }
       ],
-      "probability": 0.3406,
+      "probability": 0.33955,
       "nextFixtures": [
         {
           "home": "Argentina",
@@ -953,14 +953,14 @@
           "worldRank": 5,
           "fifaRank": 13,
           "positionProbabilities": [
-            0.62915,
-            0.2681,
-            0.08745,
-            0.0153
+            0.6194,
+            0.27575,
+            0.09145,
+            0.0134
           ],
           "points": 7,
-          "gd": 5,
-          "gf": 7,
+          "gd": 3,
+          "gf": 5,
           "played": 3
         },
         {
@@ -970,10 +970,10 @@
           "worldRank": 8,
           "fifaRank": 5,
           "positionProbabilities": [
-            0.29365,
-            0.41725,
-            0.20725,
-            0.08185
+            0.3001,
+            0.4036,
+            0.20845,
+            0.08785
           ],
           "points": 5,
           "gd": 2,
@@ -987,14 +987,14 @@
           "worldRank": 33,
           "fifaRank": 46,
           "positionProbabilities": [
-            0.05755,
-            0.1942,
-            0.3944,
-            0.35385
+            0.06135,
+            0.19675,
+            0.3872,
+            0.3547
           ],
-          "points": 4,
-          "gd": -2,
-          "gf": 3,
+          "points": 2,
+          "gd": -1,
+          "gf": 2,
           "played": 3
         },
         {
@@ -1004,18 +1004,18 @@
           "worldRank": 34,
           "fifaRank": 50,
           "positionProbabilities": [
-            0.01965,
-            0.12045,
-            0.3109,
-            0.549
+            0.01915,
+            0.1239,
+            0.3129,
+            0.54405
           ],
-          "points": 0,
-          "gd": -5,
+          "points": 1,
+          "gd": -4,
           "gf": 2,
           "played": 3
         }
       ],
-      "probability": 0.21735,
+      "probability": 0.20645,
       "nextFixtures": [
         {
           "home": "Portugal",
@@ -1045,27 +1045,27 @@
           "worldRank": 3,
           "fifaRank": 4,
           "positionProbabilities": [
-            0.93975,
-            0.0503,
-            0.0083,
-            0.00165
+            0.94275,
+            0.0475,
+            0.00885,
+            0.0009
           ],
           "points": 9,
-          "gd": 7,
-          "gf": 9,
+          "gd": 8,
+          "gf": 10,
           "played": 3
         },
         {
           "name": "Croatia",
           "code": "HR",
           "elo": 1912,
-          "worldRank": 16,
+          "worldRank": 17,
           "fifaRank": 11,
           "positionProbabilities": [
-            0.038,
-            0.68385,
-            0.18195,
-            0.0962
+            0.03405,
+            0.6811,
+            0.1878,
+            0.09705
           ],
           "points": 6,
           "gd": 2,
@@ -1076,16 +1076,16 @@
           "name": "Ghana",
           "code": "GH",
           "elo": 1510,
-          "worldRank": 48,
+          "worldRank": 44,
           "fifaRank": 74,
           "positionProbabilities": [
-            0.01745,
-            0.1832,
-            0.63155,
-            0.1678
+            0.017,
+            0.18585,
+            0.6268,
+            0.17035
           ],
           "points": 3,
-          "gd": -4,
+          "gd": -5,
           "gf": 1,
           "played": 3
         },
@@ -1096,10 +1096,10 @@
           "worldRank": 36,
           "fifaRank": 33,
           "positionProbabilities": [
-            0.0048,
-            0.08265,
-            0.1782,
-            0.73435
+            0.0062,
+            0.08555,
+            0.17655,
+            0.7317
           ],
           "points": 0,
           "gd": -5,
@@ -1107,7 +1107,7 @@
           "played": 3
         }
       ],
-      "probability": 0.58635,
+      "probability": 0.5824,
       "nextFixtures": [
         {
           "home": "Croatia",
@@ -1135,20 +1135,20 @@
       "code": "PY",
       "group": "D",
       "elo": 1780,
-      "worldRank": 26,
+      "worldRank": 28,
       "fifaRank": 40,
       "positionProbabilities": [
-        0.00345,
-        0.37535,
-        0.46705,
-        0.15415
+        0.00285,
+        0.3737,
+        0.47165,
+        0.1518
       ],
-      "pFinish3rd": 0.46705,
-      "pThird": 0.38995,
-      "pQualifyGiven3rd": 0.8349213146344074,
-      "points": 4,
-      "gd": -2,
-      "gf": 3,
+      "pFinish3rd": 0.47165,
+      "pThird": 0.39445,
+      "pQualifyGiven3rd": 0.8363193045690661,
+      "points": 3,
+      "gd": -3,
+      "gf": 2,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": null,
       "pooledScenarios": [],
@@ -1160,9 +1160,9 @@
         "played": 2
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.004,
-      "pRunnerUp": 0.371,
-      "pRoundOf32": 0.76495,
+      "pGroupWinner": 0.0037,
+      "pRunnerUp": 0.36455,
+      "pRoundOf32": 0.7627,
       "qualifies": true,
       "matchId": "M74",
       "pWin": 0.6522279071166195,
@@ -1173,48 +1173,6 @@
       }
     },
     {
-      "name": "Scotland",
-      "code": "SQ",
-      "group": "C",
-      "elo": 1782,
-      "worldRank": 30,
-      "fifaRank": 43,
-      "positionProbabilities": [
-        0.06845,
-        0.1392,
-        0.7701,
-        0.02225
-      ],
-      "pFinish3rd": 0.7701,
-      "pThird": 0.6412500000000001,
-      "pQualifyGiven3rd": 0.8326840670042853,
-      "points": 3,
-      "gd": -1,
-      "gf": 1,
-      "thirdPlaceScenarios": [],
-      "outcomeScenarios": null,
-      "pooledScenarios": [],
-      "currentStanding": {
-        "points": 3,
-        "gd": 0,
-        "gf": 1,
-        "ga": 1,
-        "played": 2
-      },
-      "pointsNodes": [],
-      "pGroupWinner": 0.06735,
-      "pRunnerUp": 0.14475,
-      "pRoundOf32": 0.85335,
-      "qualifies": true,
-      "matchId": "M77",
-      "pWin": 0.7779023218859398,
-      "opponent": {
-        "name": "France",
-        "code": "FR",
-        "elo": 2063
-      }
-    },
-    {
       "name": "Sweden",
       "code": "SE",
       "group": "F",
@@ -1222,14 +1180,14 @@
       "worldRank": 32,
       "fifaRank": 38,
       "positionProbabilities": [
-        0.046,
-        0.0669,
-        0.88475,
-        0.00235
+        0.04585,
+        0.06655,
+        0.88535,
+        0.00225
       ],
-      "pFinish3rd": 0.88475,
-      "pThird": 0.73085,
-      "pQualifyGiven3rd": 0.8260525572195535,
+      "pFinish3rd": 0.88535,
+      "pThird": 0.73665,
+      "pQualifyGiven3rd": 0.832043824476196,
       "points": 3,
       "gd": -2,
       "gf": 6,
@@ -1244,12 +1202,54 @@
         "played": 2
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.04665,
-      "pRunnerUp": 0.06955,
-      "pRoundOf32": 0.84705,
+      "pGroupWinner": 0.0438,
+      "pRunnerUp": 0.06835,
+      "pRoundOf32": 0.8488,
+      "qualifies": true,
+      "matchId": "M77",
+      "pWin": 0.826074544494259,
+      "opponent": {
+        "name": "France",
+        "code": "FR",
+        "elo": 2063
+      }
+    },
+    {
+      "name": "Scotland",
+      "code": "SQ",
+      "group": "C",
+      "elo": 1782,
+      "worldRank": 30,
+      "fifaRank": 43,
+      "positionProbabilities": [
+        0.0685,
+        0.14255,
+        0.76655,
+        0.0224
+      ],
+      "pFinish3rd": 0.76655,
+      "pThird": 0.63455,
+      "pQualifyGiven3rd": 0.827799882590829,
+      "points": 3,
+      "gd": -1,
+      "gf": 1,
+      "thirdPlaceScenarios": [],
+      "outcomeScenarios": null,
+      "pooledScenarios": [],
+      "currentStanding": {
+        "points": 3,
+        "gd": 0,
+        "gf": 1,
+        "ga": 1,
+        "played": 2
+      },
+      "pointsNodes": [],
+      "pGroupWinner": 0.0701,
+      "pRunnerUp": 0.1451,
+      "pRoundOf32": 0.84975,
       "qualifies": true,
       "matchId": "M79",
-      "pWin": 0.700086084935795,
+      "pWin": 0.6411842905742049,
       "opponent": {
         "name": "Mexico",
         "code": "MX",
@@ -1264,17 +1264,17 @@
       "worldRank": 19,
       "fifaRank": 14,
       "positionProbabilities": [
-        0.0234,
-        0.2404,
-        0.59865,
-        0.13755
+        0.0217,
+        0.2375,
+        0.6012,
+        0.1396
       ],
-      "pFinish3rd": 0.59865,
-      "pThird": 0.4466,
-      "pQualifyGiven3rd": 0.7460118600183746,
-      "points": 3,
-      "gd": -2,
-      "gf": 3,
+      "pFinish3rd": 0.6012,
+      "pThird": 0.44665000000000005,
+      "pQualifyGiven3rd": 0.7429308050565537,
+      "points": 4,
+      "gd": 0,
+      "gf": 5,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": null,
       "pooledScenarios": [],
@@ -1286,9 +1286,9 @@
         "played": 1
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.02125,
-      "pRunnerUp": 0.2406,
-      "pRoundOf32": 0.70845,
+      "pGroupWinner": 0.0212,
+      "pRunnerUp": 0.24035,
+      "pRoundOf32": 0.7082,
       "qualifies": true,
       "matchId": "M82",
       "pWin": 0.6746623337903735,
@@ -1299,21 +1299,63 @@
       }
     },
     {
+      "name": "Algeria",
+      "code": "DZ",
+      "group": "J",
+      "elo": 1772,
+      "worldRank": 24,
+      "fifaRank": 28,
+      "positionProbabilities": [
+        0.01895,
+        0.3031,
+        0.41785,
+        0.2601
+      ],
+      "pFinish3rd": 0.41785,
+      "pThird": 0.29595,
+      "pQualifyGiven3rd": 0.708268517410554,
+      "points": 2,
+      "gd": -3,
+      "gf": 2,
+      "thirdPlaceScenarios": [],
+      "outcomeScenarios": null,
+      "pooledScenarios": [],
+      "currentStanding": {
+        "points": 0,
+        "gd": -3,
+        "gf": 0,
+        "ga": 3,
+        "played": 1
+      },
+      "pointsNodes": [],
+      "pGroupWinner": 0.0192,
+      "pRunnerUp": 0.3061,
+      "pRoundOf32": 0.62125,
+      "qualifies": true,
+      "matchId": "M85",
+      "pWin": 0.5091353233482636,
+      "opponent": {
+        "name": "Canada",
+        "code": "CA",
+        "elo": 1767
+      }
+    },
+    {
       "name": "Bosnia-Herzegovina",
       "code": "BA",
       "group": "B",
       "elo": 1616,
-      "worldRank": 37,
+      "worldRank": 38,
       "fifaRank": 65,
       "positionProbabilities": [
         0,
-        0.02465,
-        0.77675,
-        0.1986
+        0.02585,
+        0.7788,
+        0.19535
       ],
-      "pFinish3rd": 0.77675,
-      "pThird": 0.5574,
-      "pQualifyGiven3rd": 0.7176054071451561,
+      "pFinish3rd": 0.7788,
+      "pThird": 0.5457,
+      "pQualifyGiven3rd": 0.7006933744221879,
       "points": 4,
       "gd": -2,
       "gf": 3,
@@ -1329,8 +1371,8 @@
       },
       "pointsNodes": [],
       "pGroupWinner": 0,
-      "pRunnerUp": 0.0225,
-      "pRoundOf32": 0.5799,
+      "pRunnerUp": 0.02635,
+      "pRoundOf32": 0.57205,
       "qualifies": true,
       "matchId": "M81",
       "pWin": 0.7046489297196393,
@@ -1341,48 +1383,6 @@
       }
     },
     {
-      "name": "Algeria",
-      "code": "DZ",
-      "group": "J",
-      "elo": 1772,
-      "worldRank": 25,
-      "fifaRank": 28,
-      "positionProbabilities": [
-        0.01745,
-        0.3056,
-        0.41735,
-        0.2596
-      ],
-      "pFinish3rd": 0.41735,
-      "pThird": 0.29165,
-      "pQualifyGiven3rd": 0.6988139451299868,
-      "points": 4,
-      "gd": -2,
-      "gf": 2,
-      "thirdPlaceScenarios": [],
-      "outcomeScenarios": null,
-      "pooledScenarios": [],
-      "currentStanding": {
-        "points": 0,
-        "gd": -3,
-        "gf": 0,
-        "ga": 3,
-        "played": 1
-      },
-      "pointsNodes": [],
-      "pGroupWinner": 0.0179,
-      "pRunnerUp": 0.31215,
-      "pRoundOf32": 0.6217,
-      "qualifies": true,
-      "matchId": "M85",
-      "pWin": 0.5091353233482636,
-      "opponent": {
-        "name": "Canada",
-        "code": "CA",
-        "elo": 1767
-      }
-    },
-    {
       "name": "Congo DR",
       "code": "CD",
       "group": "K",
@@ -1390,17 +1390,17 @@
       "worldRank": 33,
       "fifaRank": 46,
       "positionProbabilities": [
-        0.05755,
-        0.1942,
-        0.3944,
-        0.35385
+        0.06135,
+        0.19675,
+        0.3872,
+        0.3547
       ],
-      "pFinish3rd": 0.3944,
-      "pThird": 0.24204999999999996,
-      "pQualifyGiven3rd": 0.6137170385395537,
-      "points": 4,
-      "gd": -2,
-      "gf": 3,
+      "pFinish3rd": 0.3872,
+      "pThird": 0.24645,
+      "pQualifyGiven3rd": 0.6364927685950413,
+      "points": 2,
+      "gd": -1,
+      "gf": 2,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": null,
       "pooledScenarios": [],
@@ -1412,9 +1412,9 @@
         "played": 1
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.0587,
-      "pRunnerUp": 0.19575,
-      "pRoundOf32": 0.4965,
+      "pGroupWinner": 0.0605,
+      "pRunnerUp": 0.192,
+      "pRoundOf32": 0.49895,
       "qualifies": true,
       "matchId": "M80",
       "pWin": 0.8269857721580912,
@@ -1429,19 +1429,19 @@
       "code": "GH",
       "group": "L",
       "elo": 1510,
-      "worldRank": 48,
+      "worldRank": 44,
       "fifaRank": 74,
       "positionProbabilities": [
-        0.01745,
-        0.1832,
-        0.63155,
-        0.1678
+        0.017,
+        0.18585,
+        0.6268,
+        0.17035
       ],
-      "pFinish3rd": 0.63155,
-      "pThird": 0.36984999999999996,
-      "pQualifyGiven3rd": 0.5856226743725754,
+      "pFinish3rd": 0.6268,
+      "pThird": 0.3709499999999999,
+      "pQualifyGiven3rd": 0.5918155711550732,
       "points": 3,
-      "gd": -4,
+      "gd": -5,
       "gf": 1,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": null,
@@ -1454,9 +1454,9 @@
         "played": 1
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.01675,
-      "pRunnerUp": 0.18385,
-      "pRoundOf32": 0.57045,
+      "pGroupWinner": 0.01785,
+      "pRunnerUp": 0.18115,
+      "pRoundOf32": 0.56995,
       "qualifies": true,
       "matchId": "M87",
       "pWin": 0.8764234311980754,
@@ -1474,14 +1474,14 @@
       "worldRank": 23,
       "fifaRank": 21,
       "positionProbabilities": [
-        0.2667,
-        0.2092,
-        0.4917,
-        0.0324
+        0.27025,
+        0.21425,
+        0.48285,
+        0.03265
       ],
-      "pFinish3rd": 0.4917,
-      "pThird": 0.26450000000000007,
-      "pQualifyGiven3rd": 0.5379296318893635,
+      "pFinish3rd": 0.48285,
+      "pThird": 0.25925000000000004,
+      "pQualifyGiven3rd": 0.536916226571399,
       "points": 3,
       "gd": 0,
       "gf": 3,
@@ -1496,9 +1496,9 @@
         "played": 2
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.2709,
-      "pRunnerUp": 0.21135,
-      "pRoundOf32": 0.74675,
+      "pGroupWinner": 0.26945,
+      "pRunnerUp": 0.2148,
+      "pRoundOf32": 0.7435,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1513,15 +1513,15 @@
       "fifaRank": 23,
       "positionProbabilities": [
         0,
-        0.09415,
-        0.7294,
-        0.17645
+        0.0926,
+        0.7284,
+        0.179
       ],
-      "pFinish3rd": 0.7294,
-      "pThird": 0.26839999999999997,
-      "pQualifyGiven3rd": 0.36797367699479017,
-      "points": 2,
-      "gd": -1,
+      "pFinish3rd": 0.7284,
+      "pThird": 0.26544999999999996,
+      "pQualifyGiven3rd": 0.3644288852278967,
+      "points": 1,
+      "gd": -2,
       "gf": 0,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": null,
@@ -1535,8 +1535,8 @@
       },
       "pointsNodes": [],
       "pGroupWinner": 0,
-      "pRunnerUp": 0.09295,
-      "pRoundOf32": 0.36135,
+      "pRunnerUp": 0.09215,
+      "pRoundOf32": 0.3576,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1547,19 +1547,19 @@
       "code": "UY",
       "group": "H",
       "elo": 1892,
-      "worldRank": 24,
+      "worldRank": 27,
       "fifaRank": 17,
       "positionProbabilities": [
-        0.1188,
-        0.07395,
-        0.6878,
-        0.11945
+        0.11365,
+        0.0723,
+        0.6905,
+        0.12355
       ],
-      "pFinish3rd": 0.6878,
-      "pThird": 0.1881,
-      "pQualifyGiven3rd": 0.27348066298342544,
+      "pFinish3rd": 0.6905,
+      "pThird": 0.19520000000000004,
+      "pQualifyGiven3rd": 0.28269370021723395,
       "points": 2,
-      "gd": -2,
+      "gd": -1,
       "gf": 3,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": null,
@@ -1572,9 +1572,9 @@
         "played": 2
       },
       "pointsNodes": [],
-      "pGroupWinner": 0.1164,
-      "pRunnerUp": 0.0734,
-      "pRoundOf32": 0.3779,
+      "pGroupWinner": 0.1141,
+      "pRunnerUp": 0.0715,
+      "pRoundOf32": 0.3808,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1585,17 +1585,17 @@
       "code": "CZ",
       "group": "A",
       "elo": 1712,
-      "worldRank": 38,
+      "worldRank": 37,
       "fifaRank": 41,
       "positionProbabilities": [
         0,
-        0.03455,
-        0.52225,
-        0.4432
+        0.0353,
+        0.5228,
+        0.4419
       ],
-      "pFinish3rd": 0.52225,
-      "pThird": 0.0854,
-      "pQualifyGiven3rd": 0.16352321685016755,
+      "pFinish3rd": 0.5228,
+      "pThird": 0.08435000000000001,
+      "pQualifyGiven3rd": 0.16134276970160674,
       "points": 1,
       "gd": -3,
       "gf": 2,
@@ -1611,8 +1611,8 @@
       },
       "pointsNodes": [],
       "pGroupWinner": 0,
-      "pRunnerUp": 0.03205,
-      "pRoundOf32": 0.11745,
+      "pRunnerUp": 0.03555,
+      "pRoundOf32": 0.1199,
       "qualifies": false,
       "matchId": null,
       "pWin": null,
@@ -1627,16 +1627,16 @@
       "group": "D"
     },
     {
-      "name": "Scotland",
-      "code": "SQ",
-      "elo": 1782,
-      "group": "C"
-    },
-    {
       "name": "Sweden",
       "code": "SE",
       "elo": 1712,
       "group": "F"
+    },
+    {
+      "name": "Scotland",
+      "code": "SQ",
+      "elo": 1782,
+      "group": "C"
     },
     {
       "name": "Senegal",
@@ -1645,16 +1645,16 @@
       "group": "I"
     },
     {
-      "name": "Bosnia-Herzegovina",
-      "code": "BA",
-      "elo": 1616,
-      "group": "B"
-    },
-    {
       "name": "Algeria",
       "code": "DZ",
       "elo": 1772,
       "group": "J"
+    },
+    {
+      "name": "Bosnia-Herzegovina",
+      "code": "BA",
+      "elo": 1616,
+      "group": "B"
     },
     {
       "name": "Congo DR",
@@ -1754,16 +1754,16 @@
         "elo": 2063
       },
       "away": {
-        "name": "Scotland",
-        "code": "SQ",
-        "elo": 1782
+        "name": "Sweden",
+        "code": "SE",
+        "elo": 1712
       },
       "winner": {
         "name": "France",
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.7779023218859398
+      "pWin": 0.826074544494259
     },
     {
       "id": "M78",
@@ -1792,16 +1792,16 @@
         "elo": 1881
       },
       "away": {
-        "name": "Sweden",
-        "code": "SE",
-        "elo": 1712
+        "name": "Scotland",
+        "code": "SQ",
+        "elo": 1782
       },
       "winner": {
         "name": "Mexico",
         "code": "MX",
         "elo": 1881
       },
-      "pWin": 0.700086084935795
+      "pWin": 0.6411842905742049
     },
     {
       "id": "M80",
