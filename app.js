@@ -265,50 +265,16 @@
     scenarioFlowCol = null;
     scenarioFlowKey = null;
     scenarioModalTitle.innerHTML = teamButton(team);
-    // In index.html, the popup is opened from the thirds table where the
-    // "Chance" column shows P(qualify | finish 3rd). The gauge headline
-    // stays as the unconditional pRoundOf32 (matching what the chart's
-    // 1st+2nd+3rd-through bands sum to); the Chance-column figure is shown
-    // underneath as a short, plain-English note instead, so the two numbers
-    // don't look like they're meant to add up to each other.
     const gaugeContext = team.pQualifyGiven3rd != null ? {
       pct: team.pQualifyGiven3rd,
       label: `is the table's "Chance" number. It only counts games where they finish 3rd.`,
     } : null;
-    // The gauge only needs pGroupWinner/pRunnerUp/pRoundOf32 (and degrades
-    // to 0% for the "top-8 third" share if outcomeScenarios is missing -
-    // see scenarioFlow.js's bucketTotal) - these are present for every team
-    // under BOTH engines, so the gauge always renders correctly regardless
-    // of model.
     window.ScenarioFlow.renderGauge(scenarioModalGauge, team, gaugeContext);
 
-    // The Sankey flow diagram below the gauge needs pooledScenarios (the
-    // (points,gd)-bucketed path data) - NegBin's predictions_negbin.json is
-    // deliberately scoped down and doesn't compute this yet (see
-    // runSimulationNegBin.js's own header for the rationale: building the
-    // full Sankey-equivalent breakdown was out of scope for the initial
-    // integration). Previously, missing pooledScenarios caused this whole
-    // function to return early BEFORE even showing the title/gauge - a
-    // silent no-op a user would experience as "nothing happens when I tap
-    // this team". Now the gauge always shows, and the flow diagram area
-    // shows a clear, honest message instead of either a broken empty
-    // diagram or no feedback at all.
-    if (team.pooledScenarios && team.pooledScenarios.length > 0) {
-      scenarioModalFlow.style.display = '';
-      renderModalFlow(team);
-      const note = scenarioModalFlow.parentElement.querySelector('.flow-unavailable-note');
-      if (note) note.style.display = 'none';
-    } else {
-      scenarioModalFlow.style.display = 'none';
-      let note = scenarioModalFlow.parentElement.querySelector('.flow-unavailable-note');
-      if (!note) {
-        note = document.createElement('p');
-        note.className = 'flow-unavailable-note';
-        scenarioModalFlow.insertAdjacentElement('afterend', note);
-      }
-      note.textContent = "The step-by-step path breakdown isn't available yet for the new model - the headline number above is still accurate.";
-      note.style.display = '';
-    }
+    scenarioModalFlow.style.display = '';
+    const existingNote = scenarioModalFlow.parentElement.querySelector('.flow-unavailable-note');
+    if (existingNote) existingNote.style.display = 'none';
+    renderModalFlow(team);
     scenarioModalBackdrop.hidden = false;
   }
 
