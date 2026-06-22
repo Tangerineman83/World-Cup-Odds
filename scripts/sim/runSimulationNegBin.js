@@ -44,7 +44,10 @@ const { simulateTournamentNegBin } = require('./simulateTournamentNegBin');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { loadCalibratedParams } = require('./groupStageNegBin');
 const { FIFA_RANK } = require('../fifaRankings');
-const { mulberry32, buildNameToCode } = require('./shared');
+const { mulberry32, buildNameToCode,
+  OUTCOME_BUCKETS, buildOutcomeHistograms, buildOutcomeScenarios,
+  buildPooledScenarios, buildPointsNodes, buildThirdScenarios,
+} = require('./shared');
 
 // FOUND WHILE WIRING UP THE FRONTEND TOGGLE: predictions.json (existing
 // engine) includes a `code` field per team (flag/abbreviation code, used by
@@ -132,6 +135,8 @@ async function main(numSimulations) {
     stageCounts.set(name, { r32: 0, r16: 0, qf: 0, sf: 0, final: 0, champion: 0, groupWinner: 0, runnerUp: 0 });
   }
 
+  const outcomeHistograms = buildOutcomeHistograms(allTeams);
+
   console.log(`Running ${N_SIMULATIONS} simulations...`);
   const startTime = Date.now();
 
@@ -148,6 +153,26 @@ async function main(numSimulations) {
       stageCounts.get(m.home.name).r32++;
       stageCounts.get(m.away.name).r32++;
     }
+
+    // Outcome scenario tracking (same logic as runSimulation.js) - build
+    // the (points,gd) histograms per team per bucket, used to generate the
+    // Sankey flow diagram data. r32Names tells us which 3rd-placed teams
+    // qualified, since that's the only way a 3rd-placed team reaches r32.
+    const r32Names = new Set(result.r32.flatMap((m) => [m.home.name, m.away.name]));
+    for (const standings of Object.values(result.groupStandings)) {
+      for (let pos = 0; pos < 4; pos++) {
+        const team = standings[pos];
+        let bucket;
+        if (pos === 0) bucket = '1st';
+        else if (pos === 1) bucket = '2nd';
+        else if (pos === 3) bucket = '4th';
+        else bucket = r32Names.has(team.name) ? '3rd_qualified' : '3rd_eliminated';
+        const hist = outcomeHistograms.get(team.name).get(bucket);
+        const key = `${team.points},${team.gd}`;
+        hist.set(key, (hist.get(key) || 0) + 1);
+      }
+    }
+
     for (const m of result.r16) {
       stageCounts.get(m.home.name).r16++;
       stageCounts.get(m.away.name).r16++;
@@ -191,7 +216,17 @@ async function main(numSimulations) {
       pSemiFinal: c.sf / N_SIMULATIONS,
       pFinal: c.final / N_SIMULATIONS,
       pChampion: c.champion / N_SIMULATIONS,
+      thirdPlaceScenarios: buildThirdScenarios(name, outcomeHistograms, N_SIMULATIONS),
+      outcomeScenarios: {
+        first:            buildOutcomeScenarios(name, '1st',            outcomeHistograms, N_SIMULATIONS),
+        second:           buildOutcomeScenarios(name, '2nd',            outcomeHistograms, N_SIMULATIONS),
+        thirdQualified:   buildOutcomeScenarios(name, '3rd_qualified',  outcomeHistograms, N_SIMULATIONS),
+        thirdEliminated:  buildOutcomeScenarios(name, '3rd_eliminated', outcomeHistograms, N_SIMULATIONS),
+        fourth:           buildOutcomeScenarios(name, '4th',            outcomeHistograms, N_SIMULATIONS),
+      },
+      pooledScenarios: buildPooledScenarios(name, outcomeHistograms, N_SIMULATIONS),
       currentStanding: currentStanding.get(name),
+      pointsNodes: buildPointsNodes(name, outcomeHistograms, N_SIMULATIONS),
     };
   });
 
@@ -205,7 +240,6 @@ async function main(numSimulations) {
     negBinConstantsSource: source,
     methodology: {
       ratingSource: 'eloOverall/eloAttack/eloDefense are each team\'s CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json\'s scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.',
-      scopeNote: 'This output is intentionally scoped down from predictions.json: it has the same core stage-probability fields, but does NOT yet include the Sankey/scenario-breakdown fields (pooledScenarios, outcomeScenarios, pointsNodes, thirdPlaceScenarios) that drive the team detail popup\'s flow diagram on predictions.html/index.html - the popup degrades gracefully (shows the gauge, hides the flow diagram with an explanatory note) when these are absent. This file otherwise IS the live production data source when the "New model" toggle is selected.',
       knockoutModel: 'Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren\'t a goals-from-form event either model claims to predict).',
       liveResults: resultsCount > 0
         ? `${resultsCount} completed group-stage result(s) as of ${lastUpdated} are applied directly (not simulated) in every simulation run.`

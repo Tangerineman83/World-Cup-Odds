@@ -17,7 +17,11 @@ const { simulateTournament } = require('./simulateTournament');
 const { getKnownResultsByGroup } = require('./resultsSource');
 const { computeCurrentRatings, loadBaseline } = require('./eloBaseline');
 const { FIFA_RANK } = require('../fifaRankings');
-const { mulberry32, buildNameToCode } = require('./shared');
+const { mulberry32, buildNameToCode,
+  OUTCOME_BUCKETS, BUCKET_KEY_MAP, SCENARIO_THRESHOLD, LABEL_THRESHOLD,
+  buildOutcomeHistograms, buildOutcomeScenarios, buildPooledScenarios,
+  buildPointsNodes, buildThirdScenarios,
+} = require('./shared');
 
 const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
@@ -78,13 +82,7 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
   // splits). Used to build "top scenarios" breakdowns per team/outcome - see
   // buildOutcomeScenarios below. (The 3rd_qualified bucket is the same data
   // previously called thirdQualifyHistograms/thirdCounts, generalized.)
-  const OUTCOME_BUCKETS = ['1st', '2nd', '3rd_qualified', '3rd_eliminated', '4th'];
-  const outcomeHistograms = new Map(); // team -> bucket -> Map("points,gd" -> count)
-  for (const name of allTeams) {
-    const byBucket = new Map();
-    for (const bucket of OUTCOME_BUCKETS) byBucket.set(bucket, new Map());
-    outcomeHistograms.set(name, byBucket);
-  }
+  const outcomeHistograms = buildOutcomeHistograms(allTeams);
 
   console.log(`Running ${N_SIMULATIONS} simulations...`);
   const startTime = Date.now();
@@ -156,142 +154,6 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
 
   const { ratings: baselineRatings } = loadBaseline();
 
-  // Builds the (points,gd) scenario breakdown for one team/bucket. Every
-  // combo with pct (= count/N_SIMULATIONS, i.e. P(this outcome bucket AND
-  // this points/GD combo), unconditional) greater than 1% gets its own
-  // entry; everything else is folded into a single "Others" entry
-  // (points: null, gd: null). Summing all entries for a bucket gives that
-  // bucket's overall probability (e.g. matching positionProbabilities[0] for
-  // '1st'). The SCENARIO_THRESHOLD is unconditional - i.e. a combo needs to
-  // represent >1% of ALL simulations to get its own row, not >1% of this
-  // bucket's sims.
-  const SCENARIO_THRESHOLD = 0.01; // combos below 1% unconditional go into "Other"
-  function buildOutcomeScenarios(name, bucket) {
-    const hist = outcomeHistograms.get(name).get(bucket);
-    const entries = [...hist.entries()]
-      .map(([key, count]) => {
-        const [points, gd] = key.split(',').map(Number);
-        return { points, gd, pct: count / N_SIMULATIONS };
-      })
-      .sort((a, b) => b.pct - a.pct);
-
-    const shown = entries.filter((e) => e.pct > SCENARIO_THRESHOLD);
-    const othersPct = entries.filter((e) => e.pct <= SCENARIO_THRESHOLD).reduce((sum, e) => sum + e.pct, 0);
-    const scenarios = shown.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct }));
-    if (othersPct > 0) scenarios.push({ points: null, gd: null, pct: othersPct });
-    return scenarios;
-  }
-
-  // Builds the pooled (points,gd) breakdown across ALL 5 outcome buckets for
-  // one team, for the new Sankey-style diagram: left nodes = the 5 buckets,
-  // right nodes = (points,gd) combos pooled across buckets (so e.g. "6pts
-  // GD+1" reached via both '2nd' and 'thirdQualified' is ONE right-side
-  // node, fed by ribbons from both buckets). The >1% SCENARIO_THRESHOLD is
-  // applied to each combo's POOLED total (summed across buckets) - combos
-  // at or below stay folded into a single "Other" node (points/gd: null),
-  // which itself aggregates each bucket's leftover mass for that combo.
-  // Sorted by points desc, then gd desc ("best to poorest"); "Other" last.
-  // Each entry's byBucket gives the per-bucket contribution (for ribbons),
-  // omitting buckets with a zero contribution. total = sum of byBucket
-  // values = this node's overall probability (unconditional, fraction of
-  // N_SIMULATIONS). Summing all entries' totals gives 1.
-  // Maps raw histogram bucket keys (matching OUTCOME_BUCKETS array at the
-  // top of the sim loop) to the JS-friendly keys used in outcomeScenarios
-  // and in scenarioFlow.js's OUTCOME_BUCKETS[].key - so pooledScenarios
-  // byBucket keys match what the Sankey renderer expects.
-  const BUCKET_KEY_MAP = {
-    '1st': 'first',
-    '2nd': 'second',
-    '3rd_qualified': 'thirdQualified',
-    '3rd_eliminated': 'thirdEliminated',
-    '4th': 'fourth',
-  };
-
-  // Below this, a (points, gd) combo is still drawn as its own node/ribbon
-  // (every real combo gets a node - no "Other" catch-all), but its label is
-  // hidden to avoid overcrowding the column with illegible text for combos
-  // that are too thin to read anyway. The node and its ribbons are always
-  // there and hoverable/clickable; only the always-on text label is culled.
-  const LABEL_THRESHOLD = 0.005; // 0.5%
-
-  function buildPooledScenarios(name) {
-    const pooled = new Map(); // "points,gd" -> { points, gd, byBucket: {bucket: count} }
-    for (const bucket of OUTCOME_BUCKETS) {
-      const mappedKey = BUCKET_KEY_MAP[bucket];
-      const hist = outcomeHistograms.get(name).get(bucket);
-      for (const [key, count] of hist.entries()) {
-        if (!pooled.has(key)) {
-          const [points, gd] = key.split(',').map(Number);
-          pooled.set(key, { points, gd, byBucket: {} });
-        }
-        pooled.get(key).byBucket[mappedKey] = count / N_SIMULATIONS;
-      }
-    }
-
-    // Every distinct (points, gd) combo that occurred in at least one
-    // simulation gets its own entry - no threshold-based folding into
-    // "Other". showLabel marks whether this combo is common enough
-    // (>LABEL_THRESHOLD) for the Sankey to print its text label; thin
-    // combos still get a node and ribbons, just without a label
-    // cluttering the column.
-    return [...pooled.values()]
-      .map((e) => {
-        const total = Object.values(e.byBucket).reduce((sum, p) => sum + p, 0);
-        return { points: e.points, gd: e.gd, total, byBucket: e.byBucket, showLabel: total > LABEL_THRESHOLD };
-      })
-      .sort((a, b) => (b.points - a.points) || (b.gd - a.gd));
-  }
-
-  // Builds the "final points total" breakdown for one team - the second
-  // column of the 4-column Sankey (current points -> final points -> final
-  // points+GD -> group finish). Every final points total a team could
-  // realistically reach has its own node (there are at most 9 possible
-  // values - 0,1,2,3,4,5,6,7,9 - from 3 group games, so no "Other" folding
-  // is needed here, unlike the points+GD breakdown). Each node's byGd gives
-  // the GD breakdown FOR THAT POINTS TOTAL (i.e. which third-column nodes it
-  // feeds into, and with what probability) - this is what makes the
-  // points -> points+GD ribbons possible. total = unconditional probability
-  // (fraction of N_SIMULATIONS) of finishing on exactly this many points;
-  // summing all nodes' totals gives 1.
-  function buildPointsNodes(name) {
-    const byPoints = new Map(); // points -> { total: count, byGd: Map(gd -> count) }
-    for (const bucket of OUTCOME_BUCKETS) {
-      const hist = outcomeHistograms.get(name).get(bucket);
-      for (const [key, count] of hist.entries()) {
-        const [points, gd] = key.split(',').map(Number);
-        if (!byPoints.has(points)) byPoints.set(points, { points, total: 0, byGd: new Map() });
-        const node = byPoints.get(points);
-        node.total += count;
-        node.byGd.set(gd, (node.byGd.get(gd) || 0) + count);
-      }
-    }
-
-    return [...byPoints.values()]
-      .map((node) => ({
-        points: node.points,
-        total: node.total / N_SIMULATIONS,
-        byGd: Object.fromEntries(
-          [...node.byGd.entries()].map(([gd, count]) => [String(gd), count / N_SIMULATIONS])
-        ),
-      }))
-      .sort((a, b) => b.points - a.points);
-  }
-
-  // which expects pct relative to P(finish 3rd) (= pFinish3rd), i.e. "given
-  // finish 3rd, what's the points/GD AND qualified breakdown" - entries sum
-  // to pQualifyGiven3rd. Derived from the new '3rd_qualified' bucket
-  // (unconditional pct, see buildOutcomeScenarios) divided by
-  // pFinish3rd = P('3rd_qualified') + P('3rd_eliminated').
-  function buildThirdScenarios(name) {
-    const qualified = buildOutcomeScenarios(name, '3rd_qualified');
-    const eliminatedHist = outcomeHistograms.get(name).get('3rd_eliminated');
-    const eliminatedTotal = [...eliminatedHist.values()].reduce((sum, c) => sum + c, 0) / N_SIMULATIONS;
-    const qualifiedTotal = qualified.reduce((sum, e) => sum + e.pct, 0);
-    const pFinish3rd = qualifiedTotal + eliminatedTotal;
-    if (pFinish3rd === 0) return [];
-    return qualified.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct / pFinish3rd }));
-  }
-
   const teams = allTeams.map((name) => {
     const c = stageCounts.get(name);
     const currentElo = teamsByName.get(name).elo;
@@ -312,17 +174,17 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
       pSemiFinal: c.sf / N_SIMULATIONS,
       pFinal: c.final / N_SIMULATIONS,
       pChampion: c.champion / N_SIMULATIONS,
-      thirdPlaceScenarios: buildThirdScenarios(name),
+      thirdPlaceScenarios: buildThirdScenarios(name, outcomeHistograms, N_SIMULATIONS),
       outcomeScenarios: {
-        first: buildOutcomeScenarios(name, '1st'),
-        second: buildOutcomeScenarios(name, '2nd'),
-        thirdQualified: buildOutcomeScenarios(name, '3rd_qualified'),
-        thirdEliminated: buildOutcomeScenarios(name, '3rd_eliminated'),
-        fourth: buildOutcomeScenarios(name, '4th'),
+        first:           buildOutcomeScenarios(name, '1st',            outcomeHistograms, N_SIMULATIONS),
+        second:          buildOutcomeScenarios(name, '2nd',            outcomeHistograms, N_SIMULATIONS),
+        thirdQualified:  buildOutcomeScenarios(name, '3rd_qualified',  outcomeHistograms, N_SIMULATIONS),
+        thirdEliminated: buildOutcomeScenarios(name, '3rd_eliminated', outcomeHistograms, N_SIMULATIONS),
+        fourth:          buildOutcomeScenarios(name, '4th',            outcomeHistograms, N_SIMULATIONS),
       },
-      pooledScenarios: buildPooledScenarios(name),
+      pooledScenarios: buildPooledScenarios(name, outcomeHistograms, N_SIMULATIONS),
       currentStanding: currentStanding.get(name),
-      pointsNodes: buildPointsNodes(name),
+      pointsNodes: buildPointsNodes(name, outcomeHistograms, N_SIMULATIONS),
     };
   });
 
