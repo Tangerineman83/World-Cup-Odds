@@ -1,38 +1,21 @@
 name: Refresh NegBin predictions
 
-# NegBin-engine counterpart to refresh-predictions.yml. Runs the entire
-# dual-Elo Negative Binomial pipeline (Phase 2 through Phase 4) via a single
-# orchestrator script, runFullNegBinPipeline.js, which itself runs
-# updateEloSplit.js -> calibrateNegBin.js -> runSimulationNegBin.js ->
-# runScenarioNegBin.js in that fixed order, in one Node process - see that
-# script's own header for why this is a single script rather than four
-# separately-triggered steps (this was a recurring source of ordering
-# mistakes earlier in the project).
+# Runs the full dual-Elo Negative Binomial pipeline via the single
+# orchestrator script (runFullNegBinPipeline.js):
+#   updateEloSplit.js -> calibrateNegBin.js -> runSimulationNegBin.js
+#   -> runScenarioNegBin.js
+# Writes: elo_current_split.json, negbin_calibration.json,
+#         predictions_negbin.json, scenario_negbin.json
 #
-# SAME SCHEDULE as refresh-predictions.yml (the existing engine's workflow)
-# by design, so both engines' output stay similarly fresh relative to each
-# other - there's no reason for one model's predictions to lag the other's
-# by a different amount.
+# Schedule disabled - refresh-all-predictions.yml now runs both engines
+# on the 0 6,18 * * * schedule. Retained here for targeted manual re-runs
+# of the NegBin engine only (e.g. if you want to re-run calibration after
+# a run of new results without touching the original engine's output).
 #
-# Does NOT run build-elo-split.yml (Phase 1) - that fetches a live
-# third-party dataset and remains separately scheduled/manual-only, same as
-# it is for the existing engine's pipeline (Phase 1's output,
-# elo_baseline_split.json, is shared by both - rebuilding it isn't part of
-# either engine's regular refresh cycle).
-#
-# No live network fetch in THIS workflow - ratings come from
-# elo_baseline_split.json (already in the repo) + results.json, so this has
-# no external dependency and cannot silently produce uniform/garbage
-# ratings from a failed fetch, same rationale as refresh-predictions.yml.
-#
-# ONCE THIS WORKFLOW HAS A FEW CONFIRMED SUCCESSFUL SCHEDULED RUNS, retire
-# update-ratings-and-calibration.yml and run-simulation-negbin.yml - their
-# jobs are both fully subsumed by this single workflow. Keep them running in
-# parallel for now as a safety net.
+# Does NOT run buildEloSplit.js (Phase 1 / build-elo-split.yml) - that
+# fetches a live external dataset and remains a separate, manual step.
 
 on:
-  schedule:
-    - cron: '0 6,18 * * *'
   workflow_dispatch: {}
 
 permissions:
@@ -99,4 +82,3 @@ jobs:
 
           echo "ERROR: failed to push after retries."
           exit 1
-

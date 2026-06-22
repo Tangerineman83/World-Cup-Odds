@@ -21,12 +21,11 @@ name: Refresh predictions
 # live eloratings.net values.
 
 on:
-  schedule:
-    # Twice daily during the tournament window (adjust as needed) - mainly a
-    # safety net; the main trigger is workflow_dispatch after updating
-    # results.json.
-    - cron: '0 6,18 * * *'
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+  # Schedule disabled - refresh-all-predictions.yml now runs both engines
+  # on this schedule. Retained here for targeted manual re-runs of the
+  # original engine only (e.g. if the NegBin output looks wrong and you
+  # want to re-run just this half without touching the NegBin files).
+  workflow_dispatch: {}
 
 permissions:
   contents: write
