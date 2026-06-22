@@ -43,39 +43,21 @@
   const GROUP_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
   // ----------------------------------------------------------------------
-  // Flags (flagcdn.com) - maps team codes to flag image codes. Most match
-  // ISO 3166-1 alpha-2 lowercased; UK home nations need their gb-xxx codes.
-  // ----------------------------------------------------------------------
-  const FLAG_CODE_OVERRIDES = {
-    EN: 'gb-eng', // England
-    SQ: 'gb-sct', // Scotland
-    WL: 'gb-wls', // Wales
-    NI: 'gb-nir', // Northern Ireland
-  };
-
-  function flagUrl(teamCode, height = 24) {
-    if (!teamCode) return null;
-    const code = FLAG_CODE_OVERRIDES[teamCode] || teamCode.toLowerCase();
-    return `https://flagcdn.com/h${height}/${code}.png`;
-  }
-
   // ----------------------------------------------------------------------
   // Group tables
   // ----------------------------------------------------------------------
 
+  // Flag rendering delegated to window.ScenarioFlow.flagImgHtml (from
+  // scenarioFlow.js, always loaded before this file per index.html's script
+  // order) - the inline FLAG_CODE_OVERRIDES / flagUrl that used to live here
+  // were duplicates of identical logic already in scenarioFlow.js, removed
+  // during code review consolidation.
   function teamButton(team) {
     if (!team) {
       return `<span class="team-cell team-tbd"><span class="flag-icon" style="background:var(--border)"></span>To be confirmed</span>`;
     }
     const safeName = team.name.replace(/"/g, '&quot;');
-    const flag = flagUrl(team.code);
-    // onerror: flagcdn occasionally fails a handful of concurrent requests on
-    // first load. Retry once via the non-retina (1x) URL; if that also fails,
-    // hide the broken-image icon and fall back to the placeholder background
-    // (this.outerHTML swap to a plain span keeps layout/spacing identical).
-    const flagHtml = flag
-      ? `<img class="flag-icon" src="${flag}" srcset="${flagUrl(team.code, 48)} 2x" alt="" loading="eager" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.removeAttribute('srcset');this.src='${flag}';}else{this.outerHTML='<span class=&quot;flag-icon&quot;></span>';}">`
-      : `<span class="flag-icon"></span>`;
+    const flagHtml = window.ScenarioFlow.flagImgHtml(team.code, 24);
     return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}</button>`;
   }
 
