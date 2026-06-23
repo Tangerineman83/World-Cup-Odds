@@ -65,23 +65,21 @@ function cleanMatch(m, codeOf) {
 
 // ---- Sankey builder functions -------------------------------------------
 //
-// These four functions build the data structures that drive the team
-// detail popup's flow diagram (Sankey) on index.html/predictions.html.
+// These functions build the data structures that drive the team detail
+// popup's flow diagram (Sankey) on index.html/predictions.html.
 // They operate purely on the outcomeHistograms Map (team -> bucket ->
-// Map('points,gd' -> count)) built during the Monte Carlo simulation loop
-// and are completely engine-agnostic - identical logic needed by both
-// runSimulation.js (existing engine) and runSimulationNegBin.js (NegBin
-// engine). Previously only existed in runSimulation.js; moved here so
-// runSimulationNegBin.js can use them without duplication.
+// Map('points,gd,gf' -> count)) built during the Monte Carlo simulation
+// loop and are completely engine-agnostic.
 //
-// All probabilities are unconditional (count / N_SIMULATIONS), i.e. a
-// fraction of ALL simulations, not conditional on a given bucket. See
-// runSimulation.js's own comments for the full rationale on each function.
+// HISTOGRAM KEY FORMAT: 'points,gd,gf' (all three group-stage stats).
+// Previously 'points,gd' only - GF added to support the full FIFA tiebreak
+// order (pts -> GD -> GF -> FIFA rank) and to allow the thirds table to
+// show GF in the projected/scenario views.
+//
+// All probabilities are unconditional (count / N_SIMULATIONS).
 
 const OUTCOME_BUCKETS = ['1st', '2nd', '3rd_qualified', '3rd_eliminated', '4th'];
 
-// Maps simulation histogram bucket keys to the JS-friendly keys used in
-// outcomeScenarios and in scenarioFlow.js's OUTCOME_BUCKETS[].key.
 const BUCKET_KEY_MAP = {
   '1st': 'first',
   '2nd': 'second',
@@ -90,36 +88,42 @@ const BUCKET_KEY_MAP = {
   '4th': 'fourth',
 };
 
-const SCENARIO_THRESHOLD = 0.01; // combos below 1% unconditional go into "Other"
-const LABEL_THRESHOLD = 0.005;   // combos below 0.5% get no text label in the Sankey
+const SCENARIO_THRESHOLD = 0.01;
+const LABEL_THRESHOLD = 0.005;
 
 function buildOutcomeScenarios(name, bucket, outcomeHistograms, N) {
   const hist = outcomeHistograms.get(name).get(bucket);
   const entries = [...hist.entries()]
     .map(([key, count]) => {
-      const [points, gd] = key.split(',').map(Number);
-      return { points, gd, pct: count / N };
+      const [points, gd, gf] = key.split(',').map(Number);
+      return { points, gd, gf, pct: count / N };
     })
     .sort((a, b) => b.pct - a.pct);
 
   const shown = entries.filter((e) => e.pct > SCENARIO_THRESHOLD);
   const othersPct = entries.filter((e) => e.pct <= SCENARIO_THRESHOLD).reduce((sum, e) => sum + e.pct, 0);
-  const scenarios = shown.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct }));
-  if (othersPct > 0) scenarios.push({ points: null, gd: null, pct: othersPct });
+  // Keep points+gd as primary keys for backwards-compat with existing
+  // Sankey rendering; gf is additive metadata on each entry.
+  const scenarios = shown.map((e) => ({ points: e.points, gd: e.gd, gf: e.gf, pct: e.pct }));
+  if (othersPct > 0) scenarios.push({ points: null, gd: null, gf: null, pct: othersPct });
   return scenarios;
 }
 
 function buildPooledScenarios(name, outcomeHistograms, N) {
+  // Pool by (points, gd) only for the Sankey ribbon structure - GF is too
+  // fine-grained for ribbon nodes and would over-fragment the display.
+  // GF data is available per-entry in outcomeScenarios for tooltip use.
   const pooled = new Map();
   for (const bucket of OUTCOME_BUCKETS) {
     const mappedKey = BUCKET_KEY_MAP[bucket];
     const hist = outcomeHistograms.get(name).get(bucket);
     for (const [key, count] of hist.entries()) {
-      if (!pooled.has(key)) {
-        const [points, gd] = key.split(',').map(Number);
-        pooled.set(key, { points, gd, byBucket: {} });
+      const [points, gd] = key.split(',').map(Number);
+      const poolKey = `${points},${gd}`;
+      if (!pooled.has(poolKey)) {
+        pooled.set(poolKey, { points, gd, byBucket: {} });
       }
-      pooled.get(key).byBucket[mappedKey] = count / N;
+      pooled.get(poolKey).byBucket[mappedKey] = (pooled.get(poolKey).byBucket[mappedKey] || 0) + count / N;
     }
   }
 
@@ -162,7 +166,7 @@ function buildThirdScenarios(name, outcomeHistograms, N) {
   const qualifiedTotal = qualified.reduce((sum, e) => sum + e.pct, 0);
   const pFinish3rd = qualifiedTotal + eliminatedTotal;
   if (pFinish3rd === 0) return [];
-  return qualified.map((e) => ({ points: e.points, gd: e.gd, pct: e.pct / pFinish3rd }));
+  return qualified.map((e) => ({ points: e.points, gd: e.gd, gf: e.gf, pct: e.pct / pFinish3rd }));
 }
 
 function buildOutcomeHistograms(allTeams) {
@@ -175,9 +179,35 @@ function buildOutcomeHistograms(allTeams) {
   return outcomeHistograms;
 }
 
+// ---- R32 opponent tracking ----------------------------------------------
+//
+// r32OpponentHistograms: Map of team name -> Map of opponent name -> count.
+// Tracks, for every team that reaches R32 in a simulation, who their
+// opponent was. This gives the full opponent distribution across all
+// 20,000+ simulations - not just the modal scenario - enabling accurate
+// P(Scotland vs Germany | Scotland reaches R32) style queries.
+
+function buildR32OpponentHistograms(allTeams) {
+  const hists = new Map();
+  for (const name of allTeams) hists.set(name, new Map());
+  return hists;
+}
+
+// Builds the sorted R32 opponent distribution for one team.
+// Returns [{ opponent, code, pct }, ...] sorted by pct desc.
+// pct is unconditional P(reach R32 AND face opponent) across all N sims.
+function buildR32Opponents(name, r32OpponentHistograms, nameToCode, N) {
+  const hist = r32OpponentHistograms.get(name);
+  if (!hist || hist.size === 0) return [];
+  return [...hist.entries()]
+    .map(([opp, count]) => ({ opponent: opp, code: nameToCode[opp] || null, pct: count / N }))
+    .sort((a, b) => b.pct - a.pct);
+}
+
 module.exports = {
   mulberry32, buildNameToCode, cleanTeam, cleanMatch,
   OUTCOME_BUCKETS, BUCKET_KEY_MAP, SCENARIO_THRESHOLD, LABEL_THRESHOLD,
   buildOutcomeHistograms, buildOutcomeScenarios, buildPooledScenarios,
   buildPointsNodes, buildThirdScenarios,
+  buildR32OpponentHistograms, buildR32Opponents,
 };

@@ -306,6 +306,7 @@ async function main() {
     gd: t.gd,
     gf: t.gf,
     thirdPlaceScenarios: (predictionsByName.get(t.name) || {}).thirdPlaceScenarios || [],
+    r32Opponents: (predictionsByName.get(t.name) || {}).r32Opponents || [],
     outcomeScenarios: (predictionsByName.get(t.name) || {}).outcomeScenarios || null,
     pooledScenarios: (predictionsByName.get(t.name) || {}).pooledScenarios || [],
     currentStanding: (predictionsByName.get(t.name) || {}).currentStanding || null,

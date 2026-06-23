@@ -21,9 +21,10 @@ const { mulberry32, buildNameToCode,
   OUTCOME_BUCKETS, BUCKET_KEY_MAP, SCENARIO_THRESHOLD, LABEL_THRESHOLD,
   buildOutcomeHistograms, buildOutcomeScenarios, buildPooledScenarios,
   buildPointsNodes, buildThirdScenarios,
+  buildR32OpponentHistograms, buildR32Opponents,
 } = require('./shared');
 
-const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
+const N_SIMULATIONS = parseInt(process.argv[2], 10) || 100000;
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
 
 (async () => {
@@ -83,6 +84,7 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
   // buildOutcomeScenarios below. (The 3rd_qualified bucket is the same data
   // previously called thirdQualifyHistograms/thirdCounts, generalized.)
   const outcomeHistograms = buildOutcomeHistograms(allTeams);
+  const r32OpponentHistograms = buildR32OpponentHistograms(allTeams);
 
   console.log(`Running ${N_SIMULATIONS} simulations...`);
   const startTime = Date.now();
@@ -107,11 +109,8 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
       r32Names.add(m.away.name);
     }
 
-    // Outcome scenario tracking: for every team in every group, record this
-    // sim's (points,gd) under the appropriate bucket. 1st/2nd/4th come
-    // straight from standings position; 3rd is split into qualified/
-    // eliminated based on r32 membership (the only way a 3rd-placed team
-    // reaches r32 is via the third-place route).
+    // Outcome scenario tracking: (points, gd, gf) histogram per team per bucket.
+    // GF added to support full FIFA tiebreak and thirds-table display.
     for (const standings of Object.values(result.groupStandings)) {
       for (let pos = 0; pos < 4; pos++) {
         const team = standings[pos];
@@ -122,9 +121,17 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
         else bucket = r32Names.has(team.name) ? '3rd_qualified' : '3rd_eliminated';
 
         const hist = outcomeHistograms.get(team.name).get(bucket);
-        const key = `${team.points},${team.gd}`;
+        const key = `${team.points},${team.gd},${team.gf}`;
         hist.set(key, (hist.get(key) || 0) + 1);
       }
+    }
+
+    // R32 opponent tracking: for every team that reaches R32, record opponent.
+    for (const m of result.r32) {
+      const homeHist = r32OpponentHistograms.get(m.home.name);
+      const awayHist = r32OpponentHistograms.get(m.away.name);
+      if (homeHist) homeHist.set(m.away.name, (homeHist.get(m.away.name) || 0) + 1);
+      if (awayHist) awayHist.set(m.home.name, (awayHist.get(m.home.name) || 0) + 1);
     }
 
     // R16 participants = the 16 winners of the R32 matches (i.e. the home/away
@@ -185,6 +192,7 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions.json');
       pooledScenarios: buildPooledScenarios(name, outcomeHistograms, N_SIMULATIONS),
       currentStanding: currentStanding.get(name),
       pointsNodes: buildPointsNodes(name, outcomeHistograms, N_SIMULATIONS),
+      r32Opponents: buildR32Opponents(name, r32OpponentHistograms, nameToCode, N_SIMULATIONS),
     };
   });
 

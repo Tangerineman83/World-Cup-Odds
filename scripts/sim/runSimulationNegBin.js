@@ -47,6 +47,7 @@ const { FIFA_RANK } = require('../fifaRankings');
 const { mulberry32, buildNameToCode,
   OUTCOME_BUCKETS, buildOutcomeHistograms, buildOutcomeScenarios,
   buildPooledScenarios, buildPointsNodes, buildThirdScenarios,
+  buildR32OpponentHistograms, buildR32Opponents,
 } = require('./shared');
 
 // FOUND WHILE WIRING UP THE FRONTEND TOGGLE: predictions.json (existing
@@ -59,7 +60,7 @@ const { mulberry32, buildNameToCode,
 // predictions.json's team records.
 const NAME_TO_CODE = buildNameToCode();
 
-const N_SIMULATIONS = parseInt(process.argv[2], 10) || 20000;
+const N_SIMULATIONS = parseInt(process.argv[2], 10) || 100000;
 const CURRENT_SPLIT_PATH = path.join(__dirname, '..', '..', 'elo_current_split.json');
 const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions_negbin.json');
 
@@ -74,7 +75,7 @@ const OUTPUT_PATH = path.join(__dirname, '..', '..', 'predictions_negbin.json');
 // main(N_SIMULATIONS_FROM_ARGV) exactly as the IIFE used to run
 // automatically.
 async function main(numSimulations) {
-  const N_SIMULATIONS = numSimulations || 20000;
+  const N_SIMULATIONS = numSimulations || 100000;
 
   if (!fs.existsSync(CURRENT_SPLIT_PATH)) {
     console.error('ERROR: elo_current_split.json not found. Run scripts/sim/updateEloSplit.js (Phase 2) first.');
@@ -136,6 +137,7 @@ async function main(numSimulations) {
   }
 
   const outcomeHistograms = buildOutcomeHistograms(allTeams);
+  const r32OpponentHistograms = buildR32OpponentHistograms(allTeams);
 
   console.log(`Running ${N_SIMULATIONS} simulations...`);
   const startTime = Date.now();
@@ -154,10 +156,10 @@ async function main(numSimulations) {
       stageCounts.get(m.away.name).r32++;
     }
 
-    // Outcome scenario tracking (same logic as runSimulation.js) - build
-    // the (points,gd) histograms per team per bucket, used to generate the
-    // Sankey flow diagram data. r32Names tells us which 3rd-placed teams
-    // qualified, since that's the only way a 3rd-placed team reaches r32.
+    // Outcome scenario tracking: (points, gd, gf) histogram per team per bucket.
+    // GF added to support the full FIFA tiebreak order and thirds-table display.
+    // r32Names identifies which 3rd-placed teams qualified (the only way a
+    // third-placed team reaches r32).
     const r32Names = new Set(result.r32.flatMap((m) => [m.home.name, m.away.name]));
     for (const standings of Object.values(result.groupStandings)) {
       for (let pos = 0; pos < 4; pos++) {
@@ -168,9 +170,19 @@ async function main(numSimulations) {
         else if (pos === 3) bucket = '4th';
         else bucket = r32Names.has(team.name) ? '3rd_qualified' : '3rd_eliminated';
         const hist = outcomeHistograms.get(team.name).get(bucket);
-        const key = `${team.points},${team.gd}`;
+        const key = `${team.points},${team.gd},${team.gf}`;
         hist.set(key, (hist.get(key) || 0) + 1);
       }
+    }
+
+    // R32 opponent tracking: for every team that reaches R32, record their
+    // opponent's name. This gives the full distribution of R32 opponents
+    // across all simulations - not just the modal scenario.
+    for (const m of result.r32) {
+      const homeHist = r32OpponentHistograms.get(m.home.name);
+      const awayHist = r32OpponentHistograms.get(m.away.name);
+      if (homeHist) homeHist.set(m.away.name, (homeHist.get(m.away.name) || 0) + 1);
+      if (awayHist) awayHist.set(m.home.name, (awayHist.get(m.home.name) || 0) + 1);
     }
 
     for (const m of result.r16) {
@@ -227,6 +239,7 @@ async function main(numSimulations) {
       pooledScenarios: buildPooledScenarios(name, outcomeHistograms, N_SIMULATIONS),
       currentStanding: currentStanding.get(name),
       pointsNodes: buildPointsNodes(name, outcomeHistograms, N_SIMULATIONS),
+      r32Opponents: buildR32Opponents(name, r32OpponentHistograms, NAME_TO_CODE, N_SIMULATIONS),
     };
   });
 
