@@ -152,11 +152,12 @@
   // by tracing forward/backward through the ribbon graph), not just the
   // column next to it.
   function renderFlow(svgEl, team, state, onSelect) {
-    const W = 980, H = 520;
+    const W = 1180, H = 520;
     const topMargin = 32, bottomMargin = 16;
     const usableH = H - topMargin - bottomMargin;
     const nodeWidth = 10;
-    const colX = [200, 380, 560, 800]; // current | points | points+gd | outcome
+    // 5 columns: current | points | points+gd | outcome | R32 opponent
+    const colX = [200, 370, 540, 740, 980];
 
     // ---- Column 1: current standing (single fixed node, pct = 1) ----
     const cur = team.currentStanding || { points: 0, gd: 0, played: 0 };
@@ -173,11 +174,6 @@
     }));
 
     // ---- Column 3: final points + GD (pooledScenarios) ----
-    // Every distinct combo gets its own node now - there's no "Other"
-    // catch-all. showLabel (from the data layer, true above 0.5%) controls
-    // whether the node's text label is drawn; the node and its ribbons are
-    // always drawn regardless, so thin slivers are still visible/hoverable,
-    // just without a label cluttering the column.
     const pooled = team.pooledScenarios || [];
     const col3 = pooled.map((e) => {
       const key = `ptsgd:${e.points},${e.gd}`;
@@ -188,27 +184,42 @@
     // ---- Column 4: outcome buckets ----
     const col4 = OUTCOME_BUCKETS.map((b) => ({ ...b, key: b.key, pct: bucketTotal(team, b.key) }));
 
-    const columns = [col1, col2, col3, col4];
+    // ---- Column 5: R32 opponents (only qualifying flows continue here) ----
+    // pct values here are unconditional (fraction of ALL sims), matching
+    // the convention used throughout columns 1-4. Non-qualifying flows
+    // (thirdEliminated, fourth) stop at col4 - their ribbons simply don't
+    // connect to col5.
+    const r32OpponentsRaw = team.r32Opponents || [];
+    const R32_OPP_THRESHOLD = 0.005; // hide opponents below 0.5%
+    const shownOpps = r32OpponentsRaw.filter((o) => o.pct >= R32_OPP_THRESHOLD);
+    const otherOppPct = r32OpponentsRaw.filter((o) => o.pct < R32_OPP_THRESHOLD)
+      .reduce((s, o) => s + o.pct, 0);
+    const col5 = [
+      ...shownOpps.map((o) => ({
+        key: `r32opp:${o.opponent}`,
+        label: o.opponent,
+        shortLabel: o.opponent,
+        color: '#818cf8',  // indigo - visually distinct from outcome bucket colours
+        pct: o.pct,
+        showLabel: true,
+        code: o.code,
+      })),
+      ...(otherOppPct > 0.002 ? [{ key: 'r32opp:other', label: 'Other', shortLabel: 'Other', color: '#475569', pct: otherOppPct, showLabel: true }] : []),
+    ];
+
+    // Which col4 buckets feed into col5 (the qualifying ones only).
+    const QUALIFYING_BUCKETS = new Set(['first', 'second', 'thirdQualified']);
+
+    const columns = [col1, col2, col3, col4, col5];
 
     function layout(nodes, gap) {
       const total = nodes.reduce((sum, n) => sum + n.pct, 0) || 1;
       const totalGap = gap * Math.max(nodes.length - 1, 0);
       const available = Math.max(usableH - totalGap, 0);
-
-      // Two-pass sizing: first give every node its proportional height,
-      // floored at MIN_NODE_H so thin nodes are still visible/clickable.
-      // With many nodes (some teams have 90+ distinct points/GD combos),
-      // that floor can push the SUM of heights past `available` - so the
-      // second pass proportionally shrinks every node by the same factor
-      // to bring the total back to exactly `available`. This keeps thin
-      // nodes visible without ever pushing the column's total height past
-      // the chart's own viewBox (which was clipping the bottom rows for
-      // high-entropy teams before this fix).
       const MIN_NODE_H = 1.5;
       const rawHeights = nodes.map((n) => n.pct > 0 ? Math.max((n.pct / total) * available, MIN_NODE_H) : 0);
       const rawTotal = rawHeights.reduce((sum, h) => sum + h, 0) || 1;
       const scale = rawTotal > available ? available / rawTotal : 1;
-
       let y = topMargin;
       return nodes.map((n, i) => {
         const h = rawHeights[i] * scale;
@@ -222,37 +233,29 @@
     const laidOut = columns.map((nodes, i) => layout(nodes, gaps[i]));
     const byKey = laidOut.map((nodes) => new Map(nodes.map((n) => [n.key, n])));
 
-    // ---- Ribbons: col1->col2, col2->col3, col3->col4 ----
-    // Each ribbon set uses the same "outer loop = source node, inner loop =
-    // matching target nodes in display order" stacking approach so ribbons
-    // never cross within a single node's stack.
-    const ribbonSets = []; // one array per adjacent column pair
+    // ---- Ribbons ----
+    const ribbonSets = [];
 
-    // col1 -> col2: the single current-standing node feeds every points
-    // node, sized by that points node's own probability (since col1 is
-    // 100% by definition, the split mirrors col2's own distribution).
+    // col1 -> col2
     {
-      const target = byKey[1];
       const sourceNode = laidOut[0][0];
       let sourceCursor = sourceNode.y0;
       const targetCursors = new Map(laidOut[1].map((n) => [n.key, n.y0]));
       const ribbons = [];
       for (const t of laidOut[1]) {
-        const p = t.pct;
-        if (!p) continue;
+        if (!t.pct) continue;
         const sy0 = sourceCursor;
-        const sy1 = sourceCursor + (sourceNode.y1 - sourceNode.y0) * p;
+        const sy1 = sourceCursor + (sourceNode.y1 - sourceNode.y0) * t.pct;
         sourceCursor = sy1;
         const ty0 = targetCursors.get(t.key);
-        const ty1 = ty0 + (t.y1 - t.y0); // whole node (1:1 - only one source)
+        const ty1 = ty0 + (t.y1 - t.y0);
         targetCursors.set(t.key, ty1);
-        ribbons.push({ fromKey: sourceNode.key, toKey: t.key, pct: p, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1 });
+        ribbons.push({ fromKey: sourceNode.key, toKey: t.key, pct: t.pct, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1 });
       }
       ribbonSets.push(ribbons);
     }
 
-    // col2 -> col3: each points node fans out into its GD breakdown
-    // (byGd), matched to col3 nodes by points+gd key.
+    // col2 -> col3
     {
       const sourceCursors = new Map(laidOut[1].map((n) => [n.key, n.y0]));
       const targetCursors = new Map(laidOut[2].map((n) => [n.key, n.y0]));
@@ -261,31 +264,22 @@
         const gdEntries = Object.entries(s.byGd || {}).sort((a, b) => Number(b[0]) - Number(a[0]));
         for (const [gdStr, p] of gdEntries) {
           if (!p) continue;
-          const gd = Number(gdStr);
-          const pointsVal = Number(s.key.split(':')[1]);
-          // Find which col3 node this (points,gd) combo belongs to. Every
-          // combo now has its own node (no "Other" folding), so this
-          // should always resolve.
-          const targetKey = `ptsgd:${pointsVal},${gd}`;
+          const targetKey = `ptsgd:${Number(s.key.split(':')[1])},${Number(gdStr)}`;
           const t = byKey[2].get(targetKey);
           if (!t) continue;
-
           const sy0 = sourceCursors.get(s.key);
           const sy1 = sy0 + (s.y1 - s.y0) * (p / s.pct);
           sourceCursors.set(s.key, sy1);
-
           const ty0 = targetCursors.get(t.key);
           const ty1 = ty0 + (t.y1 - t.y0) * (p / t.pct);
           targetCursors.set(t.key, ty1);
-
           ribbons.push({ fromKey: s.key, toKey: t.key, pct: p, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1 });
         }
       }
       ribbonSets.push(ribbons);
     }
 
-    // col3 -> col4: each points+gd node fans out into outcome buckets
-    // (byBucket) - same logic as the old 2-column version.
+    // col3 -> col4
     {
       const sourceCursors = new Map(laidOut[2].map((n) => [n.key, n.y0]));
       const targetCursors = new Map(laidOut[3].map((n) => [n.key, n.y0]));
@@ -296,48 +290,69 @@
           if (!p) continue;
           const t = byKey[3].get(bucket.key);
           if (!t) continue;
-
           const sy0 = sourceCursors.get(s.key);
           const sy1 = sy0 + (s.y1 - s.y0) * (p / s.pct);
           sourceCursors.set(s.key, sy1);
-
           const ty0 = targetCursors.get(t.key);
           const ty1 = ty0 + (t.y1 - t.y0) * (p / t.pct);
           targetCursors.set(t.key, ty1);
-
           ribbons.push({ fromKey: s.key, toKey: bucket.key, pct: p, y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1, bucketColor: bucket.color });
         }
       }
       ribbonSets.push(ribbons);
     }
 
-    // ---- Selection / highlight logic ----
-    // selKey identifies a node by its OWN key, unique only within its
-    // column - so we also track which column index it's in.
-    const selCol = state && state.selectedCol;
-    const selKey = state && state.selectedKey;
+    // col4 -> col5: only qualifying buckets flow to R32 opponents.
+    // The r32Opponents pct values are unconditional fractions of ALL N sims,
+    // same as col4 bucket pcts. Each qualifying bucket node's height in col4
+    // maps to the R32 opponent nodes proportionally by shared pct.
+    {
+      const sourceCursors = new Map(laidOut[3].map((n) => [n.key, n.y0]));
+      const targetCursors = new Map(laidOut[4].map((n) => [n.key, n.y0]));
+      const ribbons = [];
 
-    // Build adjacency (key -> connected keys in neighbouring columns) once,
-    // so highlighting can trace outward from any selected node in any
-    // column to every other column, not just the adjacent ones.
-    function neighboursOf(colIdx, key) {
-      const result = new Set();
-      if (colIdx > 0) {
-        for (const r of ribbonSets[colIdx - 1]) if (r.toKey === key) result.add(r.fromKey);
+      // Total qualifying mass (unconditional) for normalisation
+      const totalQualifying = col4
+        .filter((b) => QUALIFYING_BUCKETS.has(b.key))
+        .reduce((s, b) => s + b.pct, 0);
+
+      if (totalQualifying > 0 && col5.length > 0) {
+        for (const s of laidOut[3]) {
+          if (!QUALIFYING_BUCKETS.has(s.key) || s.pct <= 0) continue;
+          // This bucket's share of the total qualifying mass
+          const bucketShare = s.pct / totalQualifying;
+
+          for (const opp of laidOut[4]) {
+            if (opp.pct <= 0) continue;
+            // Unconditional probability that this team qualifies via THIS bucket
+            // AND faces this opponent = opp.pct * bucketShare
+            // (independence assumption: opponent distribution is the same
+            // regardless of whether Scotland came 1st/2nd/3rd-qualified)
+            const p = opp.pct * bucketShare;
+            if (p < 0.0005) continue;
+
+            const sy0 = sourceCursors.get(s.key);
+            const sy1 = sy0 + (s.y1 - s.y0) * (opp.pct / totalQualifying);
+            sourceCursors.set(s.key, sy1);
+
+            const ty0 = targetCursors.get(opp.key);
+            const ty1 = ty0 + (opp.y1 - opp.y0) * bucketShare;
+            targetCursors.set(opp.key, ty1);
+
+            ribbons.push({ fromKey: s.key, toKey: opp.key, pct: p,
+              y0a: sy0, y1a: sy1, y0b: ty0, y1b: ty1, bucketColor: s.color });
+          }
+        }
       }
-      if (colIdx < columns.length - 1) {
-        for (const r of ribbonSets[colIdx] || []) if (r.fromKey === key) result.add(r.toKey);
-      }
-      return result;
+      ribbonSets.push(ribbons);
     }
 
-    // highlightSet[colIdx] = Set of keys in that column connected to the
-    // selection, found by breadth-first expansion outward in both
-    // directions from the selected node.
+    // ---- Selection / highlight logic ----
+    const selCol = state && state.selectedCol;
+    const selKey = state && state.selectedKey;
     const highlightSets = columns.map(() => new Set());
     if (selKey != null && selCol != null) {
       highlightSets[selCol].add(selKey);
-      // Expand left from selCol
       let frontier = new Set([selKey]);
       for (let c = selCol; c > 0; c--) {
         const prev = new Set();
@@ -345,61 +360,58 @@
         for (const k of prev) highlightSets[c - 1].add(k);
         frontier = prev;
       }
-      // Expand right from selCol
       frontier = new Set([selKey]);
       for (let c = selCol; c < columns.length - 1; c++) {
         const next = new Set();
-        for (const k of frontier) for (const r of ribbonSets[c]) if (r.fromKey === k) next.add(r.toKey);
+        for (const k of frontier) for (const r of (ribbonSets[c] || [])) if (r.fromKey === k) next.add(r.toKey);
         for (const k of next) highlightSets[c + 1].add(k);
         frontier = next;
       }
     }
 
-
     let svg = '';
 
-    // Gradient defs: col3->col4 ribbons use a slate->bucket-colour
-    // gradient (as before); col1->col2 and col2->col3 ribbons use a flat
-    // slate fill (both ends are pts/gd nodes, so a gradient would be a
-    // no-op anyway).
-    const gradientDefs = OUTCOME_BUCKETS.map((b) =>
-      `<linearGradient id="flow-grad-${b.key}" x1="0" y1="0" x2="1" y2="0">
+    // Gradient defs: col3->col4 uses bucket colour gradients; col4->col5
+    // uses indigo gradient to signal R32 advancement.
+    const gradientDefs = [
+      ...OUTCOME_BUCKETS.map((b) =>
+        `<linearGradient id="flow-grad-${b.key}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${PTS_NODE_COLOR}"/>
+          <stop offset="100%" stop-color="${b.color}"/>
+        </linearGradient>`
+      ),
+      `<linearGradient id="flow-grad-r32" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stop-color="${PTS_NODE_COLOR}"/>
-        <stop offset="100%" stop-color="${b.color}"/>
-      </linearGradient>`
-    ).join('');
+        <stop offset="100%" stop-color="#818cf8"/>
+      </linearGradient>`,
+    ].join('');
     svg += `<defs>${gradientDefs}</defs>`;
 
     function ribbonPath(x0, x1, r) {
       const midX = (x0 + x1) / 2;
-      return `M ${x0} ${r.y0a}
-        C ${midX} ${r.y0a}, ${midX} ${r.y0b}, ${x1} ${r.y0b}
-        L ${x1} ${r.y1b}
-        C ${midX} ${r.y1b}, ${midX} ${r.y1a}, ${x0} ${r.y1a} Z`;
+      return `M ${x0} ${r.y0a} C ${midX} ${r.y0a}, ${midX} ${r.y0b}, ${x1} ${r.y0b}
+        L ${x1} ${r.y1b} C ${midX} ${r.y1b}, ${midX} ${r.y1a}, ${x0} ${r.y1a} Z`;
     }
 
-    // Draw ribbons (3 sets), nodes, and labels for each column.
     for (let c = 0; c < columns.length; c++) {
       if (c < columns.length - 1) {
         const x0 = colX[c], x1 = colX[c + 1];
-        const setIdx = c;
-        for (const r of ribbonSets[setIdx]) {
+        for (const r of (ribbonSets[c] || [])) {
           let opacity = 0.42;
           if (selKey != null) {
             const connected = highlightSets[c].has(r.fromKey) && highlightSets[c + 1].has(r.toKey);
             opacity = connected ? 0.85 : 0.06;
           }
-          const fill = (c === columns.length - 2) ? `url(#flow-grad-${r.toKey})` : PTS_NODE_COLOR;
+          // col3->col4: bucket colour gradient; col4->col5: r32 gradient; others: flat
+          let fill;
+          if (c === 2) fill = `url(#flow-grad-${r.toKey})`;
+          else if (c === 3) fill = `url(#flow-grad-r32)`;
+          else fill = PTS_NODE_COLOR;
           svg += `<path d="${ribbonPath(x0, x1, r)}" fill="${fill}" opacity="${opacity}" class="flow-ribbon" data-col="${c}" data-key="${r.fromKey}"><title>${fmtPct(r.pct)}</title></path>`;
         }
       }
     }
 
-    // Minimum vertical gap (px) between two consecutive shown labels in the
-    // same column, to stop adjacent thin rows' text visually overlapping
-    // even when both individually clear the showLabel/0.5% threshold. Only
-    // matters for dense columns (col 3 on high-entropy teams); columns 1/2/4
-    // never have enough rows to trigger this.
     const MIN_LABEL_GAP = 13;
     let lastLabelY = columns.map(() => -Infinity);
 
@@ -410,28 +422,21 @@
         const isSelected = selCol === c && selKey === n.key;
         const dimmed = selKey != null && !highlightSets[c].has(n.key);
         const midY = (n.y0 + n.y1) / 2;
-
-        // Decide label visibility BEFORE drawing the node, so nodes with no
-        // label (too thin to read, or skipped to avoid colliding with the
-        // previous label) can be rendered at reduced opacity - they're
-        // still real, hoverable/clickable, full-colour-on-select data, just
-        // visually de-emphasised since there's no text to anchor them to.
         const labelWouldCollide = midY - lastLabelY[c] < MIN_LABEL_GAP;
         const showsLabel = n.showLabel !== false && !labelWouldCollide;
-
         let opacity = 1;
         if (dimmed) opacity = 0.25;
         else if (!showsLabel) opacity = 0.55;
         svg += `<rect x="${x - nodeWidth / 2}" y="${n.y0}" width="${nodeWidth}" height="${n.y1 - n.y0}" fill="${n.color}" rx="2" opacity="${opacity}" class="flow-node${isSelected ? ' flow-node-selected' : ''}" data-col="${c}" data-key="${n.key}"><title>${n.label} - ${fmtPct(n.pct)}</title></rect>`;
-
         if (!showsLabel) continue;
         lastLabelY[c] = midY;
-        const anchor = c === 0 ? 'end' : (c === columns.length - 1 ? 'start' : (c % 2 === 1 ? 'end' : 'start'));
+        const isLast = c === columns.length - 1;
+        const anchor = c === 0 ? 'end' : (isLast ? 'start' : (c % 2 === 1 ? 'end' : 'start'));
         const labelX = c === 0 ? x - nodeWidth / 2 - 8
-          : c === columns.length - 1 ? x + nodeWidth / 2 + 8
+          : isLast ? x + nodeWidth / 2 + 8
           : (c === 1 ? x - nodeWidth / 2 - 8 : x + nodeWidth / 2 + 8);
         const pctSpan = `<tspan class="flow-target-pct">${fmtPct(n.pct)}</tspan>`;
-        const displayLabel = c === columns.length - 1 ? (n.shortLabel || n.label) : n.label;
+        const displayLabel = (c === columns.length - 1) ? (n.shortLabel || n.label) : n.label;
         const text = c === 0 ? displayLabel
           : (c === 1 ? `${pctSpan} ${displayLabel}` : `${displayLabel} ${pctSpan}`);
         svg += `<text x="${labelX}" y="${midY + 4}" text-anchor="${anchor}" class="flow-target-label${dimmed ? ' flow-label-dimmed' : ''}" data-col="${c}" data-key="${n.key}">${text}</text>`;
@@ -439,7 +444,7 @@
     }
 
     // Column headers
-    const headers = [team.name, 'Final points', 'Points / GD', 'Group finish'];
+    const headers = [team.name, 'Final points', 'Points / GD', 'Group finish', 'R32 opponent'];
     for (let c = 0; c < columns.length; c++) {
       svg += `<text x="${colX[c]}" y="${topMargin - 14}" text-anchor="middle" class="flow-source-label">${c === 0 ? team.name : ''}</text>`;
       svg += `<text x="${colX[c]}" y="${topMargin - 1}" text-anchor="middle" class="flow-source-sublabel">${headers[c]}</text>`;
@@ -452,13 +457,11 @@
       el.addEventListener('click', () => {
         const col = Number(el.dataset.col);
         const key = el.dataset.key;
-        if (selCol === col && selKey === key) {
-          onSelect(null, null);
-        } else {
-          onSelect(col, key);
-        }
+        if (selCol === col && selKey === key) onSelect(null, null);
+        else onSelect(col, key);
       });
     });
   }
+
   window.ScenarioFlow = { fmtPct, flagImgHtml, OUTCOME_BUCKETS, sumPct, bucketTotal, renderGauge, renderFlow };
 })();

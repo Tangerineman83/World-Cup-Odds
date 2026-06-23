@@ -207,11 +207,17 @@
         ? `${Math.round(team.pFinish3rd * 100)}% chance of finishing 3rd in Group ${team.group}; of those cases, ${Math.round(team.pQualifyGiven3rd * 100)}% are also a top-8 third overall`
         : '';
 
+      // Modal pts/gd/gf from thirdPlaceScenarios (most likely qualifying record)
+      const modalThird = (team.thirdPlaceScenarios || []).find((e) => e.points != null);
+      const modalStr = modalThird
+        ? `Most likely qualifying record: ${modalThird.points}pts, GD${modalThird.gd >= 0 ? '+' : ''}${modalThird.gd}, GF${modalThird.gf != null ? modalThird.gf : '?'} (${Math.round(modalThird.pct * 100)}% of 3rd-place sims)`
+        : '';
+
       rows += `<tr data-team="${team.name}" class="${team.qualifies ? 'third-qualifies' : 'third-eliminated'}">
         <td class="col-team">${teamButton(team)}</td>
         <td class="col-num">${team.group}</td>
         <td class="col-num third-chance" title="${chanceTitle}">${chanceCell}</td>
-        <td class="col-thirdpct">${lastCol}</td>
+        <td class="col-thirdpct" title="${modalStr}">${lastCol}</td>
       </tr>`;
 
       // Divider after the 8th team: 8 of 12 thirds advance to the Last 32.
