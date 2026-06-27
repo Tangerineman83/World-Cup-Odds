@@ -16,7 +16,7 @@
 //                            -> scenario_negbin.json, single modal scenario)
 //
 // Usage: node scripts/sim/runFullNegBinPipeline.js [numSimulations]
-//   numSimulations defaults to 20000, same as runSimulationNegBin.js's own
+//   numSimulations defaults to 100000, same as runSimulationNegBin.js's own
 //   default, and is passed through to step 3 only (the others don't take a
 //   simulation count).
 //
@@ -58,7 +58,7 @@
 const path = require('path');
 
 async function main() {
-  const numSimulations = parseInt(process.argv[2], 10) || 20000;
+  const numSimulations = parseInt(process.argv[2], 10) || 100000;
   const startTime = Date.now();
 
   console.log('='.repeat(70));
