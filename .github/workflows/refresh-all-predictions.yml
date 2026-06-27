@@ -45,7 +45,7 @@ jobs:
       # ---- Original engine (Poisson + single-Elo) -------------------------
 
       - name: '[Original] Run simulation (full probability table)'
-        run: node scripts/sim/runSimulation.js 20000
+        run: node scripts/sim/runSimulation.js
 
       - name: '[Original] Sanity-check simulation output'
         run: |
@@ -72,7 +72,7 @@ jobs:
       # ---- NegBin engine (dual-Elo Negative Binomial) ---------------------
 
       - name: '[NegBin] Run full pipeline (ratings → calibration → simulation → scenario)'
-        run: node scripts/sim/runFullNegBinPipeline.js 20000
+        run: node scripts/sim/runFullNegBinPipeline.js
 
       - name: '[NegBin] Sanity-check output'
         run: |
