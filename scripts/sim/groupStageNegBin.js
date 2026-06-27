@@ -270,6 +270,15 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
         }
         const resultForA = scoreA > scoreB ? 'home' : scoreA < scoreB ? 'away' : 'draw';
         applyResult(stats[home.name], stats[away.name], scoreA, scoreB, resultForA);
+        // Burn a fixed number of rand() calls to keep the PRNG state varying
+        // across simulations even when most/all group matches are already known.
+        // Without this, late-tournament sims where only a few groups have unplayed
+        // matches always enter those groups at PRNG position 0 (the very first
+        // call from the seed), causing degenerate collisions where the same
+        // scoreline is produced every time regardless of seed.
+        // 8 = typical rand() consumption for one NegBin match
+        // (2 Box-Muller + 1 rejection + Poisson x2 per team, averaged).
+        for (let _b = 0; _b < 8; _b++) rand();
         continue;
       }
 

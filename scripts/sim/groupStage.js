@@ -125,6 +125,9 @@ function simulateGroup(teams, hostTeam, rand, options = {}) {
         const resultForA = scoreA > scoreB ? 'home' : scoreA < scoreB ? 'away' : 'draw';
         applyResult(stats[home.name], stats[away.name], scoreA, scoreB, resultForA);
         recordH2H(home.name, away.name, scoreA, scoreB, resultForA);
+        // Burn rand() calls to keep PRNG state varying across sims even when
+        // most matches are already known — same fix as groupStageNegBin.js.
+        for (let _b = 0; _b < 8; _b++) rand();
         continue;
       }
 
