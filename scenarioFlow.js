@@ -782,9 +782,7 @@
     function rib(x0,y0t,y0b, x1,y1t,y1b, fill, op=0.45) {
       if (y0b-y0t<0.4 || y1b-y1t<0.4) return '';
       const mx=(x0+x1)/2;
-      return `<path d="M${x0},${y0t} C${mx},${y0t} ${mx},${y1t} ${x1},${y1t}
-        L${x1},${y1b} C${mx},${y1b} ${mx},${y0b} ${x0},${y0b}Z"
-        fill="${fill}" opacity="${op}"/>`;
+      return `<path d="M${x0},${y0t} C${mx},${y0t} ${mx},${y1t} ${x1},${y1t} L${x1},${y1b} C${mx},${y1b} ${mx},${y0b} ${x0},${y0b}Z" fill="${fill}" opacity="${op}"/>`;
     }
 
     function bar(cx,y0,h,col,op=0.92) {
