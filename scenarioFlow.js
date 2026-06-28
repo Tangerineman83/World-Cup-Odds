@@ -463,5 +463,173 @@
     });
   }
 
-  window.ScenarioFlow = { fmtPct, flagImgHtml, OUTCOME_BUCKETS, sumPct, bucketTotal, renderGauge, renderFlow };
+  // ── Knockout stage flow diagram ─────────────────────────────────────────
+  //
+  // Renders a horizontal Sankey showing a team's pathway through the
+  // knockout rounds. Each column is a round (R32 → R16 → QF → SF → Final →
+  // Winner). Node height = probability of reaching that round. The ribbon
+  // from round N to round N+1 represents the probability of winning that
+  // round and advancing. A "eliminated" node at each round absorbs the
+  // probability mass that doesn't advance.
+  //
+  // Uses per-team probabilities from predictions_negbin.json plus the modal
+  // opponent path from scenario_negbin.json.
+
+  const KO_ROUND_COLORS = {
+    r32:    '#818cf8',   // indigo
+    r16:    '#60a5fa',   // blue
+    qf:     '#34d399',   // emerald
+    sf:     '#fbbf24',   // amber
+    final:  '#f97316',   // orange
+    winner: '#4ade80',   // green
+    out:    '#475569',   // slate (eliminated)
+  };
+
+  function renderKnockoutFlow(svgEl, team, scenarioData, onSelect) {
+    // team: predictions_negbin.json team entry (has pRoundOf32..pChampion)
+    // scenarioData: scenario_negbin.json (for modal opponent labels)
+    if (!team) return;
+
+    const W = 900, H = 360;
+    const topM = 40, botM = 20, leftM = 60, rightM = 80;
+    const usableW = W - leftM - rightM;
+    const usableH = H - topM - botM;
+
+    // Rounds: each has a probability of reaching it
+    const rounds = [
+      { key: 'r32',    label: 'Last 32', p: team.pRoundOf32    || 0 },
+      { key: 'r16',    label: 'Last 16', p: team.pRoundOf16    || 0 },
+      { key: 'qf',     label: 'QF',      p: team.pQuarterFinal || 0 },
+      { key: 'sf',     label: 'SF',      p: team.pSemiFinal    || 0 },
+      { key: 'final',  label: 'Final',   p: team.pFinal        || 0 },
+      { key: 'winner', label: 'Winner',  p: team.pChampion     || 0 },
+    ].filter(r => r.p > 0);
+
+    if (rounds.length === 0) { svgEl.innerHTML = ''; return; }
+
+    const nRounds = rounds.length;
+    const colSpacing = usableW / Math.max(nRounds - 1, 1);
+    const colXs = rounds.map((_, i) => leftM + i * colSpacing);
+
+    const nodeW = 14;
+    const maxNodeH = usableH * 0.85;
+    const minNodeH = 3;
+
+    // Node heights proportional to probability (capped so p=1 fills maxNodeH)
+    function nodeH(p) { return Math.max(minNodeH, p * maxNodeH); }
+
+    // Each round node is centred vertically; eliminated flows drop below
+    const nodeMidY = topM + usableH * 0.38;
+
+    // Build modal opponents from scenarioData
+    function modalOpponent(roundKey) {
+      if (!scenarioData) return null;
+      const name = team.name;
+      const searchIn = (matches) => {
+        if (!matches) return null;
+        for (const m of matches) {
+          if (m.home?.name === name || m.away?.name === name) {
+            return m.home?.name === name ? m.away?.name : m.home?.name;
+          }
+        }
+        return null;
+      };
+      if (roundKey === 'r32')    return searchIn(scenarioData.r32);
+      if (roundKey === 'r16')    return searchIn(scenarioData.r16);
+      if (roundKey === 'qf')     return searchIn(scenarioData.qf);
+      if (roundKey === 'sf')     return searchIn(scenarioData.sf);
+      if (roundKey === 'final')  return scenarioData.final ? (
+        scenarioData.final.home?.name === name
+          ? scenarioData.final.away?.name
+          : scenarioData.final.home?.name
+      ) : null;
+      return null;
+    }
+
+    let svg = '';
+
+    // Gradient defs for advance ribbons
+    const gradDefs = rounds.map((r, i) => {
+      if (i === 0) return '';
+      const c0 = KO_ROUND_COLORS[rounds[i-1].key];
+      const c1 = KO_ROUND_COLORS[r.key];
+      return `<linearGradient id="ko-grad-${i}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="${c0}" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="${c1}" stop-opacity="0.7"/>
+      </linearGradient>`;
+    }).join('');
+    svg += `<defs>${gradDefs}</defs>`;
+
+    // Draw advance ribbons first (behind nodes)
+    for (let i = 1; i < rounds.length; i++) {
+      const prev = rounds[i - 1];
+      const curr = rounds[i];
+      const x0 = colXs[i - 1] + nodeW / 2;
+      const x1 = colXs[i] - nodeW / 2;
+      const h0 = nodeH(prev.p);
+      const h1 = nodeH(curr.p);
+      const hy0 = nodeH(curr.p); // ribbon height at source = target height
+      // Advance ribbon: top portion of prev node → full curr node
+      const y0t = nodeMidY - h0 / 2;  // top of prev node
+      const y1t = nodeMidY - h1 / 2;  // top of curr node
+      const midX = (x0 + x1) / 2;
+      const path = `M ${x0} ${y0t} C ${midX} ${y0t}, ${midX} ${y1t}, ${x1} ${y1t}
+        L ${x1} ${y1t + h1} C ${midX} ${y1t + h1}, ${midX} ${y0t + hy0}, ${x0} ${y0t + hy0} Z`;
+      svg += `<path d="${path}" fill="url(#ko-grad-${i})" opacity="0.55" class="ko-ribbon">
+        <title>Advances to ${curr.label}: ${fmtPct(curr.p)}</title></path>`;
+
+      // Eliminated ribbon: remaining portion of prev node drops down
+      const elim = prev.p - curr.p;
+      if (elim > 0.001) {
+        const elimH = nodeH(elim);
+        const ey0t = y0t + hy0;
+        const ey0b = ey0t + elimH;
+        const elimMidY = ey0t + elimH / 2;
+        const elimDropY = nodeMidY + usableH * 0.35;
+        const elimPath = `M ${x0} ${ey0t} C ${midX} ${ey0t}, ${x0 + 30} ${elimDropY}, ${x0 + 30} ${elimDropY}
+          L ${x0 + 30} ${elimDropY + 4} C ${x0 + 30} ${elimDropY + 4}, ${midX} ${ey0b}, ${x0} ${ey0b} Z`;
+        svg += `<path d="${elimPath}" fill="${KO_ROUND_COLORS.out}" opacity="0.25" class="ko-ribbon-out">
+          <title>Eliminated at ${prev.label}: ${fmtPct(elim)}</title></path>`;
+      }
+    }
+
+    // Draw round nodes
+    for (let i = 0; i < rounds.length; i++) {
+      const r = rounds[i];
+      const cx = colXs[i];
+      const h = nodeH(r.p);
+      const y0 = nodeMidY - h / 2;
+      const color = KO_ROUND_COLORS[r.key];
+
+      svg += `<rect x="${cx - nodeW/2}" y="${y0}" width="${nodeW}" height="${h}"
+        fill="${color}" rx="3" class="ko-node" data-round="${r.key}">
+        <title>${r.label}: ${fmtPct(r.p)}</title></rect>`;
+
+      // Round label above
+      svg += `<text x="${cx}" y="${topM - 6}" text-anchor="middle"
+        class="ko-round-label">${r.label}</text>`;
+
+      // Probability label below node
+      svg += `<text x="${cx}" y="${y0 + h + 14}" text-anchor="middle"
+        class="ko-prob-label">${fmtPct(r.p)}</text>`;
+
+      // Modal opponent label (vs X)
+      if (r.key !== 'winner') {
+        const opp = modalOpponent(r.key);
+        if (opp) {
+          svg += `<text x="${cx}" y="${y0 + h + 26}" text-anchor="middle"
+            class="ko-opp-label">vs ${opp}</text>`;
+        }
+      }
+    }
+
+    // Team name header
+    svg += `<text x="${leftM}" y="${topM - 22}" text-anchor="start"
+      class="flow-source-label" style="font-size:11px">${team.name}</text>`;
+
+    svgEl.innerHTML = svg;
+    svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  }
+
+  window.ScenarioFlow = { fmtPct, flagImgHtml, OUTCOME_BUCKETS, sumPct, bucketTotal, renderGauge, renderFlow, renderKnockoutFlow };
 })();

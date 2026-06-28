@@ -1,10 +1,11 @@
 (function () {
-  const groupsGrid = document.getElementById('groups-grid');
-  const thirdsTableBody = document.getElementById('thirds-table-body');
+  const groupResultsGrid = document.getElementById('group-results-grid');
+  const r32ResultsGrid = document.getElementById('r32-results-grid');
   const bracket = document.getElementById('bracket');
   const bracketWrap = document.getElementById('bracket-wrap');
   const svg = document.getElementById('bracket-lines');
   const metaUpdated = document.getElementById('meta-updated');
+  const metaResults = document.getElementById('meta-results');
   const clearBtn = document.getElementById('clear-selection');
   const scrollHint = document.getElementById('scroll-hint');
   const scenarioModalBackdrop = document.getElementById('scenario-modal-backdrop');
@@ -12,288 +13,152 @@
   const scenarioModalClose = document.getElementById('scenario-modal-close');
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
-  const toggleActualBtn = document.getElementById('toggle-actual');
-  const toggleProjectedBtn = document.getElementById('toggle-projected');
-  const toggleOffFenceBtn = document.getElementById('toggle-off-fence');
-  const toggleNextMatchBtn = document.getElementById('toggle-next-match');
-  const groupsToggleHint = document.getElementById('groups-toggle-hint');
-  const thirdsTableWrap = document.getElementById('thirds-table-wrap');
-  const thirdsTableHead = document.getElementById('thirds-table-head');
-  const thirdsIntro = document.getElementById('thirds-intro');
-  const thirdsDisclaimer = document.getElementById('thirds-disclaimer');
-  const metaResults = document.getElementById('meta-results');
   const scenarioModalTitle = document.getElementById('scenario-modal-title');
-  const modelToggleNegbinBtn = document.getElementById('model-toggle-negbin');
-  const modelToggleExistingBtn = document.getElementById('model-toggle-existing');
-  let groupsViewMode = 'projected'; // 'projected' | 'actual' | 'off-the-fence' | 'next-match'
+
+  let data = null;           // scenario_negbin.json
+  let predictionsByName = null;  // predictions_negbin.json teams map
+  let allResults = [];       // results.json
+  let selectedTeam = null;
   let scenarioFlowCol = null;
   let scenarioFlowKey = null;
+  let cachedRounds = null;
+  let cachedRankByName = null;
 
-  // Model toggle: 'existing' (Poisson + single-Elo, scenario.json) or
-  // 'negbin' (dual-Elo Negative Binomial, scenario_negbin.json). Shares the
-  // SAME localStorage key as predictions.js's toggle, so the choice made on
-  // either page carries over to the other - a single site-wide model
-  // preference, not two independent ones a user could get out of sync.
-  const MODEL_STORAGE_KEY = 'worldCupOdds.model';
-  let currentModel = localStorage.getItem(MODEL_STORAGE_KEY) || 'negbin';
+  const { flagImgHtml, fmtPct, renderGauge, renderFlow, renderKnockoutFlow } = window.ScenarioFlow;
 
-  let data = null;
-  let selectedTeam = null; // team name, or null
+  // ── Utility ───────────────────────────────────────────────────────────────
 
-  const GROUP_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
-
-  // ----------------------------------------------------------------------
-  // ----------------------------------------------------------------------
-  // Group tables
-  // ----------------------------------------------------------------------
-
-  // Flag rendering delegated to window.ScenarioFlow.flagImgHtml (from
-  // scenarioFlow.js, always loaded before this file per index.html's script
-  // order) - the inline FLAG_CODE_OVERRIDES / flagUrl that used to live here
-  // were duplicates of identical logic already in scenarioFlow.js, removed
-  // during code review consolidation.
   function teamButton(team) {
     if (!team) {
-      return `<span class="team-cell team-tbd"><span class="flag-icon" style="background:var(--border)"></span>To be confirmed</span>`;
+      return `<span class="team-cell team-tbd"><span class="flag-icon" style="background:var(--border)"></span>TBC</span>`;
     }
     const safeName = team.name.replace(/"/g, '&quot;');
-    const flagHtml = window.ScenarioFlow.flagImgHtml(team.code, 24);
-    return `<button class="team-cell" data-team="${safeName}">${flagHtml}${team.name}</button>`;
+    return `<button class="team-cell" data-team="${safeName}">${flagImgHtml(team.code, 24)}${team.name}</button>`;
   }
 
-  // Shared SVG ring renderer. Both confidenceRing (group card headers) and
-  // fixtureConfRing (Next Match fixture confidence) use the same geometry —
-  // a 16-radius circle inside a 38x38 viewBox — differing only in rendered
-  // size, tier thresholds, and CSS modifier class.
-  function renderRing(pct, { size, highThreshold, midThreshold, extraClass = '', titleText = '' }) {
-    const pctLabel = Math.round(pct * 100);
-    const r = 16;
-    const circumference = 2 * Math.PI * r;
-    const offset = circumference * (1 - pct);
-    const tier = pct >= highThreshold ? 'conf-high' : pct >= midThreshold ? 'conf-mid' : 'conf-low';
-    const cls = extraClass ? `confidence-ring ${extraClass}` : 'confidence-ring';
-    return `
-      <div class="${cls}" title="${titleText}">
-        <svg width="${size}" height="${size}" viewBox="0 0 38 38">
-          <circle class="ring-track" cx="19" cy="19" r="${r}" transform="rotate(-90 19 19)"></circle>
-          <circle class="ring-progress ${tier}" cx="19" cy="19" r="${r}"
-            stroke-dasharray="${circumference.toFixed(2)}"
-            stroke-dashoffset="${offset.toFixed(2)}"
-            transform="rotate(-90 19 19)"></circle>
-          <text class="ring-label" x="19" y="19" text-anchor="middle" dominant-baseline="central">${pctLabel}%</text>
-        </svg>
-      </div>
+  const GROUP_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+  // ── Group results display ─────────────────────────────────────────────────
+
+  function renderGroupResults() {
+    if (!groupResultsGrid) return;
+    const byGroup = {};
+    for (const r of allResults) {
+      if (!r.group || r.homeGoals == null) continue;
+      if (!byGroup[r.group]) byGroup[r.group] = [];
+      byGroup[r.group].push(r);
+    }
+
+    let html = '';
+    for (const g of GROUP_ORDER) {
+      const matches = byGroup[g];
+      if (!matches || !matches.length) continue;
+      html += `<div class="group-results-block">
+        <h3 class="group-results-title">Group ${g}</h3>
+        <div class="group-results-matches">`;
+      for (const m of matches) {
+        const hTeam = data.groups[g]?.order.find(t => t.name === m.home) || { name: m.home, code: null };
+        const aTeam = data.groups[g]?.order.find(t => t.name === m.away) || { name: m.away, code: null };
+        const hWon = m.homeGoals > m.awayGoals;
+        const aWon = m.awayGoals > m.homeGoals;
+        html += `<div class="result-row">
+          <span class="result-team ${hWon ? 'result-winner' : ''}">${flagImgHtml(hTeam.code, 20)}${m.home}</span>
+          <span class="result-score">${m.homeGoals}–${m.awayGoals}</span>
+          <span class="result-team result-team-away ${aWon ? 'result-winner' : ''}">${m.away}${flagImgHtml(aTeam.code, 20)}</span>
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+    groupResultsGrid.innerHTML = html;
+  }
+
+  // ── R32 results display ───────────────────────────────────────────────────
+
+  function renderR32Results() {
+    if (!r32ResultsGrid || !data) return;
+
+    // Build a lookup of actual played R32 results from results.json
+    const r32Played = {};
+    for (const r of allResults) {
+      if (r.homeGoals != null && !r.group) {
+        // Knockout match — no group field
+        r32Played[`${r.home}|${r.away}`] = r;
+        r32Played[`${r.away}|${r.home}`] = r;
+      }
+    }
+
+    // R32 matches come from scenario data; home/away ordering from tournament.js
+    // is already encoded in data.r32[].home / .away
+    const rounds = [
+      { label: 'Round of 32', matches: data.r32 || [] },
+    ];
+
+    // Split 16 matches into two columns of 8
+    const matches = data.r32 || [];
+    const left = matches.slice(0, 8);
+    const right = matches.slice(8);
+
+    function matchCard(m) {
+      // Check if this match has an actual result
+      const played = r32Played[`${m.home.name}|${m.away.name}`];
+      const hGoals = played?.homeGoals;
+      const aGoals = played?.awayGoals;
+      const hasResult = hGoals != null;
+      const hWon = hasResult ? hGoals > aGoals : (m.winner?.name === m.home?.name);
+      const aWon = hasResult ? aGoals > hGoals : (m.winner?.name === m.away?.name);
+      const pctLabel = !hasResult && m.pWin != null ? `${(m.pWin * 100).toFixed(0)}%` : '';
+      const scoreHtml = hasResult
+        ? `<span class="r32-score">${hGoals}–${aGoals}</span>`
+        : `<span class="r32-score r32-score-pred">${pctLabel}</span>`;
+      return `<div class="r32-match">
+        <div class="r32-team ${hWon ? 'r32-winner' : 'r32-loser'}" data-team="${m.home?.name || ''}">
+          ${teamButton(m.home)}
+        </div>
+        ${scoreHtml}
+        <div class="r32-team ${aWon ? 'r32-winner' : 'r32-loser'}" data-team="${m.away?.name || ''}">
+          ${teamButton(m.away)}
+        </div>
+      </div>`;
+    }
+
+    r32ResultsGrid.innerHTML = `
+      <div class="r32-col">${left.map(matchCard).join('')}</div>
+      <div class="r32-col">${right.map(matchCard).join('')}</div>
     `;
   }
 
-  // Full-size group-ordering confidence ring (38px, Projected mode card headers).
-  // Thresholds are low because joint-ordering probabilities are inherently small.
-  function confidenceRing(pct) {
-    return renderRing(pct, {
-      size: 38,
-      highThreshold: 0.3,
-      midThreshold: 0.15,
-      titleText: `How sure we are about this exact order: ${Math.round(pct * 100)}%`,
-    });
-  }
+  // ── Modal: team knockout pathway Sankey ───────────────────────────────────
 
-  // Compact ring for Next Match fixture confidence (28px, sits beside the score).
-  // Thresholds differ: fixture outcome probabilities are much higher in general.
-  function fixtureConfRing(confidence) {
-    return renderRing(confidence / 100, {
-      size: 28,
-      highThreshold: 0.65,
-      midThreshold: 0.40,
-      extraClass: 'fixture-ring',
-      titleText: `${confidence}% chance of this result`,
-    });
-  }
+  function openKnockoutModal(teamName) {
+    if (!teamName || !predictionsByName) return;
+    const team = predictionsByName.get(teamName);
+    if (!team) return;
 
-  // Each team's world ranking (1 = most likely to win the tournament),
-  // precomputed in scenario.json from predictions.json's pChampion - so this
-  // matches the ranking shown on the odds page, not raw rating. Falls back
-  // to an Elo-based rank only if worldRank is missing (e.g. older scenario.json).
-  let cachedRankByName = null;
-  function rankByName() {
-    if (cachedRankByName) return cachedRankByName;
-    const all = [];
-    for (const g of Object.values(data.groups)) {
-      for (const t of g.order) all.push(t);
-    }
-    if (all.every((t) => t.worldRank != null)) {
-      cachedRankByName = new Map(all.map((t) => [t.name, t.worldRank]));
-    } else {
-      all.sort((a, b) => b.elo - a.elo);
-      cachedRankByName = new Map(all.map((t, i) => [t.name, i + 1]));
-    }
-    return cachedRankByName;
-  }
-
-  const THIRDS_TABLE_HEAD = {
-    projected: `
-      <tr>
-        <th class="col-team">Team</th>
-        <th class="col-num">Grp</th>
-        <th class="col-num third-chance" title="Of all simulations where this team finishes 3rd in their group, the % where they're also one of the 8 best third-placed teams overall (ranked by points, then goal difference, then goals scored, then FIFA World Ranking - see footnote)">Chance</th>
-        <th class="col-thirdpct">Next match</th>
-      </tr>
-    `,
-    ranked: `
-      <tr>
-        <th class="col-team">Team</th>
-        <th class="col-num">Grp</th>
-        <th class="col-num">Pts</th>
-        <th class="col-num">GD</th>
-        <th class="col-num">GF</th>
-      </tr>
-    `,
-  };
-
-  const THIRDS_COPY = {
-    projected: {
-      intro: `Finishing 3rd doesn't always mean you're out — the best 8 of the 12 third-placed teams also go through to the Last 32, ranked by points, then goal difference, then goals scored. "Chance" is each team's likelihood of being one of those 8, given that they finish 3rd in their group. Here they are in the order they'll appear in the knockout rounds below, each shown with who they'd play next. The line marks the cutoff — the last 4 go home.`,
-      disclaimer: `Chance is computed from the full simulation (see the tooltip) — the table itself is ordered by Chance, not by a single simulated table. Once all group games are finished, we'll confirm this table against the real final standings.`,
-    },
-    actual: {
-      intro: `Today's 12 third-placed teams, ranked by the official tiebreak for sides that haven't played each other: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 would go through to the Last 32 if the group stage ended right now — the line marks that cutoff.`,
-      disclaimer: `This is provisional, based on results played so far — not a final qualification result. It will keep changing as more group games are played.`,
-    },
-    'off-the-fence': {
-      intro: `The 12 third-placed teams from our single most likely simulated outcome, ranked by the same tiebreak as Current: points, then goal difference, then goals scored, then FIFA World Ranking. The top 8 go through to the Last 32 in this one scenario — the line marks that cutoff.`,
-      disclaimer: `The cutoff between 8th and 9th is inherently sensitive to minute differences — goal difference and goals scored separate many groups that are on equal points, and there are often several equally-plausible scorelines within the same finishing order. Think of the dividing line as a guide rather than a firm prediction; see the Projected toggle for each team's actual probability of making it through.`,
-    },
-  };
-
-  function renderThirds() {
-    if (!thirdsTableBody) return;
-    if (groupsViewMode === 'projected') {
-      renderThirdsProjected();
-    } else if (groupsViewMode === 'actual') {
-      renderThirdsRanked(computeActualThirds(), 'actual');
-    } else {
-      // Both 'off-the-fence' and 'next-match' show the Off the Fence thirds.
-      // 'next-match' is intentionally not a key in THIRDS_COPY — renderThirdsRanked
-      // is always called here with 'off-the-fence', so the lookup is safe.
-      renderThirdsRanked(computeOffFenceThirds(), 'off-the-fence');
-    }
-  }
-
-  function renderThirdsProjected() {
-    thirdsTableHead.innerHTML = THIRDS_TABLE_HEAD.projected;
-    thirdsIntro.textContent = THIRDS_COPY.projected.intro;
-    thirdsDisclaimer.textContent = THIRDS_COPY.projected.disclaimer;
-
-    const thirds = data.allThirds || [];
-    if (thirds.length === 0) {
-      thirdsTableBody.innerHTML = '<tr><td colspan="4" class="loading-row">No data available.</td></tr>';
-      return;
-    }
-
-    let rows = '';
-    thirds.forEach((team, i) => {
-      let lastCol;
-      if (team.qualifies && team.opponent) {
-        lastCol = `
-          <div class="third-fixture">
-            <span class="third-fixture-label">Plays</span>
-            ${teamButton(team.opponent)}
-          </div>`;
-      } else {
-        lastCol = `<span class="third-out">Out</span>`;
-      }
-
-      const chanceCell = team.pQualifyGiven3rd != null ? Math.round(team.pQualifyGiven3rd * 100) + '%' : '—';
-      const chanceTitle = team.pFinish3rd != null
-        ? `${Math.round(team.pFinish3rd * 100)}% chance of finishing 3rd in Group ${team.group}; of those cases, ${Math.round(team.pQualifyGiven3rd * 100)}% are also a top-8 third overall`
-        : '';
-
-      // Modal pts/gd/gf from thirdPlaceScenarios (most likely qualifying record)
-      const modalThird = (team.thirdPlaceScenarios || []).find((e) => e.points != null);
-      const modalStr = modalThird
-        ? `Most likely qualifying record: ${modalThird.points}pts, GD${modalThird.gd >= 0 ? '+' : ''}${modalThird.gd}, GF${modalThird.gf != null ? modalThird.gf : '?'} (${Math.round(modalThird.pct * 100)}% of 3rd-place sims)`
-        : '';
-
-      rows += `<tr data-team="${team.name}" class="${team.qualifies ? 'third-qualifies' : 'third-eliminated'}">
-        <td class="col-team">${teamButton(team)}</td>
-        <td class="col-num">${team.group}</td>
-        <td class="col-num third-chance" title="${chanceTitle}">${chanceCell}</td>
-        <td class="col-thirdpct" title="${modalStr}">${lastCol}</td>
-      </tr>`;
-
-      // Divider after the 8th team: 8 of 12 thirds advance to the Last 32.
-      if (i === 7 && thirds.length > 8) {
-        rows += `<tr class="thirds-divider-row" aria-hidden="true">
-          <td colspan="4"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
-        </tr>`;
-      }
-    });
-
-    thirdsTableBody.innerHTML = rows;
-  }
-
-  // Used by Actual and Off the Fence - thirdsList: array of
-  // { name, code, group, points, gd, gf, fifaRank }, one entry per group
-  // (see computeActualThirds/computeOffFenceThirds). Ranks via the shared
-  // FIFA tiebreak order and renders a Pts/GD/GF table instead of Chance.
-  function renderThirdsRanked(thirdsList, mode) {
-    thirdsTableHead.innerHTML = THIRDS_TABLE_HEAD.ranked;
-    thirdsIntro.textContent = THIRDS_COPY[mode].intro;
-    thirdsDisclaimer.textContent = THIRDS_COPY[mode].disclaimer;
-
-    const ranked = rankThirdsByFifaOrder(thirdsList);
-    let rows = '';
-    ranked.forEach((team, i) => {
-      const qualifies = i < 8;
-      const gdStr = (team.gd >= 0 ? '+' : '') + team.gd;
-
-      rows += `<tr data-team="${team.name}" class="${qualifies ? 'third-qualifies' : 'third-eliminated'}">
-        <td class="col-team">${teamButton(team)}</td>
-        <td class="col-num">${team.group}</td>
-        <td class="col-num">${team.points}</td>
-        <td class="col-num">${gdStr}</td>
-        <td class="col-num">${team.gf}</td>
-      </tr>`;
-
-      // Divider after the 8th team: 8 of 12 thirds advance to the Last 32.
-      if (i === 7 && ranked.length > 8) {
-        rows += `<tr class="thirds-divider-row" aria-hidden="true">
-          <td colspan="5"><div class="thirds-divider"><span>8 go through to the Last 32</span><span>4 go home</span></div></td>
-        </tr>`;
-      }
-    });
-
-    thirdsTableBody.innerHTML = rows;
-  }
-
-  // Opens the "road to the Last 32" Sankey popup.
-  // Uses the shared scenarioFlow.js renderer (window.ScenarioFlow).
-  function openScenarioModal(team) {
     scenarioFlowCol = null;
     scenarioFlowKey = null;
-    scenarioModalTitle.innerHTML = teamButton(team);
-    const gaugeContext = team.pQualifyGiven3rd != null ? {
-      pct: team.pQualifyGiven3rd,
-      label: `is the table's "Chance" number. It only counts games where they finish 3rd.`,
-    } : null;
-    window.ScenarioFlow.renderGauge(scenarioModalGauge, team, gaugeContext);
+    scenarioModalTitle.innerHTML = teamButton({ name: team.name, code: team.code });
 
-    scenarioModalFlow.style.display = '';
-    const existingNote = scenarioModalFlow.parentElement.querySelector('.flow-unavailable-note');
-    if (existingNote) existingNote.style.display = 'none';
-    renderModalFlow(team);
+    // Render knockout gauge (shows champion probability prominently)
+    const pChamp = team.pChampion || 0;
+    const pFinal = team.pFinal || 0;
+    const pSF = team.pSemiFinal || 0;
+    scenarioModalGauge.innerHTML = `
+      <div class="gauge-headline">
+        <span class="gauge-pct">${fmtPct(pChamp)}</span>
+        <span class="gauge-label">&nbsp;chance of winning the tournament</span>
+      </div>
+      <div class="ko-stage-probs">
+        <span><span class="ko-pip" style="background:#818cf8"></span>Last 32: ${fmtPct(team.pRoundOf32)}</span>
+        <span><span class="ko-pip" style="background:#60a5fa"></span>Last 16: ${fmtPct(team.pRoundOf16)}</span>
+        <span><span class="ko-pip" style="background:#34d399"></span>QF: ${fmtPct(team.pQuarterFinal)}</span>
+        <span><span class="ko-pip" style="background:#fbbf24"></span>SF: ${fmtPct(pSF)}</span>
+        <span><span class="ko-pip" style="background:#f97316"></span>Final: ${fmtPct(pFinal)}</span>
+      </div>
+    `;
+
+    // Render knockout Sankey
+    renderKnockoutFlow(scenarioModalFlow, team, data);
     scenarioModalBackdrop.hidden = false;
-  }
-
-  function renderModalFlow(team) {
-    window.ScenarioFlow.renderFlow(
-      scenarioModalFlow, team,
-      { selectedCol: scenarioFlowCol, selectedKey: scenarioFlowKey },
-      (col, key) => {
-        scenarioFlowCol = col;
-        scenarioFlowKey = key;
-        renderModalFlow(team);
-      }
-    );
   }
 
   function closeScenarioModal() {
@@ -302,462 +167,8 @@
     scenarioFlowKey = null;
   }
 
+  // ── Bracket rendering ─────────────────────────────────────────────────────
 
-  // ----------------------------------------------------------------------
-  // Actual (real-world) group table, computed from results.json directly -
-  // independent of the simulation. Used for the Actual/Projected toggle.
-  // ----------------------------------------------------------------------
-  let resultsByGroup = null; // group letter -> array of played fixtures
-
-  async function loadResults() {
-    try {
-      const res = await fetch('results.json?_=' + Date.now());
-      const json = await res.json();
-      resultsByGroup = {};
-      for (const r of json.results || []) {
-        if (r.homeGoals == null || r.awayGoals == null) continue;
-        if (!resultsByGroup[r.group]) resultsByGroup[r.group] = [];
-        resultsByGroup[r.group].push(r);
-      }
-    } catch (e) {
-      resultsByGroup = {};
-    }
-  }
-
-  // Full per-team predictions data (all 48 teams) - fetched purely so the
-  // thirds-table "tap a team to see their road to the Last 32" popup works
-  // for ANY team shown there. scenario.json's allThirds only carries this
-  // data for the 12 teams the model itself expects to finish 3rd, but the
-  // Actual/Off the Fence toggles can show a different team in that slot
-  // (e.g. if the real or modal table differs from the model's main
-  // scenario) - predictionsByName covers every team so the popup never
-  // silently fails to open.
-  let predictionsByName = null; // team name -> predictions.json team record
-
-  async function loadPredictions() {
-    const filename = currentModel === 'existing' ? 'predictions.json' : 'predictions_negbin.json';
-    try {
-      const res = await fetch(filename + '?_=' + Date.now());
-      const json = await res.json();
-      predictionsByName = new Map((json.teams || []).map((t) => [t.name, t]));
-    } catch (e) {
-      predictionsByName = new Map();
-    }
-  }
-
-  // Orders one group's teams by the real-world table right now, using the
-  // correct FIFA tiebreak order: points, then head-to-head (a mini-league of
-  // just the tied teams' results against each other: points, then goal
-  // difference, then goals scored), then overall goal difference, then
-  // overall goals scored, then FIFA World Ranking, then alphabetically as a
-  // final deterministic fallback (e.g. teams tied on literally everything
-  // with zero matches played).
-  //
-  // Getting the order of head-to-head vs overall GD/GF wrong matters: a team
-  // can show as eliminated or relegated to 4th when they've already beaten,
-  // head-to-head, every team they're tied with on points - which is
-  // impossible under the real rules regardless of other teams' GD.
-  //
-  // teams: array of {name, fifaRank, ...} for this group (any order).
-  function computeActualOrder(teams, groupLetter) {
-    const fixtures = (resultsByGroup && resultsByGroup[groupLetter]) || [];
-    const teamNames = teams.map((t) => t.name);
-    const fifaRankByName = new Map(teams.map((t) => [t.name, t.fifaRank]));
-    const stats = new Map(teamNames.map((name) => [name, { name, pts: 0, gf: 0, ga: 0, played: 0 }]));
-
-    for (const r of fixtures) {
-      const home = stats.get(r.home);
-      const away = stats.get(r.away);
-      if (!home || !away) continue;
-      home.gf += r.homeGoals; home.ga += r.awayGoals; home.played += 1;
-      away.gf += r.awayGoals; away.ga += r.homeGoals; away.played += 1;
-      if (r.homeGoals > r.awayGoals) home.pts += 3;
-      else if (r.homeGoals < r.awayGoals) away.pts += 3;
-      else { home.pts += 1; away.pts += 1; }
-    }
-
-    // This team's points/GD/GF from just the single match against `against`
-    // (group-stage round robin: each pair plays exactly once).
-    function h2hStats(name, against) {
-      for (const r of fixtures) {
-        if (r.home === name && r.away === against) {
-          const pts = r.homeGoals > r.awayGoals ? 3 : r.homeGoals === r.awayGoals ? 1 : 0;
-          return { pts, gd: r.homeGoals - r.awayGoals, gf: r.homeGoals };
-        }
-        if (r.away === name && r.home === against) {
-          const pts = r.awayGoals > r.homeGoals ? 3 : r.awayGoals === r.homeGoals ? 1 : 0;
-          return { pts, gd: r.awayGoals - r.homeGoals, gf: r.awayGoals };
-        }
-      }
-      return { pts: 0, gd: 0, gf: 0 };
-    }
-
-    // Head-to-head mini-league: this team's combined points/GD/GF against
-    // just the OTHER teams in clusterNames (the teams it's tied with on
-    // points), not the whole group.
-    function h2hMiniLeagueStats(name, clusterNames) {
-      let pts = 0, gd = 0, gf = 0;
-      for (const opp of clusterNames) {
-        if (opp === name) continue;
-        const h = h2hStats(name, opp);
-        pts += h.pts; gd += h.gd; gf += h.gf;
-      }
-      return { pts, gd, gf };
-    }
-
-    const list = [...stats.values()].map((s) => ({ ...s, gd: s.gf - s.ga }));
-
-    // Cluster by POINTS ONLY - this is where the previous version of this
-    // function was wrong: it clustered by (pts, gd, gf) all matching, which
-    // meant head-to-head only ever ran as an unlikely last resort, instead
-    // of FIFA's actual order where head-to-head comes immediately after points.
-    list.sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
-
-    const result = [];
-    let i = 0;
-    while (i < list.length) {
-      let j = i + 1;
-      while (j < list.length && list[j].pts === list[i].pts) j++;
-      const cluster = list.slice(i, j);
-      if (cluster.length > 1) {
-        const clusterNames = cluster.map((t) => t.name);
-        cluster.sort((a, b) => {
-          const ha = h2hMiniLeagueStats(a.name, clusterNames);
-          const hb = h2hMiniLeagueStats(b.name, clusterNames);
-          if (hb.pts !== ha.pts) return hb.pts - ha.pts;
-          if (hb.gd !== ha.gd) return hb.gd - ha.gd;
-          if (hb.gf !== ha.gf) return hb.gf - ha.gf;
-          // Still tied after head-to-head: fall through to overall GD/GF,
-          // then FIFA World Ranking, then alphabetical.
-          if (b.gd !== a.gd) return b.gd - a.gd;
-          if (b.gf !== a.gf) return b.gf - a.gf;
-          const rankA = fifaRankByName.get(a.name) != null ? fifaRankByName.get(a.name) : Infinity;
-          const rankB = fifaRankByName.get(b.name) != null ? fifaRankByName.get(b.name) : Infinity;
-          if (rankA !== rankB) return rankA - rankB;
-          return a.name.localeCompare(b.name);
-        });
-      }
-      result.push(...cluster);
-      i = j;
-    }
-    return result;
-  }
-
-  // ----------------------------------------------------------------------
-  // Cross-group third-place ranking, shared by the Actual and Off the Fence
-  // thirds tables - both rank the 12 third-placed teams by the official
-  // tiebreak order for teams that haven't played each other: points, goal
-  // difference, goals scored, then FIFA World Ranking. This mirrors
-  // scripts/sim/simulateTournament.js's pickBestThirds() exactly (the
-  // model's own approximation, ignoring head-to-head/cards since neither is
-  // modelled) - just applied to real or modal-scenario stats here instead of
-  // a fresh Monte Carlo run. The Projected toggle's thirds table is
-  // unaffected by this - it keeps using pQualifyGiven3rd (see renderThirds).
-  // ----------------------------------------------------------------------
-
-  // thirds: array of { name, group, points, gd, gf, fifaRank, ... }.
-  // Returns a NEW array, same length, ranked best-to-worst.
-  function rankThirdsByFifaOrder(thirds) {
-    return [...thirds].sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.gd !== a.gd) return b.gd - a.gd;
-      if (b.gf !== a.gf) return b.gf - a.gf;
-      const rankA = a.fifaRank != null ? a.fifaRank : Infinity;
-      const rankB = b.fifaRank != null ? b.fifaRank : Infinity;
-      if (rankA !== rankB) return rankA - rankB;
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  // The 12 real, today's-table third-placed teams (one per group), from
-  // computeActualOrder - i.e. "if the group stage ended right now".
-  function computeActualThirds() {
-    return GROUP_ORDER.map((letter) => {
-      const g = data.groups[letter];
-      const teamByName = new Map(g.order.map((t) => [t.name, t]));
-      const third = computeActualOrder(g.order, letter)[2];
-      const team = teamByName.get(third.name) || {};
-      return {
-        name: third.name,
-        code: team.code,
-        group: letter,
-        points: third.pts,
-        gd: third.gd,
-        gf: third.gf,
-        played: third.played,
-        fifaRank: team.fifaRank != null ? team.fifaRank : null,
-      };
-    });
-  }
-
-  // The 12 modal-scenario third-placed teams (one per group) - g.order[2]
-  // is already the modal 3rd-place team, with points/gd/gf/fifaRank from
-  // the single most common joint final table (see scripts/sim/mostLikely.js).
-  function computeOffFenceThirds() {
-    return GROUP_ORDER.map((letter) => {
-      const third = data.groups[letter].order[2];
-      return {
-        name: third.name,
-        code: third.code,
-        group: letter,
-        points: third.points,
-        gd: third.gd,
-        gf: third.gf,
-        played: third.played,
-        fifaRank: third.fifaRank != null ? third.fifaRank : null,
-      };
-    });
-  }
-
-  // Names of the 8 qualifying thirds for a given toggle mode - used both to
-  // colour the 3rd-place row within each group card, and to draw the
-  // cutoff line in the thirds table itself. Returns null for 'projected'
-  // (which uses data.bestThirds/pQualifyGiven3rd instead - a probability,
-  // not a ranking of one single table).
-  function qualifyingThirdNamesForMode(mode) {
-    if (mode === 'actual') return new Set(rankThirdsByFifaOrder(computeActualThirds()).slice(0, 8).map((t) => t.name));
-    if (mode === 'off-the-fence') return new Set(rankThirdsByFifaOrder(computeOffFenceThirds()).slice(0, 8).map((t) => t.name));
-    return null;
-  }
-
-  const GROUPS_TOGGLE_HINTS = {
-    projected: "Projected: each team's chance of finishing 1st-4th, from the simulation.",
-    actual: "Current: today's real table, from results played so far.",
-    'off-the-fence': "Off the Fence: the single most likely simulated outcome, shown as a table.",
-    'next-match': "Next Match: predicted scorelines for each group's upcoming fixtures, from the model.",
-  };
-
-  function setGroupsViewMode(mode) {
-    if (mode === groupsViewMode) return;
-    groupsViewMode = mode;
-    toggleProjectedBtn.classList.toggle('is-active', mode === 'projected');
-    toggleProjectedBtn.setAttribute('aria-selected', mode === 'projected' ? 'true' : 'false');
-    toggleActualBtn.classList.toggle('is-active', mode === 'actual');
-    toggleActualBtn.setAttribute('aria-selected', mode === 'actual' ? 'true' : 'false');
-    toggleOffFenceBtn.classList.toggle('is-active', mode === 'off-the-fence');
-    toggleOffFenceBtn.setAttribute('aria-selected', mode === 'off-the-fence' ? 'true' : 'false');
-    toggleNextMatchBtn.classList.toggle('is-active', mode === 'next-match');
-    toggleNextMatchBtn.setAttribute('aria-selected', mode === 'next-match' ? 'true' : 'false');
-    groupsToggleHint.textContent = GROUPS_TOGGLE_HINTS[mode];
-
-    // Simple crossfade: fade the grid (and thirds table) out, swap content
-    // while invisible, fade back in. Matches the .is-fading transitions
-    // declared in styles.css.
-    groupsGrid.classList.add('is-fading');
-    thirdsTableWrap.classList.add('is-fading');
-    setTimeout(() => {
-      renderGroups();
-      renderThirds();
-      groupsGrid.classList.remove('is-fading');
-      thirdsTableWrap.classList.remove('is-fading');
-    }, 180);
-  }
-
-  // Shared row markup for the Actual and Off the Fence group tables - same
-  // visual format (pos, team, "X pts · GD ±Y · Z/3 played"), just sourced
-  // from different stats (real results.json vs the modal simulated table).
-  // Shared row markup for ALL THREE group-table modes: a team cell plus
-  // however many right-aligned stat columns the mode needs (one % column
-  // for Projected; Pts + GD columns for Actual/Off the Fence). No explicit
-  // 1st/2nd/3rd/4th label cell - row order within the table already
-  // conveys finishing position, and dropping it saves real width on these
-  // narrow per-group cards.
-  function groupRowHtml(team, rowClass, statCellsHtml) {
-    return `<tr class="${rowClass}" data-team="${team.name}">
-      <td class="team-col">${teamButton(team)}</td>
-      ${statCellsHtml}
-    </tr>`;
-  }
-
-  // Group-wide "which matchday is this group on" status, shown next to the
-  // heading for Actual/Off the Fence (replacing a per-team "X/3 played"
-  // line, which got noisy repeated across all 4 rows). playedCounts: the 4
-  // teams' games-played counts (0-3). Off the Fence always passes [3,3,3,3]
-  // since it represents a fully played-out scenario.
-  function groupRoundStatus(playedCounts) {
-    const minPlayed = Math.min(...playedCounts);
-    const maxPlayed = Math.max(...playedCounts);
-    if (maxPlayed === 0) return { round: 1, status: 'not-started', label: 'Not started' };
-    if (minPlayed === maxPlayed) return { round: minPlayed, status: 'complete', label: 'Complete' };
-    // Some teams have played one more fixture in this group than others -
-    // the further-along round is "in progress" group-wide.
-    return { round: maxPlayed, status: 'in-progress', label: 'In progress' };
-  }
-
-  function roundStatusBadge(playedCounts) {
-    const { round, status, label } = groupRoundStatus(playedCounts);
-    const title = status === 'complete'
-      ? `Every team in this group has played their round ${round} fixture.`
-      : status === 'not-started'
-      ? 'No fixtures played yet in this group.'
-      : `Some teams have played their round ${round} fixture, others haven't yet.`;
-    return `
-      <div class="round-status round-status--${status}" title="${title}">
-        <span class="round-status-round">Round ${round}/3</span>
-        <span class="round-status-label">${label}</span>
-      </div>
-    `;
-  }
-
-  function renderGroups() {
-    groupsGrid.innerHTML = '';
-    // Only needed for 'actual'/'off-the-fence'/'next-match' - 'projected' colours its
-    // 3rd-place row from data.bestThirds (a probability ranking) instead.
-    const qualifyingThirdNames = groupsViewMode === 'projected' ? null : qualifyingThirdNamesForMode(
-      groupsViewMode === 'next-match' ? 'actual' : groupsViewMode
-    );
-    const ORDINAL = ['1st', '2nd', '3rd', '4th']; // used in tooltips/aria only
-
-    // Pre-build a Set for O(1) bestThirds lookups in Projected mode (avoids
-    // repeated .some() scans across all 48 team rows).
-    const bestThirdsSet = new Set((data.bestThirds || []).map((t) => t.name));
-
-    // Cache computeActualOrder results for this render pass so that both the
-    // qualifyingThirdNamesForMode call above and the next-match/actual render
-    // branches below share the same computed table rather than recalculating.
-    const actualOrderCache = new Map();
-    function getActualOrder(letter) {
-      if (!actualOrderCache.has(letter)) {
-        actualOrderCache.set(letter, computeActualOrder(data.groups[letter].order, letter));
-      }
-      return actualOrderCache.get(letter);
-    }
-
-    for (const letter of GROUP_ORDER) {
-      const g = data.groups[letter];
-      const card = document.createElement('div');
-      card.className = 'group-card';
-
-      let rows = '';
-      let headerBadgeHtml = '';
-
-      // ---- Next Match mode: early-exit with bespoke card HTML ----
-      if (groupsViewMode === 'next-match') {
-        const nextFixtures = g.nextFixtures || [];
-
-        if (nextFixtures.length === 0) {
-          // Group complete — fall back to Current table layout so users can
-          // see the final standings without switching tabs.
-          const teamByName = new Map(g.order.map((t) => [t.name, t]));
-          const actualOrder = getActualOrder(letter);
-          const badge = roundStatusBadge(actualOrder.map((r) => r.played));
-          const thead = '<thead><tr><th class="team-col"></th><th class="col-num">Pts</th><th class="col-num">GD</th></tr></thead>';
-          let tbody = '';
-          actualOrder.forEach((row, i) => {
-            const team = teamByName.get(row.name) || row;
-            const rc = i < 2 ? 'advances' : i === 2 ? (qualifyingThirdNames && qualifyingThirdNames.has(row.name) ? 'maybe-advances' : 'eliminated') : 'eliminated';
-            const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
-            tbody += groupRowHtml(team, rc, `<td class="col-num">${row.pts}</td><td class="col-num">${gdStr}</td>`);
-          });
-          card.innerHTML = `
-            <div class="group-card-header"><h3>Group ${letter}</h3>${badge}</div>
-            <table class="group-table">
-              ${thead}<tbody>${tbody}</tbody>
-            </table>`;
-        } else {
-          // Upcoming fixtures — vertical stack (home / score / away) per match.
-          const round = g.nextRound || 1;
-          const upcomingBadge = `
-            <div class="round-status round-status--upcoming" title="These are the next fixtures for Group ${letter}.">
-              <span class="round-status-round">Round ${round}/3</span>
-              <span class="round-status-label">Upcoming</span>
-            </div>`;
-          const fixtureBlocksHtml = nextFixtures.map((r) => {
-            const homeTeam = g.order.find((t) => t.name === r.home) || { name: r.home };
-            const awayTeam = g.order.find((t) => t.name === r.away) || { name: r.away };
-            const ringHtml = fixtureConfRing(r.confidence);
-
-            return `<div class="fixture-block">
-              ${teamButton(homeTeam)}
-              <div class="fixture-score-row">
-                <span class="fixture-score-spacer"></span>
-                <div class="fixture-scoreline">${r.predictedHome} – ${r.predictedAway}</div>
-                <div class="fixture-conf-ring">${ringHtml}</div>
-              </div>
-              ${teamButton(awayTeam)}
-            </div>`;
-          }).join('');
-          card.innerHTML = `
-            <div class="group-card-header"><h3>Group ${letter}</h3>${upcomingBadge}</div>
-            <div class="fixture-list">${fixtureBlocksHtml}</div>`;
-        }
-
-        groupsGrid.appendChild(card);
-        continue; // skip shared table template below
-      }
-      // ---- end Next Match mode ----
-
-      if (groupsViewMode === 'actual') {
-        const teamByName = new Map(g.order.map((t) => [t.name, t]));
-        const actualOrder = getActualOrder(letter);
-        headerBadgeHtml = roundStatusBadge(actualOrder.map((row) => row.played));
-        actualOrder.forEach((row, i) => {
-          const team = teamByName.get(row.name) || row;
-          let rowClass;
-          if (i < 2) rowClass = 'advances';
-          else if (i === 2) rowClass = qualifyingThirdNames.has(row.name) ? 'maybe-advances' : 'eliminated';
-          else rowClass = 'eliminated';
-          const gdStr = (row.gd >= 0 ? '+' : '') + row.gd;
-          const statCellsHtml = `<td class="col-num">${row.pts}</td><td class="col-num">${gdStr}</td>`;
-          rows += groupRowHtml(team, rowClass, statCellsHtml);
-        });
-      } else if (groupsViewMode === 'off-the-fence') {
-        headerBadgeHtml = roundStatusBadge(g.order.map((t) => t.played));
-        g.order.forEach((team, i) => {
-          let rowClass;
-          if (i < 2) rowClass = 'advances';
-          else if (i === 2) rowClass = qualifyingThirdNames.has(team.name) ? 'maybe-advances' : 'eliminated';
-          else rowClass = 'eliminated';
-          const gdStr = (team.gd >= 0 ? '+' : '') + team.gd;
-          const statCellsHtml = `<td class="col-num">${team.points}</td><td class="col-num">${gdStr}</td>`;
-          rows += groupRowHtml(team, rowClass, statCellsHtml);
-        });
-      } else {
-        // Projected mode
-        g.order.forEach((team, i) => {
-          const advances = i < 2;
-          const isBestThird = i === 2 && bestThirdsSet.has(team.name);
-          let rowClass = '';
-          if (advances) rowClass = 'advances';
-          else if (isBestThird) rowClass = 'maybe-advances';
-          else rowClass = 'eliminated';
-
-          // This team's probability of finishing in THIS row's position specifically.
-          const posProbs = team.positionProbabilities || [0, 0, 0, 0];
-          const pct = Math.round((posProbs[i] || 0) * 100);
-          const statCellsHtml = `<td class="col-num" title="${pct}% chance of finishing ${ORDINAL[i]} in Group ${letter}, across all simulations">${pct}%</td>`;
-          rows += groupRowHtml(team, rowClass, statCellsHtml);
-        });
-      }
-
-      const theadHtml = groupsViewMode === 'projected'
-        ? '<thead><tr><th class="team-col"></th><th class="col-num">%</th></tr></thead>'
-        : '<thead><tr><th class="team-col"></th><th class="col-num">Pts</th><th class="col-num">GD</th></tr></thead>';
-
-      card.innerHTML = `
-        <div class="group-card-header">
-          <h3>Group ${letter}</h3>
-          ${groupsViewMode === 'projected' ? confidenceRing(g.probability) : headerBadgeHtml}
-        </div>
-        <table class="group-table">
-          ${theadHtml}
-          <tbody>${rows}</tbody>
-        </table>
-      `;
-      groupsGrid.appendChild(card);
-    }
-  }
-
-  // ----------------------------------------------------------------------
-  // Bracket
-  // ----------------------------------------------------------------------
-
-  // Bracket topology (mirrors scripts/sim/tournament.js pairing tables).
-  // Each entry: [matchId, [fromIdA, fromIdB]] - the two matches whose winners
-  // feed into this match. Used to compute a left-to-right visual order for
-  // each round so a match's column position sits directly between its two
-  // "parent" matches from the previous round - regardless of FIFA's official
-  // numbering order (M89-M96 etc.), which is not bracket-tree order.
   const R16_PAIRS = [
     ['M89', ['M74', 'M77']],
     ['M90', ['M73', 'M75']],
@@ -780,24 +191,11 @@
   ];
   const FINAL_PAIR_KEY = ['M104', ['M101', 'M102']];
 
-  // Recursively computes a left-to-right visual order for every round by
-  // working DOWN the tree from the Final: the Final's two children occupy
-  // the left and right halves of the SF row; each SF match's two children
-  // occupy halves of its half of the QF row; and so on down to R32. This
-  // guarantees every match sits exactly centered between (i.e. "nests
-  // between") its two parent matches in the previous round, which is what
-  // the CSS grid span math in renderBracket() assumes.
-  //
-  // pairsByRound: { r16: R16_PAIRS, qf: QF_PAIRS, sf: SF_PAIRS } - lookup
-  // tables from matchId -> [childIdA, childIdB] in the round below.
   function computeVisualOrders(finalMatchId, pairsByRound) {
-    const childrenOf = new Map(); // matchId -> [childIdA, childIdB]
+    const childrenOf = new Map();
     for (const pairs of Object.values(pairsByRound)) {
       for (const [matchId, children] of pairs) childrenOf.set(matchId, children);
     }
-
-    // visualOrders[roundIndex] = array of matchIds in left-to-right order,
-    // roundIndex 0 = final, 1 = SF, 2 = QF, 3 = R16, 4 = R32
     const visualOrders = [[finalMatchId]];
     let current = [finalMatchId];
     while (childrenOf.has(current[0])) {
@@ -805,54 +203,30 @@
       for (const id of current) {
         const children = childrenOf.get(id);
         if (children) next.push(...children);
-        else next.push(id); // shouldn't happen given well-formed pairsByRound
+        else next.push(id);
       }
       visualOrders.push(next);
       current = next;
     }
-
-    // visualOrders is [final, sf, qf, r16, r32] (deepest last)
-    return visualOrders.reverse(); // -> [r32, r16, qf, sf, final]
+    return visualOrders.reverse();
   }
 
-  // Each round definition: key into `data`, display label, visually-ordered
-  // matches, and how many R32 "slots" (out of 16) each match in this round
-  // spans vertically. R32: 16 matches x 1 slot. R16: 8 x 2. QF: 4 x 4.
-  // SF: 2 x 8. Final: 1 x 16.
-  //
-  // R32's order (data.r32, i.e. M73-M88) is already left-to-right
-  // bracket-tree order by construction (see tournament.js). Every
-  // subsequent round is reordered so each match sits between its two
-  // parent matches from the previous round.
-  let cachedRounds = null;
   function getRounds() {
     if (cachedRounds) return cachedRounds;
-
-    const pairsByRound = { sf: SF_PAIRS, qf: QF_PAIRS, r16: R16_PAIRS };
-    // FINAL_PAIR_KEY = ['M104', ['M101','M102']] - treat as the SF->Final link
-    pairsByRound.final = [FINAL_PAIR_KEY];
-
+    const pairsByRound = { sf: SF_PAIRS, qf: QF_PAIRS, r16: R16_PAIRS, final: [FINAL_PAIR_KEY] };
     const [r32Order, r16Order, qfOrder, sfOrder, finalOrder] =
       computeVisualOrders(FINAL_PAIR_KEY[0], pairsByRound);
-
-    const byId = (matches) => new Map(matches.map((m) => [m.id, m]));
+    const byId = (matches) => new Map((matches || []).map((m) => [m.id, m]));
     const r32ById = byId(data.r32);
     const r16ById = byId(data.r16);
-    const qfById = byId(data.qf);
-    const sfById = byId(data.sf);
-
-    const r32 = r32Order.map((id) => r32ById.get(id)).filter(Boolean);
-    const r16 = r16Order.map((id) => r16ById.get(id)).filter(Boolean);
-    const qf = qfOrder.map((id) => qfById.get(id)).filter(Boolean);
-    const sf = sfOrder.map((id) => sfById.get(id)).filter(Boolean);
-    const final = [data.final];
-
+    const qfById  = byId(data.qf);
+    const sfById  = byId(data.sf);
     cachedRounds = [
-      { key: 'r32', label: 'Round of 32', matches: r32, span: 1 },
-      { key: 'r16', label: 'Round of 16', matches: r16, span: 2 },
-      { key: 'qf', label: 'Quarter-finals', matches: qf, span: 4 },
-      { key: 'sf', label: 'Semi-finals', matches: sf, span: 8 },
-      { key: 'final', label: 'Final', matches: final, span: 16 },
+      { key: 'r32',   label: 'Round of 32',    matches: r32Order.map(id => r32ById.get(id)).filter(Boolean), span: 1 },
+      { key: 'r16',   label: 'Round of 16',    matches: r16Order.map(id => r16ById.get(id)).filter(Boolean), span: 2 },
+      { key: 'qf',    label: 'Quarter-finals', matches: qfOrder.map(id => qfById.get(id)).filter(Boolean),   span: 4 },
+      { key: 'sf',    label: 'Semi-finals',    matches: sfOrder.map(id => sfById.get(id)).filter(Boolean),   span: 8 },
+      { key: 'final', label: 'Final',          matches: [data.final],                                         span: 16 },
     ];
     return cachedRounds;
   }
@@ -861,7 +235,6 @@
     const homeWon = m.winner && m.home && m.winner.name === m.home.name;
     const awayWon = m.winner && m.away && m.winner.name === m.away.name;
     const pctLabel = m.pWin != null ? `${(m.pWin * 100).toFixed(0)}%` : '';
-
     return `
       <div class="match" data-match-id="${m.id}" data-round="${roundKey}">
         <div class="match-team ${homeWon ? 'match-winner' : 'match-loser'}" data-team="${m.home ? m.home.name : ''}">
@@ -876,20 +249,10 @@
     `;
   }
 
-  // Renders the bracket as a CSS grid: 16 rows (slot units) x N columns.
-  // Each match's container spans `span` rows, positioned at slot index*span + 1.
   function renderBracket() {
     bracket.innerHTML = '';
     const rounds = getRounds();
     const totalSlots = 16;
-    // Minimum height for one "slot unit" (= one R32 match's worth of vertical
-    // space). Without this, `repeat(16, 1fr)` forces every row track to the
-    // same height regardless of content, so a 2-row match box (.match has two
-    // .match-team rows, each ~1.6rem incl. padding -> ~54px total) overflows
-    // a 1fr R32 track and visually overlaps neighbouring matches/connectors.
-    // minmax(SLOT_MIN_HEIGHT, 1fr) guarantees every track is tall enough for
-    // an R32 box; larger-span rounds (R16=2 tracks, QF=4, ...) then get
-    // proportionally more room and center their single box within it.
     const SLOT_MIN_HEIGHT = '68px';
     const rowTemplate = `auto repeat(${totalSlots}, minmax(${SLOT_MIN_HEIGHT}, 1fr))`;
 
@@ -898,27 +261,21 @@
       col.className = 'bracket-col';
       col.dataset.round = round.key;
       col.style.gridTemplateRows = rowTemplate;
-
       const heading = document.createElement('div');
       heading.className = 'bracket-col-heading';
       heading.style.gridRow = '1';
-      heading.style.gridColumn = '1';
       heading.textContent = round.label;
       col.appendChild(heading);
-
       round.matches.forEach((m, i) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'bracket-slot';
-        const startRow = i * round.span + 2; // +2: row 1 is heading, grid is 1-indexed
-        wrapper.style.gridRow = `${startRow} / span ${round.span}`;
+        wrapper.style.gridRow = `${i * round.span + 2} / span ${round.span}`;
         wrapper.innerHTML = matchHtml(m, round.key);
         col.appendChild(wrapper);
       });
-
       bracket.appendChild(col);
     });
 
-    // Champion column
     const champCol = document.createElement('div');
     champCol.className = 'bracket-col bracket-champion-col';
     champCol.style.gridTemplateRows = rowTemplate;
@@ -934,63 +291,49 @@
     bracket.appendChild(champCol);
   }
 
-  // ----------------------------------------------------------------------
-  // SVG connector lines
-  // ----------------------------------------------------------------------
+  // ── SVG connector lines ───────────────────────────────────────────────────
 
-  // For each match in rounds 2..N (R16, QF, SF, Final, Champion), draws two
-  // bracket-style connector paths from its two "parent" matches (the two
-  // matches in the previous round whose winner feeds into this one).
   function drawConnectors() {
     const wrapRect = bracketWrap.getBoundingClientRect();
     const scrollLeft = bracketWrap.scrollLeft;
     const scrollTop = bracketWrap.scrollTop;
-
     svg.innerHTML = '';
     svg.setAttribute('width', bracket.scrollWidth);
     svg.setAttribute('height', bracket.scrollHeight);
-
     const rounds = getRounds();
 
-    // Helper: get a match element's right-center and left-center points,
-    // relative to the bracket container's scrollable content box.
-    function points(matchEl) {
-      const r = matchEl.getBoundingClientRect();
-      const left = r.left - wrapRect.left + scrollLeft;
-      const right = r.right - wrapRect.left + scrollLeft;
-      const midY = r.top - wrapRect.top + scrollTop + r.height / 2;
-      return { left, right, midY };
+    function points(el) {
+      const r = el.getBoundingClientRect();
+      return {
+        left: r.left - wrapRect.left + scrollLeft,
+        right: r.right - wrapRect.left + scrollLeft,
+        midY: r.top - wrapRect.top + scrollTop + r.height / 2,
+      };
     }
 
-    function pathBetween(fromMatchEl, toMatchEl) {
-      const from = points(fromMatchEl);
-      const to = points(toMatchEl);
-      const midX = from.right + (to.left - from.right) / 2;
-      return `M ${from.right} ${from.midY} H ${midX} V ${to.midY} H ${to.left}`;
+    function pathBetween(fromEl, toEl) {
+      const f = points(fromEl), t = points(toEl);
+      const midX = f.right + (t.left - f.right) / 2;
+      return `M ${f.right} ${f.midY} H ${midX} V ${t.midY} H ${t.left}`;
     }
 
-    // Map round key -> array of match elements, in order
     const matchEls = {};
     for (const round of rounds) {
       matchEls[round.key] = round.matches.map((m) =>
         bracket.querySelector(`.match[data-round="${round.key}"][data-match-id="${m.id}"]`)
       );
     }
-    // Champion card acts as the "final round" target
-    const championCardEl = bracket.querySelector('.champion-card');
+    const champCardEl = bracket.querySelector('.champion-card');
 
-    // R32 -> R16: pairs (0,1)->0, (2,3)->1, ...
     function connect(fromKey, toKey, toEls) {
-      const fromEls = matchEls[fromKey];
-      fromEls.forEach((el, i) => {
-        const targetIdx = Math.floor(i / 2);
-        const target = toEls[targetIdx];
+      matchEls[fromKey].forEach((el, i) => {
+        const target = toEls[Math.floor(i / 2)];
         if (!el || !target) return;
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', pathBetween(el, target));
         path.setAttribute('class', 'connector');
         path.dataset.from = el.closest('.match').dataset.matchId;
-        path.dataset.to = target.classList && target.classList.contains('match') ? target.dataset.matchId : 'champion';
+        path.dataset.to = target.classList.contains('match') ? target.dataset.matchId : 'champion';
         path.dataset.fromRound = fromKey;
         svg.appendChild(path);
       });
@@ -1000,10 +343,9 @@
     connect('r16', 'qf', matchEls.qf);
     connect('qf', 'sf', matchEls.sf);
     connect('sf', 'final', matchEls.final);
-    // Final -> Champion (single connector)
-    if (matchEls.final[0] && championCardEl) {
+    if (matchEls.final[0] && champCardEl) {
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', pathBetween(matchEls.final[0], championCardEl));
+      path.setAttribute('d', pathBetween(matchEls.final[0], champCardEl));
       path.setAttribute('class', 'connector');
       path.dataset.from = data.final.id;
       path.dataset.to = 'champion';
@@ -1012,19 +354,16 @@
     }
   }
 
-  // ----------------------------------------------------------------------
-  // Selection / path highlighting
-  // ----------------------------------------------------------------------
+  // ── Selection / highlight ─────────────────────────────────────────────────
 
-  // Returns the ordered list of match ids (across all rounds) that a given
-  // team appears in, based on scenario.json's home/away/winner fields.
   function teamMatchPath(teamName) {
     const rounds = getRounds();
     const path = [];
     for (const round of rounds) {
       for (const m of round.matches) {
-        const inMatch = (m.home && m.home.name === teamName) || (m.away && m.away.name === teamName);
-        if (inMatch) path.push({ roundKey: round.key, matchId: m.id, won: m.winner && m.winner.name === teamName });
+        if ((m.home && m.home.name === teamName) || (m.away && m.away.name === teamName)) {
+          path.push({ roundKey: round.key, matchId: m.id, won: m.winner && m.winner.name === teamName });
+        }
       }
     }
     return path;
@@ -1033,113 +372,90 @@
   function applyHighlight() {
     const allTeamEls = document.querySelectorAll('[data-team]');
     const allConnectors = svg.querySelectorAll('.connector');
-    const groupRows = document.querySelectorAll('.group-table tr');
-
     if (!selectedTeam) {
-      allTeamEls.forEach((el) => el.classList.remove('highlight', 'dim'));
-      allConnectors.forEach((el) => el.classList.remove('connector-highlight'));
-      groupRows.forEach((el) => el.classList.remove('row-highlight'));
-      document.querySelectorAll('.match, .champion-card').forEach((el) => el.classList.remove('match-highlight'));
+      allTeamEls.forEach(el => el.classList.remove('highlight', 'dim'));
+      allConnectors.forEach(el => el.classList.remove('connector-highlight'));
+      document.querySelectorAll('.match, .champion-card').forEach(el => el.classList.remove('match-highlight'));
       clearBtn.hidden = true;
       return;
     }
-
     clearBtn.hidden = false;
-
-    // Highlight match boxes the team appears in
     const path = teamMatchPath(selectedTeam);
-    const pathMatchIds = new Set(path.map((p) => p.matchId));
-    document.querySelectorAll('.match').forEach((matchEl) => {
-      matchEl.classList.toggle('match-highlight', pathMatchIds.has(matchEl.dataset.matchId));
+    const pathMatchIds = new Set(path.map(p => p.matchId));
+    document.querySelectorAll('.match').forEach(el => {
+      el.classList.toggle('match-highlight', pathMatchIds.has(el.dataset.matchId));
     });
-    if (champEl()) {
-      champEl().classList.toggle('match-highlight', data.champion.name === selectedTeam);
-    }
-
-    // A [data-team] element should NOT be dimmed if either:
-    //  - it's the selected team themselves, OR
-    //  - it sits inside a match box that's on the selected team's path
-    //    (i.e. it's an opponent the selected team plays/played in THAT
-    //    specific match - keeping it visible there). Crucially this is
-    //    scoped to that match box only: the same team name appearing in a
-    //    DIFFERENT, unrelated match elsewhere in the bracket is still
-    //    dimmed, so unrelated fixtures don't look like part of the path.
-    allTeamEls.forEach((el) => {
+    const champCard = bracket.querySelector('.champion-card');
+    if (champCard) champCard.classList.toggle('match-highlight', data.champion.name === selectedTeam);
+    allTeamEls.forEach(el => {
       const isSelected = el.dataset.team === selectedTeam;
       const matchEl = el.closest('.match');
       const inPathMatch = matchEl && pathMatchIds.has(matchEl.dataset.matchId);
       el.classList.toggle('highlight', isSelected);
       el.classList.toggle('dim', !isSelected && !inPathMatch && el.closest('.bracket-wrap') !== null);
     });
-
-    groupRows.forEach((el) => {
-      const isMatch = el.dataset.team === selectedTeam;
-      el.classList.toggle('row-highlight', isMatch);
-    });
-
-    // Highlight connectors along the team's path, but only up to (and
-    // including) the connector leaving the last match they won.
-    // A connector with data-from = matchId is "on the path" if the team
-    // won that match (i.e. progressed via that connector).
-    const wonMatchIds = new Set(path.filter((p) => p.won).map((p) => p.matchId));
-    allConnectors.forEach((el) => {
+    const wonMatchIds = new Set(path.filter(p => p.won).map(p => p.matchId));
+    allConnectors.forEach(el => {
       el.classList.toggle('connector-highlight', wonMatchIds.has(el.dataset.from));
     });
   }
 
-  function champEl() {
-    return bracket.querySelector('.champion-card');
-  }
+  // ── Click handling ────────────────────────────────────────────────────────
 
   function onTeamClick(e) {
-    // Clicks on a team's OWN cell within the third-place table open the
-    // qualification-scenario popup instead of toggling the bracket
-    // highlight. Scoped to .col-team specifically so clicking the opponent
-    // shown in "Next match" doesn't open this team's popup.
-    const thirdsCell = e.target.closest('#thirds-table-body td.col-team');
-    if (thirdsCell) {
-      const row = thirdsCell.closest('tr[data-team]');
-      const name = row && row.dataset.team;
-      const team = name && ((data.allThirds || []).find((t) => t.name === name) || (predictionsByName && predictionsByName.get(name)));
-      if (team) openScenarioModal(team);
-      return;
-    }
-
     const target = e.target.closest('[data-team]');
     if (!target || !target.dataset.team) return;
-    const team = target.dataset.team;
-    if (!team) return;
+    const teamName = target.dataset.team;
+    if (!teamName) return;
 
-    selectedTeam = selectedTeam === team ? null : team;
-    applyHighlight();
-
-    if (selectedTeam) {
-      // Scroll the bracket so the team's earliest active match is visible
-      const path = teamMatchPath(selectedTeam);
-      if (path.length) {
-        const el = bracket.querySelector(`.match[data-match-id="${path[0].matchId}"]`);
-        if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    // If inside bracket or result grids: toggle highlight + open modal
+    if (target.closest('.bracket-wrap') || target.closest('.r32-results-grid') ||
+        target.closest('.group-results-grid')) {
+      selectedTeam = selectedTeam === teamName ? null : teamName;
+      applyHighlight();
+      if (selectedTeam) {
+        const path = teamMatchPath(selectedTeam);
+        if (path.length) {
+          const el = bracket.querySelector(`.match[data-match-id="${path[0].matchId}"]`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+        openKnockoutModal(selectedTeam);
+      } else {
+        closeScenarioModal();
       }
+      return;
     }
+    // Otherwise just open modal
+    openKnockoutModal(teamName);
   }
 
-  // ----------------------------------------------------------------------
-  // Meta + load
-  // ----------------------------------------------------------------------
+  // ── Meta ──────────────────────────────────────────────────────────────────
 
   function renderMeta() {
     const d = new Date(data.generatedAt);
-    metaUpdated.textContent = 'Updated ' + d.toLocaleString(undefined, {
-      dateStyle: 'medium',
-    });
-
+    metaUpdated.textContent = 'Updated ' + d.toLocaleString(undefined, { dateStyle: 'medium' });
     const n = data.resultsApplied || 0;
-    if (n > 0) {
-      metaResults.textContent = `${n} result${n === 1 ? '' : 's'} played so far`;
-      metaResults.title = 'Matches already played are used as-is, and have updated each team\'s rating.';
-    } else {
-      metaResults.textContent = 'No matches played yet';
-    }
+    metaResults.textContent = n > 0 ? `${n} result${n === 1 ? '' : 's'} played` : 'No matches yet';
+  }
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+
+  async function loadResults() {
+    try {
+      const res = await fetch('results.json?_=' + Date.now());
+      if (!res.ok) return;
+      const json = await res.json();
+      allResults = json.results || [];
+    } catch (_) {}
+  }
+
+  async function loadPredictions() {
+    try {
+      const res = await fetch('predictions_negbin.json?_=' + Date.now());
+      if (!res.ok) return;
+      const json = await res.json();
+      predictionsByName = new Map((json.teams || []).map(t => [t.name, t]));
+    } catch (_) {}
   }
 
   let resizeTimer = null;
@@ -1148,90 +464,48 @@
     resizeTimer = setTimeout(drawConnectors, 80);
   }
 
-  async function loadScenarioData() {
-    const filename = currentModel === 'existing' ? 'scenario.json' : 'scenario_negbin.json';
-    const scriptName = currentModel === 'existing' ? 'runScenario.js' : 'runFullNegBinPipeline.js';
-    try {
-      const res = await fetch(filename + '?_=' + Date.now());
-      if (!res.ok) throw new Error(filename + ' not found (HTTP ' + res.status + ')');
-      data = await res.json();
-      cachedRounds = null;
-      cachedRankByName = null;
-      await Promise.all([loadResults(), loadPredictions()]);
-      renderMeta();
-      renderGroups();
-      renderThirds();
-      renderBracket();
-      requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
-    } catch (e) {
-      groupsGrid.innerHTML = `<p class="error-row">Couldn't load ${filename}: ${e.message}. Run <code>node scripts/sim/${scriptName}</code> and commit the result.</p>`;
-    }
-  }
-
-  function setModel(model) {
-    if (model === currentModel) return;
-    currentModel = model;
-    localStorage.setItem(MODEL_STORAGE_KEY, model);
-    selectedTeam = null;
-    updateModelToggleUI();
-    loadScenarioData();
-  }
-
-  function updateModelToggleUI() {
-    if (!modelToggleNegbinBtn || !modelToggleExistingBtn) return;
-    modelToggleNegbinBtn.classList.toggle('is-active', currentModel === 'negbin');
-    modelToggleExistingBtn.classList.toggle('is-active', currentModel === 'existing');
-    modelToggleNegbinBtn.setAttribute('aria-selected', String(currentModel === 'negbin'));
-    modelToggleExistingBtn.setAttribute('aria-selected', String(currentModel === 'existing'));
-  }
-
   async function load() {
-    updateModelToggleUI();
-    await loadScenarioData();
+    try {
+      const res = await fetch('scenario_negbin.json?_=' + Date.now());
+      if (!res.ok) throw new Error('scenario_negbin.json not found (HTTP ' + res.status + ')');
+      data = await res.json();
+    } catch (e) {
+      if (bracket) bracket.innerHTML = `<p class="error-row">Couldn't load scenario_negbin.json: ${e.message}.</p>`;
+      return;
+    }
 
-    // One-time listener setup - attached ONCE here, not inside
-    // loadScenarioData (which re-runs on every model toggle) - re-attaching
-    // these on every toggle would stack duplicate handlers (e.g. multiple
-    // resize listeners firing drawConnectors multiple times per resize, or
-    // multiple click handlers on the same team firing the popup logic
-    // repeatedly). This mirrors the same fix applied to predictions.js's
-    // toggle for the same underlying risk.
+    cachedRounds = null;
+    cachedRankByName = null;
+
+    await Promise.all([loadResults(), loadPredictions()]);
+
+    renderMeta();
+    renderGroupResults();
+    renderR32Results();
+    renderBracket();
+    requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
+
     window.addEventListener('resize', scheduleRedraw);
-    // Single scroll listener: redraws connectors on every scroll, and
-    // also hides the scroll hint the first time the user scrolls past 20px.
+
     let scrollHintHidden = bracketWrap.scrollWidth <= bracketWrap.clientWidth + 4;
-    if (scrollHintHidden) scrollHint.classList.add('hidden');
+    if (scrollHintHidden && scrollHint) scrollHint.classList.add('hidden');
     bracketWrap.addEventListener('scroll', () => {
       scheduleRedraw();
       if (!scrollHintHidden && bracketWrap.scrollLeft > 20) {
-        scrollHint.classList.add('hidden');
+        if (scrollHint) scrollHint.classList.add('hidden');
         scrollHintHidden = true;
       }
     });
 
     document.body.addEventListener('click', onTeamClick);
-    clearBtn.addEventListener('click', () => {
-      selectedTeam = null;
-      applyHighlight();
-    });
-
-    toggleActualBtn.addEventListener('click', () => setGroupsViewMode('actual'));
-    toggleProjectedBtn.addEventListener('click', () => setGroupsViewMode('projected'));
-    toggleOffFenceBtn.addEventListener('click', () => setGroupsViewMode('off-the-fence'));
-    toggleNextMatchBtn.addEventListener('click', () => setGroupsViewMode('next-match'));
-
+    clearBtn.addEventListener('click', () => { selectedTeam = null; applyHighlight(); });
     scenarioModalClose.addEventListener('click', closeScenarioModal);
-    scenarioModalBackdrop.addEventListener('click', (e) => {
+    scenarioModalBackdrop.addEventListener('click', e => {
       if (e.target === scenarioModalBackdrop) closeScenarioModal();
     });
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && !scenarioModalBackdrop.hidden) closeScenarioModal();
     });
-
-    if (modelToggleNegbinBtn && modelToggleExistingBtn) {
-      modelToggleNegbinBtn.addEventListener('click', () => setModel('negbin'));
-      modelToggleExistingBtn.addEventListener('click', () => setModel('existing'));
-    }
   }
 
   load();

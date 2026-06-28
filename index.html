@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>World Cup 2026 Predictor</title>
-<meta name="description" content="Elo-based predictions for the 2026 FIFA World Cup. Group tables, knockout bracket and per-team stage probabilities, updated after every result." />
+<meta name="description" content="Elo-based predictions for the 2026 FIFA World Cup. Knockout bracket and per-team stage probabilities, updated after every result." />
 <meta property="og:title" content="World Cup 2026 Predictor" />
-<meta property="og:description" content="Elo-based predictions for the 2026 FIFA World Cup — group tables, knockout bracket and per-team stage probabilities." />
+<meta property="og:description" content="Elo-based predictions for the 2026 FIFA World Cup — knockout bracket and per-team stage probabilities." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>" />
 <link rel="stylesheet" href="styles.css" />
@@ -16,7 +16,7 @@
     <header class="masthead">
       <div class="masthead-top">
         <h1>World Cup <span class="vs">Predictor</span></h1>
-        <p class="subtitle">Our best guess at how the groups and knockout rounds will go, based on world football rankings. Tap any team to follow them all the way to the final.</p>
+        <p class="subtitle">Our best guess at how the knockout rounds will play out, based on world football ratings. Tap any team to see their path to the final.</p>
       </div>
       <div class="meta-bar" id="meta-bar">
         <span id="meta-updated">Loading…</span>
@@ -27,72 +27,21 @@
       </div>
     </header>
 
-    <div class="groups-toggle-wrap">
-      <div class="groups-toggle" id="model-toggle" role="tablist" aria-label="Choose prediction model">
-        <button class="groups-toggle-btn is-active" id="model-toggle-negbin" role="tab" aria-selected="true">New model</button>
-        <button class="groups-toggle-btn" id="model-toggle-existing" role="tab" aria-selected="false">Original model</button>
+    <section class="results-section">
+      <div class="bracket-section-head">
+        <h2>Group stage results</h2>
       </div>
-      <p class="groups-toggle-hint">New model: goals are simulated directly from each team's separate attack and defense ratings (more realistic, still being refined). Original model: a single overall rating per team, decides who wins first and fits a scoreline after.</p>
-    </div>
-
-    <div class="instructions">
-      <p>
-        <span class="hint-pill">Tap a team</span> to follow them through the whole
-        tournament — their group, every knockout game, and the final if they get
-        there. The ring on each group card shows how confident we are about that
-        group's ordering: a fuller green ring means we're pretty sure, a smaller
-        or amber/red ring means it's a close call. In Projected mode, the %
-        next to each team shows their own chance of finishing in that position.
-      </p>
-    </div>
-
-    <div class="groups-toggle-wrap">
-      <div class="groups-toggle" id="groups-toggle" role="tablist" aria-label="Show projected, current, off-the-fence or next-match group standings">
-        <button class="groups-toggle-btn is-active" id="toggle-projected" role="tab" aria-selected="true" data-mode="projected">Projected</button>
-        <button class="groups-toggle-btn" id="toggle-actual" role="tab" aria-selected="false" data-mode="actual">Current</button>
-        <button class="groups-toggle-btn" id="toggle-off-fence" role="tab" aria-selected="false" data-mode="off-the-fence">Off the Fence</button>
-        <button class="groups-toggle-btn" id="toggle-next-match" role="tab" aria-selected="false" data-mode="next-match">Next Match</button>
+      <div id="group-results-grid" class="group-results-grid">
+        <!-- Group results injected here -->
       </div>
-      <p class="groups-toggle-hint" id="groups-toggle-hint">Projected: each team's chance of finishing 1st-4th, from the simulation.</p>
-    </div>
-
-    <section class="groups-grid" id="groups-grid">
-      <!-- Group tables injected here -->
     </section>
 
-    <section class="thirds-section">
+    <section class="results-section">
       <div class="bracket-section-head">
-        <h2>Best of the third-placed teams</h2>
+        <h2>Round of 32</h2>
       </div>
-      <p class="thirds-intro" id="thirds-intro">
-        Finishing 3rd doesn't always mean you're out — the best 8 of the 12
-        third-placed teams also go through to the Last 32, ranked by points,
-        then goal difference, then goals scored. "Chance" is each team's
-        likelihood of being one of those 8, given that they finish 3rd in
-        their group. Here they are in the order they'll appear in the
-        knockout rounds below, each shown with who they'd play next. The
-        line marks the cutoff — the last 4 go home.
-      </p>
-      <p class="thirds-disclaimer" id="thirds-disclaimer">
-        Pts/GD/GF shows our most likely group-stage outcome for each team,
-        for context — the table itself is ordered by Chance. Once all group
-        games are finished, we'll confirm this table against the real final
-        standings.
-      </p>
-      <div class="table-wrap thirds-table-wrap" id="thirds-table-wrap">
-        <table id="thirds-table" class="thirds-table">
-          <thead id="thirds-table-head">
-            <tr>
-              <th class="col-team">Team</th>
-              <th class="col-num">Grp</th>
-              <th class="col-num third-chance" title="Of all simulations where this team finishes 3rd in their group, the % where they're also one of the 8 best third-placed teams overall (ranked by points, then goal difference, then goals scored, then FIFA World Ranking - see footnote)">Chance</th>
-              <th class="col-thirdpct">Next match</th>
-            </tr>
-          </thead>
-          <tbody id="thirds-table-body">
-            <tr><td colspan="4" class="loading-row">Loading…</td></tr>
-          </tbody>
-        </table>
+      <div id="r32-results-grid" class="r32-results-grid">
+        <!-- R32 results injected here -->
       </div>
     </section>
 
@@ -112,27 +61,21 @@
 
     <footer class="footnote">
       <p>
-        <strong>How we work this out.</strong> Every team has a rating based on
-        their recent results — the better a team's results, the higher their
-        rating. We use these ratings to work out the chance of each team winning
-        any match, including a boost for the three host nations (USA, Canada and
-        Mexico) when they play. We then run the whole tournament thousands of
-        times on a computer to see how often each team wins their group, reaches
-        the knockout rounds, and lifts the trophy.
+        <strong>How we work this out.</strong> Every team has separate attack and
+        defence ratings based on their results — better teams score more and concede
+        less. We use these ratings to simulate each match by sampling goals directly
+        from a statistical distribution, rather than deciding a winner first and fitting
+        a scoreline after. We run the whole tournament 100,000 times to build up the
+        probabilities you see here.
       </p>
       <p>
-        What you see here is <strong>one likely path</strong> through the
-        tournament — not a guarantee, and not the only way things could go. For
-        the full picture — every team's chance of reaching each stage — see
-        <a href="predictions.html">the full table</a>.
+        What you see in the bracket is <strong>one likely path</strong> — the most
+        probable outcome at each match, not a guarantee. For the full picture — every
+        team's chance of reaching each stage — see <a href="predictions.html">the full table</a>.
       </p>
       <p>
-        Results already played are built in and update each team's rating as the
-        tournament goes on, so this page should get more accurate week by week.
-        We give extra weight to what happens at this World Cup itself — a good
-        or bad result here moves a team's rating more than the same result
-        would outside the tournament, since it's the freshest evidence of how
-        a team is actually playing right now.
+        Results already played are built in and update each team's ratings as the
+        tournament progresses, so predictions improve as more matches are played.
       </p>
     </footer>
   </div>
@@ -143,7 +86,7 @@
       <h2 id="scenario-modal-title" class="modal-title"></h2>
       <div class="team-detail-gauge" id="scenario-modal-gauge"></div>
       <div class="team-detail-flow-wrap">
-        <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>
+        <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 900 360" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
     </div>
   </div>

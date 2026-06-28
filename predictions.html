@@ -18,38 +18,30 @@
         <span class="meta-sep">·</span>
         <span id="meta-sims"></span>
         <span class="meta-sep">·</span>
-        <a href="index.html">← Groups & knockout rounds</a>
+        <a href="index.html">← Bracket & results</a>
       </div>
     </header>
-
-    <div class="groups-toggle-wrap">
-      <div class="groups-toggle" id="model-toggle" role="tablist" aria-label="Choose prediction model">
-        <button class="groups-toggle-btn is-active" id="model-toggle-negbin" role="tab" aria-selected="true">New model</button>
-        <button class="groups-toggle-btn" id="model-toggle-existing" role="tab" aria-selected="false">Original model</button>
-      </div>
-      <p class="groups-toggle-hint">New model: goals are simulated directly from each team's separate attack and defense ratings (more realistic, still being refined). Original model: a single overall rating per team, decides who wins first and fits a scoreline after.</p>
-    </div>
 
     <section class="legend">
       <div class="legend-item">
         <span class="swatch swatch-accent"></span>
         <div>
           <strong>How it works</strong>
-          <p>Every team has a rating based on how well they've been playing. We use these ratings to work out the chance of either team winning any match, with a boost for the three host nations (USA, Canada, Mexico) when they play. Then we play out the whole tournament 20,000 times on a computer and count how often each team reaches each stage.</p>
+          <p>Every team has separate attack and defence ratings updated after each result. We simulate each match by sampling goals directly from a statistical distribution, then run the whole tournament 100,000 times to build the probabilities you see here.</p>
         </div>
       </div>
       <div class="legend-item">
         <span class="swatch swatch-host"></span>
         <div>
           <strong>What to know</strong>
-          <p>The route from the group stage into the last-32 follows the real World Cup rules. A few details of exactly which third-placed teams meet which group winners are simplified — close, but not pinpoint-exact for every combination. Results already played are built in and update each team's rating.</p>
+          <p>The route through the group stage and into the Last 32 follows the real World Cup rules. Results already played are built in and update each team's ratings.</p>
         </div>
       </div>
       <div class="legend-item">
         <span class="swatch swatch-pos"></span>
         <div>
           <strong>Reading the table</strong>
-          <p>Rank is our world ranking (#1 = most likely to win it all). FIFA is the official FIFA World Ranking from just before the tournament — a different system, shown for comparison. Rating is our own current rating, adjusted for tournament performance — the number and arrow next to it show how much it's moved from before the tournament (hover for the exact pre-tournament value). 1st/2nd are the chance of finishing top or second in the group. Last 32, Last 16, Quarters, Semis, Final and Champions are the chance of <em>reaching</em> that stage — Champions means winning the whole thing.</p>
+          <p>Rank is our world ranking (#1 = most likely to win it all). Rating is our current rating for each team — the arrow shows movement from before the tournament. Last 16 through to Champions shows the chance of <em>reaching</em> that stage.</p>
         </div>
       </div>
     </section>
@@ -73,7 +65,7 @@
           <tr><td colspan="9" class="loading-row">Loading…</td></tr>
         </tbody>
       </table>
-      <p class="team-detail-hint">Tap a team for their road to the Last 32.</p>
+      <p class="team-detail-hint">Tap a team to see their knockout path.</p>
     </section>
 
     <div id="scenario-modal-backdrop" class="modal-backdrop" hidden>
