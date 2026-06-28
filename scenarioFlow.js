@@ -466,166 +466,502 @@
   // ── Knockout stage flow diagram ─────────────────────────────────────────
   //
   // Renders a horizontal Sankey showing a team's pathway through the
-  // knockout rounds. Each column is a round (R32 → R16 → QF → SF → Final →
-  // Winner). Node height = probability of reaching that round. The ribbon
-  // from round N to round N+1 represents the probability of winning that
-  // round and advancing. A "eliminated" node at each round absorbs the
-  // probability mass that doesn't advance.
+  // knockout rounds. Each column is a round (R32→R16→QF→SF→Final→Winner).
+  // Node height = probability of reaching that round. The advance ribbon
+  // from round N to N+1 represents the probability of advancing.
+  // Eliminated flow drops below each node.
   //
-  // Uses per-team probabilities from predictions_negbin.json plus the modal
-  // opponent path from scenario_negbin.json.
+  // Opponent labels show ALL possible opponents at each round, weighted by
+  // their bracket-slot probability (not just the modal single opponent).
+  // Derived by traversing the fixed bracket tree and weighting each possible
+  // opponent by their own probability of reaching that round.
 
   const KO_ROUND_COLORS = {
-    r32:    '#818cf8',   // indigo
-    r16:    '#60a5fa',   // blue
-    qf:     '#34d399',   // emerald
-    sf:     '#fbbf24',   // amber
-    final:  '#f97316',   // orange
-    winner: '#4ade80',   // green
-    out:    '#475569',   // slate (eliminated)
+    r32:    '#818cf8',
+    r16:    '#60a5fa',
+    qf:     '#34d399',
+    sf:     '#fbbf24',
+    final:  '#f97316',
+    winner: '#4ade80',
+    out:    '#475569',
   };
 
-  function renderKnockoutFlow(svgEl, team, scenarioData, onSelect) {
-    // team: predictions_negbin.json team entry (has pRoundOf32..pChampion)
-    // scenarioData: scenario_negbin.json (for modal opponent labels)
-    if (!team) return;
+  // Bracket feed structure: matchId -> [feedA, feedB]
+  const KO_PAIRS = {
+    M89:  ['M74','M77'], M90:  ['M73','M75'],
+    M91:  ['M76','M78'], M92:  ['M79','M80'],
+    M93:  ['M83','M84'], M94:  ['M81','M82'],
+    M95:  ['M86','M88'], M96:  ['M85','M87'],
+    M97:  ['M89','M90'], M98:  ['M93','M94'],
+    M99:  ['M91','M92'], M100: ['M95','M96'],
+    M101: ['M97','M98'], M102: ['M99','M100'],
+    M104: ['M101','M102'],
+  };
 
-    const W = 900, H = 360;
-    const topM = 40, botM = 20, leftM = 60, rightM = 80;
-    const usableW = W - leftM - rightM;
-    const usableH = H - topM - botM;
+  const STAGE_P_KEY = {
+    r32: 'pRoundOf32', r16: 'pRoundOf16',
+    qf: 'pQuarterFinal', sf: 'pSemiFinal', final: 'pFinal',
+  };
 
-    // Rounds: each has a probability of reaching it
-    const rounds = [
-      { key: 'r32',    label: 'Last 32', p: team.pRoundOf32    || 0 },
-      { key: 'r16',    label: 'Last 16', p: team.pRoundOf16    || 0 },
-      { key: 'qf',     label: 'QF',      p: team.pQuarterFinal || 0 },
-      { key: 'sf',     label: 'SF',      p: team.pSemiFinal    || 0 },
-      { key: 'final',  label: 'Final',   p: team.pFinal        || 0 },
-      { key: 'winner', label: 'Winner',  p: team.pChampion     || 0 },
-    ].filter(r => r.p > 0);
+  // Given a match id, return all team names that could appear in it
+  // by recursively traversing the bracket tree down to R32 fixtures.
+  function teamsInMatch(matchId, scenarioData) {
+    const r32 = scenarioData.r32 || [];
+    const r32m = r32.find(m => m.id === matchId);
+    if (r32m) return new Set([r32m.home.name, r32m.away.name]);
+    const [a, b] = KO_PAIRS[matchId] || [];
+    if (!a) return new Set();
+    const sa = teamsInMatch(a, scenarioData);
+    const sb = teamsInMatch(b, scenarioData);
+    return new Set([...sa, ...sb]);
+  }
 
-    if (rounds.length === 0) { svgEl.innerHTML = ''; return; }
-
-    const nRounds = rounds.length;
-    const colSpacing = usableW / Math.max(nRounds - 1, 1);
-    const colXs = rounds.map((_, i) => leftM + i * colSpacing);
-
-    const nodeW = 14;
-    const maxNodeH = usableH * 0.85;
-    const minNodeH = 3;
-
-    // Node heights proportional to probability (capped so p=1 fills maxNodeH)
-    function nodeH(p) { return Math.max(minNodeH, p * maxNodeH); }
-
-    // Each round node is centred vertically; eliminated flows drop below
-    const nodeMidY = topM + usableH * 0.38;
-
-    // Build modal opponents from scenarioData
-    function modalOpponent(roundKey) {
-      if (!scenarioData) return null;
-      const name = team.name;
-      const searchIn = (matches) => {
-        if (!matches) return null;
-        for (const m of matches) {
-          if (m.home?.name === name || m.away?.name === name) {
-            return m.home?.name === name ? m.away?.name : m.home?.name;
-          }
+  // Find which match a team appears in at a given stage in the scenario.
+  // Handles the fact that 'final' is a single object not an array, and
+  // that a team may not appear in the final if they're the modal loser in SF.
+  function findTeamMatch(teamName, stage, scenarioData) {
+    let matches = scenarioData[stage] || [];
+    if (!Array.isArray(matches)) matches = [matches];
+    for (const m of matches) {
+      if (m.home?.name === teamName || m.away?.name === teamName) return m;
+    }
+    // For 'final': the team may be in the SF feeding the Final but not yet
+    // the modal finalist. Find their SF match and infer the Final match id.
+    if (stage === 'final') {
+      const sfMatches = scenarioData.sf || [];
+      for (const sf of sfMatches) {
+        if (sf.home?.name === teamName || sf.away?.name === teamName) {
+          // This SF feeds into the Final via KO_PAIRS
+          return { id: 'M104', _inferredFor: teamName, _sfId: sf.id };
         }
-        return null;
-      };
-      if (roundKey === 'r32')    return searchIn(scenarioData.r32);
-      if (roundKey === 'r16')    return searchIn(scenarioData.r16);
-      if (roundKey === 'qf')     return searchIn(scenarioData.qf);
-      if (roundKey === 'sf')     return searchIn(scenarioData.sf);
-      if (roundKey === 'final')  return scenarioData.final ? (
-        scenarioData.final.home?.name === name
-          ? scenarioData.final.away?.name
-          : scenarioData.final.home?.name
-      ) : null;
-      return null;
+      }
+    }
+    return null;
+  }
+
+  // Return opponent distribution for a team at a given stage:
+  // [{name, code, pct}] sorted desc, pct conditional on being the opponent
+  // (sums to 1 across all possible opponents in that bracket slot).
+  function opponentDistribution(teamName, stage, scenarioData, predictionsByTeam) {
+    const tm = findTeamMatch(teamName, stage, scenarioData);
+    if (!tm) return [];
+
+    const matchId = tm.id;
+    const [feedA, feedB] = KO_PAIRS[matchId] || [];
+
+    // R32: opponent is always the fixed other team (group stage complete)
+    if (!feedA) {
+      const r32m = (scenarioData.r32 || []).find(m => m.id === matchId);
+      if (!r32m) return [];
+      const opp = r32m.home.name === teamName ? r32m.away : r32m.home;
+      return [{ name: opp.name, code: opp.code, pct: 1.0 }];
     }
 
-    let svg = '';
+    // Find which feed the team comes from, opponent comes from the other
+    const inFeedA = teamsInMatch(feedA, scenarioData).has(teamName);
+    const oppFeed = inFeedA ? feedB : feedA;
+    const oppTeams = teamsInMatch(oppFeed, scenarioData);
 
-    // Gradient defs for advance ribbons
-    const gradDefs = rounds.map((r, i) => {
-      if (i === 0) return '';
-      const c0 = KO_ROUND_COLORS[rounds[i-1].key];
-      const c1 = KO_ROUND_COLORS[r.key];
-      return `<linearGradient id="ko-grad-${i}" x1="0" y1="0" x2="1" y2="0">
+    const pKey = STAGE_P_KEY[stage];
+    const weights = {};
+    for (const t of oppTeams) {
+      const pred = predictionsByTeam[t];
+      if (pred) weights[t] = pred[pKey] || 0;
+    }
+    const total = Object.values(weights).reduce((s, v) => s + v, 0);
+    if (total === 0) return [];
+
+    return Object.entries(weights)
+      .map(([name, w]) => ({
+        name, pct: w / total,
+        code: (predictionsByTeam[name] || {}).code || null,
+      }))
+      .sort((a, b) => b.pct - a.pct);
+  }
+
+  // ── renderKnockoutFlow ────────────────────────────────────────────────────
+  //
+  // NEW DESIGN: per-opponent-node Sankey.
+  //
+  // Layout (left → right):
+  //   [Team] → [R32 node] → [R16 nodes…] → [QF nodes…] → [SF nodes…] → [Final nodes…] → [Win] + [Don't Win]
+  //
+  // Each intermediate node represents one possible opponent at that round.
+  // Node height ∝ joint probability = P(team reaches round AND faces that opponent).
+  // From each node, two flows leave:
+  //   • Win flow (top, coloured) → fans out into the opponent nodes of the next round
+  //   • Loss flow (bottom, grey) → merges into the "Don't Win" terminal on the right
+  // Opponents with joint probability below a threshold are grouped into an "Other" node.
+  // Terminal nodes:
+  //   • "Win" (green, top-right) accumulates pChampion
+  //   • "Don't Win" (slate, bottom-right) accumulates 1 – pChampion
+
+  function renderKnockoutFlow(svgEl, team, scenarioData, predsList) {
+    if (!team || !scenarioData) return;
+
+    const predsByName = {};
+    if (predsList) for (const t of predsList) predsByName[t.name] = t;
+    predsByName[team.name] = team;
+
+    // ── 1. Build nodes per round ──────────────────────────────────────────
+
+    // Stage sequence and their pReach values
+    const STAGES = [
+      { key: 'r32',   label: 'Last 32', pKey: 'pRoundOf32'    },
+      { key: 'r16',   label: 'Last 16', pKey: 'pRoundOf16'    },
+      { key: 'qf',    label: 'QF',      pKey: 'pQuarterFinal' },
+      { key: 'sf',    label: 'SF',      pKey: 'pSemiFinal'    },
+      { key: 'final', label: 'Final',   pKey: 'pFinal'        },
+    ];
+
+    // Filter to stages the team actually reaches
+    const activeStages = STAGES.filter(s => (team[s.pKey] || 0) > 0.0001);
+    if (activeStages.length === 0) { svgEl.innerHTML = ''; return; }
+
+    // Joint P threshold: opponents below this are grouped into "Other"
+    const THRESHOLD = 0.025;
+    // Max shown per node before grouping
+    const MAX_SHOWN = 6;
+
+    // For each stage, build the list of opponent nodes:
+    // [{ oppName, jointP, condP }] sorted by jointP desc, with an "Other" bucket if needed
+    function buildOpponentNodes(stage) {
+      const pReach = team[stage.pKey] || 0;
+      if (pReach < 0.0001) return [];
+
+      // R32: single fixed opponent
+      if (stage.key === 'r32') {
+        const r32m = (scenarioData.r32 || []).find(m =>
+          m.home?.name === team.name || m.away?.name === team.name
+        );
+        if (!r32m) return [];
+        const opp = r32m.home.name === team.name ? r32m.away : r32m.home;
+        return [{ oppName: opp.name, jointP: pReach, condP: 1.0, isOther: false }];
+      }
+
+      // Later rounds: find opponent feed and weight by pReach of each potential opponent
+      // Find team's match at this stage
+      let stageMatches = scenarioData[stage.key] || [];
+      if (!Array.isArray(stageMatches)) stageMatches = [stageMatches];
+
+      let teamMatch = stageMatches.find(m =>
+        m.home?.name === team.name || m.away?.name === team.name
+      );
+
+      // For Final: team may not be in modal final — find via SF
+      if (!teamMatch && stage.key === 'final') {
+        const sfMatches = scenarioData.sf || [];
+        for (const sf of sfMatches) {
+          if (sf.home?.name === team.name || sf.away?.name === team.name) {
+            teamMatch = { id: 'M104' }; break;
+          }
+        }
+      }
+      if (!teamMatch) return [];
+
+      const [feedA, feedB] = KO_PAIRS[teamMatch.id] || [];
+      if (!feedA) return [];
+
+      const inFeedA = teamsInMatch(feedA, scenarioData).has(team.name);
+      const oppFeed = inFeedA ? feedB : feedA;
+      const oppTeams = [...teamsInMatch(oppFeed, scenarioData)];
+
+      const pKey = STAGE_P_KEY[stage.key];
+      const weights = {};
+      for (const t of oppTeams) {
+        weights[t] = (predsByName[t] || {})[pKey] || 0;
+      }
+      const totalW = Object.values(weights).reduce((s, v) => s + v, 0);
+      if (totalW === 0) return [];
+
+      const rawNodes = Object.entries(weights)
+        .map(([name, w]) => ({ oppName: name, condP: w / totalW, jointP: (w / totalW) * pReach }))
+        .sort((a, b) => b.jointP - a.jointP);
+
+      // Apply threshold + max shown
+      const shown = rawNodes.filter((n, i) => n.jointP >= THRESHOLD && i < MAX_SHOWN);
+      const others = rawNodes.filter((n, i) => n.jointP < THRESHOLD || i >= MAX_SHOWN);
+
+      const result = shown.map(n => ({ ...n, isOther: false }));
+      if (others.length > 0) {
+        const otherJoint = others.reduce((s, n) => s + n.jointP, 0);
+        const otherCond  = others.reduce((s, n) => s + n.condP,  0);
+        result.push({ oppName: `+${others.length} others`, jointP: otherJoint, condP: otherCond, isOther: true });
+      }
+      return result;
+    }
+
+    const stageNodes = activeStages.map(s => ({
+      ...s,
+      nodes: buildOpponentNodes(s),
+      pReach: team[s.pKey] || 0,
+      pReachNext: null, // filled below
+    }));
+
+    // Fill pReachNext: probability of reaching the next stage
+    for (let i = 0; i < stageNodes.length; i++) {
+      if (i < stageNodes.length - 1) {
+        stageNodes[i].pReachNext = stageNodes[i + 1].pReach;
+      } else {
+        // Last stage (Final): pReachNext = pChampion
+        stageNodes[i].pReachNext = team.pChampion || 0;
+      }
+    }
+
+    // ── 2. Layout constants ───────────────────────────────────────────────
+
+    const W = 1100, H = 480;
+    const PAD_TOP = 36, PAD_BOT = 28, PAD_LEFT = 72, PAD_RIGHT = 90;
+    const usableW = W - PAD_LEFT - PAD_RIGHT;
+    const usableH = H - PAD_TOP - PAD_BOT;
+
+    // Columns: Team | R32 | R16 | QF | SF | Final | Win/DontWin
+    const nCols = stageNodes.length + 2; // +1 for team source, +1 for terminals
+    const colW = usableW / (nCols - 1);
+    const colX = i => PAD_LEFT + i * colW;
+
+    const teamColX    = colX(0);
+    const stageColXs  = stageNodes.map((_, i) => colX(i + 1));
+    const terminalColX = colX(nCols - 1);
+
+    // Height scale: map probability to pixels
+    const SCALE = usableH * 0.88; // p=1 → 88% of usable height
+    const MIN_H  = 3;
+    const pH = p => Math.max(MIN_H, p * SCALE);
+
+    const NODE_W = 10;
+    const GAP    = 5;  // gap between stacked nodes in a column
+
+    // Win terminal centred in top 40% of usable area; Don't Win in bottom 40%
+    const winTermY   = PAD_TOP + usableH * 0.13;
+    const loseTermY  = PAD_TOP + usableH * 0.58;
+
+    // ── 3. Position each node ─────────────────────────────────────────────
+
+    // For each stage column, stack nodes vertically centred on the column midpoint.
+    // Track y0 (top edge) of each node.
+    for (let si = 0; si < stageNodes.length; si++) {
+      const col = stageNodes[si];
+      const totalH = col.nodes.reduce((s, n) => s + pH(n.jointP), 0)
+                   + GAP * Math.max(0, col.nodes.length - 1);
+      let y = PAD_TOP + (usableH - totalH) / 2;
+      for (const n of col.nodes) {
+        n.y0 = y;
+        n.h  = pH(n.jointP);
+        n.cx = stageColXs[si];
+        y += n.h + GAP;
+      }
+    }
+
+    // ── 4. SVG helpers ────────────────────────────────────────────────────
+
+    let svg = '<defs>';
+
+    // Colour per stage
+    const COL = {
+      r32: '#818cf8', r16: '#60a5fa', qf: '#34d399',
+      sf: '#fbbf24', final: '#f97316',
+      win: '#4ade80', lose: '#475569', team: '#5eead4',
+    };
+
+    // Gradient for each stage transition
+    for (let si = 0; si < stageNodes.length; si++) {
+      const c0 = si === 0 ? COL.team : COL[stageNodes[si - 1].key];
+      const c1 = COL[stageNodes[si].key];
+      svg += `<linearGradient id="kgA${si}" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stop-color="${c0}" stop-opacity="0.7"/>
         <stop offset="100%" stop-color="${c1}" stop-opacity="0.7"/>
       </linearGradient>`;
-    }).join('');
-    svg += `<defs>${gradDefs}</defs>`;
-
-    // Draw advance ribbons first (behind nodes)
-    for (let i = 1; i < rounds.length; i++) {
-      const prev = rounds[i - 1];
-      const curr = rounds[i];
-      const x0 = colXs[i - 1] + nodeW / 2;
-      const x1 = colXs[i] - nodeW / 2;
-      const h0 = nodeH(prev.p);
-      const h1 = nodeH(curr.p);
-      const hy0 = nodeH(curr.p); // ribbon height at source = target height
-      // Advance ribbon: top portion of prev node → full curr node
-      const y0t = nodeMidY - h0 / 2;  // top of prev node
-      const y1t = nodeMidY - h1 / 2;  // top of curr node
-      const midX = (x0 + x1) / 2;
-      const path = `M ${x0} ${y0t} C ${midX} ${y0t}, ${midX} ${y1t}, ${x1} ${y1t}
-        L ${x1} ${y1t + h1} C ${midX} ${y1t + h1}, ${midX} ${y0t + hy0}, ${x0} ${y0t + hy0} Z`;
-      svg += `<path d="${path}" fill="url(#ko-grad-${i})" opacity="0.55" class="ko-ribbon">
-        <title>Advances to ${curr.label}: ${fmtPct(curr.p)}</title></path>`;
-
-      // Eliminated ribbon: remaining portion of prev node drops down
-      const elim = prev.p - curr.p;
-      if (elim > 0.001) {
-        const elimH = nodeH(elim);
-        const ey0t = y0t + hy0;
-        const ey0b = ey0t + elimH;
-        const elimMidY = ey0t + elimH / 2;
-        const elimDropY = nodeMidY + usableH * 0.35;
-        const elimPath = `M ${x0} ${ey0t} C ${midX} ${ey0t}, ${x0 + 30} ${elimDropY}, ${x0 + 30} ${elimDropY}
-          L ${x0 + 30} ${elimDropY + 4} C ${x0 + 30} ${elimDropY + 4}, ${midX} ${ey0b}, ${x0} ${ey0b} Z`;
-        svg += `<path d="${elimPath}" fill="${KO_ROUND_COLORS.out}" opacity="0.25" class="ko-ribbon-out">
-          <title>Eliminated at ${prev.label}: ${fmtPct(elim)}</title></path>`;
+      // win→next gradient
+      if (si < stageNodes.length - 1) {
+        const cNext = COL[stageNodes[si + 1].key];
+        svg += `<linearGradient id="kgW${si}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${c1}" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="${cNext}" stop-opacity="0.6"/>
+        </linearGradient>`;
       }
     }
+    svg += '</defs>';
 
-    // Draw round nodes
-    for (let i = 0; i < rounds.length; i++) {
-      const r = rounds[i];
-      const cx = colXs[i];
-      const h = nodeH(r.p);
-      const y0 = nodeMidY - h / 2;
-      const color = KO_ROUND_COLORS[r.key];
+    // Draw a cubic bezier ribbon between two horizontal spans
+    function ribbon(x0, y0top, y0bot, x1, y1top, y1bot, fill, title='', opacity=0.5) {
+      const mx = (x0 + x1) / 2;
+      return `<path d="M${x0},${y0top} C${mx},${y0top} ${mx},${y1top} ${x1},${y1top}
+               L${x1},${y1bot} C${mx},${y1bot} ${mx},${y0bot} ${x0},${y0bot} Z"
+               fill="${fill}" opacity="${opacity}">
+               ${title ? `<title>${title}</title>` : ''}</path>`;
+    }
 
-      svg += `<rect x="${cx - nodeW/2}" y="${y0}" width="${nodeW}" height="${h}"
-        fill="${color}" rx="3" class="ko-node" data-round="${r.key}">
-        <title>${r.label}: ${fmtPct(r.p)}</title></rect>`;
+    // Node rectangle + label
+    function nodeRect(x, y0, h, color, label, prob, isOther = false) {
+      const labelX = x + NODE_W / 2 + 5;
+      const midY   = y0 + h / 2;
+      const nameStyle = `font-size:9px;fill:${isOther ? '#64748b' : '#cbd5e1'};font-family:system-ui,sans-serif`;
+      const probStyle = `font-size:8px;fill:#94a3b8;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums`;
+      return `<rect x="${x - NODE_W/2}" y="${y0}" width="${NODE_W}" height="${Math.max(h,2)}"
+                fill="${color}" rx="2" opacity="${isOther ? 0.45 : 0.9}"/>
+              <text x="${labelX}" y="${midY - 1}" dominant-baseline="auto" style="${nameStyle}">${label}</text>
+              <text x="${labelX}" y="${midY + 10}" dominant-baseline="auto" style="${probStyle}">${prob}</text>`;
+    }
 
-      // Round label above
-      svg += `<text x="${cx}" y="${topM - 6}" text-anchor="middle"
-        class="ko-round-label">${r.label}</text>`;
+    // ── 5. Draw flows ─────────────────────────────────────────────────────
 
-      // Probability label below node
-      svg += `<text x="${cx}" y="${y0 + h + 14}" text-anchor="middle"
-        class="ko-prob-label">${fmtPct(r.p)}</text>`;
+    // (a) Team source node → R32 node(s)
+    const teamH  = pH(team.pRoundOf32 || 1);
+    const teamY0 = PAD_TOP + (usableH - teamH) / 2;
+    const firstCol = stageNodes[0];
 
-      // Modal opponent label (vs X)
-      if (r.key !== 'winner') {
-        const opp = modalOpponent(r.key);
-        if (opp) {
-          svg += `<text x="${cx}" y="${y0 + h + 26}" text-anchor="middle"
-            class="ko-opp-label">vs ${opp}</text>`;
+    // Ribbon from team node to R32 nodes
+    let srcWinY = teamY0; // tracks where the win flow top is on the source node
+    for (const n of firstCol.nodes) {
+      // All flow from team → each R32 node is proportional to n.jointP / total
+      const ribbonH_src = pH(n.jointP);
+      svg += ribbon(
+        teamColX + NODE_W/2, srcWinY, srcWinY + ribbonH_src,
+        n.cx - NODE_W/2,     n.y0,    n.y0 + n.h,
+        `url(#kgA0)`, `${n.oppName}: ${fmtPct(n.jointP)}`
+      );
+      srcWinY += ribbonH_src;
+    }
+
+    // (b) Within each stage: win flow → next stage nodes, loss flow → Don't Win terminal
+    for (let si = 0; si < stageNodes.length; si++) {
+      const col     = stageNodes[si];
+      const isLast  = si === stageNodes.length - 1;
+      const nextCol = isLast ? null : stageNodes[si + 1];
+
+      // Conditional win rate for this stage
+      const pWinRate = col.pReach > 0 ? col.pReachNext / col.pReach : 0;
+
+      for (const n of col.nodes) {
+        const winH  = pH(n.jointP * pWinRate);
+        const loseH = pH(n.jointP * (1 - pWinRate));
+
+        // Win flow: top portion of node
+        n.winY0  = n.y0;
+        n.winY1  = n.y0 + winH;
+        // Loss flow: bottom portion
+        n.loseY0 = n.winY1;
+        n.loseY1 = n.y0 + n.h;
+
+        // Loss ribbon → Don't Win terminal (drawn later)
+        // Store for now; we'll accumulate them
+      }
+
+      if (!isLast) {
+        // Fan out win flows from this stage's nodes to next stage's nodes.
+        //
+        // Each source node n has a win flow height of pH(n.jointP * pWinRate).
+        // Each destination node dn has a total incoming height of pH(dn.jointP).
+        // Ribbon from (n → dn) has height proportional to:
+        //   src contribution = winH(n) * dn.condP   (dn's share of the win pool)
+        //   dst contribution = pH(dn.jointP) * (winH(n) / totalWinH)  (n's share of dn's inflow)
+        // Both allocations are equivalent (same area), so we use a single consistent
+        // allocation: for each dn, carve pH(dn.jointP) from sources top-to-bottom.
+
+        // Track current write position on each src node's win range
+        const srcCursors = Object.fromEntries(col.nodes.map(n => [n.oppName, n.winY0]));
+
+        for (const dn of nextCol.nodes) {
+          let destCur = dn.y0;
+          // Allocate dn.jointP proportionally across src win flows
+          for (const sn of col.nodes) {
+            const snWinH = pH(sn.jointP * pWinRate);
+            if (snWinH < 0.5) continue;
+            // This src contributes condP(sn) * pH(dn.jointP) to dn's inflow
+            // and dn.condP * snWinH to dn's total from this src
+            const sliceH = snWinH * dn.condP; // how much of sn's win goes to dn
+            if (sliceH < 0.5) { srcCursors[sn.oppName] += sliceH; continue; }
+            const dstSlice = pH(dn.jointP) * (snWinH / pH(col.pReachNext));
+            if (dstSlice < 0.5) { srcCursors[sn.oppName] += sliceH; destCur += dstSlice; continue; }
+            svg += ribbon(
+              sn.cx + NODE_W/2, srcCursors[sn.oppName], srcCursors[sn.oppName] + sliceH,
+              dn.cx - NODE_W/2, destCur,                 destCur + dstSlice,
+              `url(#kgW${si})`,
+              `${sn.oppName} wins → vs ${dn.oppName}: ${fmtPct(sn.jointP * pWinRate * dn.condP)}`,
+              0.45
+            );
+            srcCursors[sn.oppName] += sliceH;
+            destCur += dstSlice;
+          }
+        }
+      } else {
+        // Last stage (Final): win flows → Win terminal
+        let winTermCur = winTermY;
+        for (const n of col.nodes) {
+          const wh = n.winY1 - n.winY0;
+          if (wh < 0.5) continue;
+          svg += ribbon(
+            n.cx + NODE_W/2, n.winY0, n.winY1,
+            terminalColX - NODE_W/2, winTermCur, winTermCur + wh,
+            `url(#kgW${si})` , `${n.oppName} final: ${fmtPct(n.jointP * pWinRate)}`, 0.5
+          );
+          winTermCur += wh;
         }
       }
     }
 
-    // Team name header
-    svg += `<text x="${leftM}" y="${topM - 22}" text-anchor="start"
-      class="flow-source-label" style="font-size:11px">${team.name}</text>`;
+    // (c) Loss flows → Don't Win terminal
+    // Collect all loss ribbons in order (top-to-bottom within each stage col)
+    let loseCur = loseTermY;
+    for (let si = 0; si < stageNodes.length; si++) {
+      const col = stageNodes[si];
+      const pWinRate = col.pReach > 0 ? col.pReachNext / col.pReach : 0;
+      for (const n of col.nodes) {
+        const lh = n.loseY1 - n.loseY0;
+        if (lh < 0.5) continue;
+        svg += ribbon(
+          n.cx + NODE_W/2, n.loseY0, n.loseY1,
+          terminalColX - NODE_W/2, loseCur, loseCur + lh,
+          COL.lose, `Out at ${col.label}: ${fmtPct(n.jointP * (1 - pWinRate))}`, 0.28
+        );
+        loseCur += lh;
+      }
+    }
+
+    // ── 6. Draw nodes (on top of ribbons) ─────────────────────────────────
+
+    // Team source node
+    svg += `<rect x="${teamColX - NODE_W/2}" y="${teamY0}" width="${NODE_W}" height="${teamH}"
+              fill="${COL.team}" rx="2" opacity="0.9"/>`;
+    svg += `<text x="${teamColX + NODE_W/2 + 5}" y="${teamY0 + teamH/2 + 1}"
+              dominant-baseline="middle"
+              style="font-size:10px;font-weight:700;fill:#e2e8f0;font-family:system-ui,sans-serif">${team.name}</text>`;
+
+    // Stage nodes
+    for (let si = 0; si < stageNodes.length; si++) {
+      const col = stageNodes[si];
+      const color = COL[col.key];
+      for (const n of col.nodes) {
+        svg += nodeRect(n.cx, n.y0, n.h, color, n.oppName, fmtPct(n.jointP), n.isOther);
+      }
+      // Column header
+      svg += `<text x="${stageColXs[si]}" y="${PAD_TOP - 14}" text-anchor="middle"
+                style="font-size:9px;fill:#64748b;font-family:system-ui,sans-serif">${col.label}</text>`;
+      svg += `<text x="${stageColXs[si]}" y="${PAD_TOP - 4}" text-anchor="middle"
+                style="font-size:10px;font-weight:600;fill:#94a3b8;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums">${fmtPct(col.pReach)}</text>`;
+    }
+
+    // Terminal nodes
+    const winH_terminal  = pH(team.pChampion || 0);
+    const loseH_terminal = pH(1 - (team.pChampion || 0));
+    svg += `<rect x="${terminalColX - NODE_W/2}" y="${winTermY}" width="${NODE_W}" height="${winH_terminal}"
+              fill="${COL.win}" rx="2" opacity="0.9"/>
+            <text x="${terminalColX + NODE_W/2 + 5}" y="${winTermY + winH_terminal/2 - 5}"
+              dominant-baseline="middle"
+              style="font-size:9px;font-weight:700;fill:#4ade80;font-family:system-ui,sans-serif">Win</text>
+            <text x="${terminalColX + NODE_W/2 + 5}" y="${winTermY + winH_terminal/2 + 8}"
+              dominant-baseline="middle"
+              style="font-size:10px;font-weight:700;fill:#4ade80;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums">${fmtPct(team.pChampion)}</text>`;
+
+    svg += `<rect x="${terminalColX - NODE_W/2}" y="${loseTermY}" width="${NODE_W}" height="${loseH_terminal}"
+              fill="${COL.lose}" rx="2" opacity="0.7"/>
+            <text x="${terminalColX + NODE_W/2 + 5}" y="${loseTermY + loseH_terminal/2 - 5}"
+              dominant-baseline="middle"
+              style="font-size:9px;fill:#94a3b8;font-family:system-ui,sans-serif">Don't win</text>
+            <text x="${terminalColX + NODE_W/2 + 5}" y="${loseTermY + loseH_terminal/2 + 8}"
+              dominant-baseline="middle"
+              style="font-size:10px;fill:#94a3b8;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums">${fmtPct(1 - (team.pChampion || 0))}</text>`;
 
     svgEl.innerHTML = svg;
     svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
