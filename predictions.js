@@ -177,7 +177,7 @@
     `;
 
     // Knockout Sankey
-    renderKnockoutFlow(scenarioModalFlow, team, scenarioData);
+    renderKnockoutFlow(scenarioModalFlow, team, scenarioData, currentData?.teams || []);
     scenarioModalBackdrop.hidden = false;
   }
 

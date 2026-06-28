@@ -157,7 +157,8 @@
     `;
 
     // Render knockout Sankey
-    renderKnockoutFlow(scenarioModalFlow, team, data);
+    const predsList = predictionsByName ? [...predictionsByName.values()] : [];
+    renderKnockoutFlow(scenarioModalFlow, team, data, predsList);
     scenarioModalBackdrop.hidden = false;
   }
 
