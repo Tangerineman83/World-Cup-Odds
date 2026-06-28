@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-28T18:19:45.308Z",
+  "generatedAt": "2026-06-28T20:57:35.299Z",
   "resultsApplied": 72,
   "model": "dual-Elo Negative Binomial (Phase 3/4) - see elo-negbin-revised.md",
   "negBinConstants": {
@@ -8,9 +8,9 @@
     "sigma": 597.92,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 72 matches, generated 2026-06-28T18:19:25.300Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 72 matches, generated 2026-06-28T20:57:15.897Z)",
   "methodology": {
-    "ratingSource": "Ratings are each team's CURRENT in-tournament ELOa (attack) / ELOd (defense), from elo_current_split.json (Phase 2), already reflecting every played result via a match-count-aware confidence ramp (see updateEloSplit.js). Unlike scenario.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (params: {\"alpha\":0.25,\"gamma\":0.48,\"sigma\":597.92,\"r\":12}, source: negbin_calibration.json (fitted against 72 matches, generated 2026-06-28T18:19:25.300Z)) - not decided via win-probability first, then forced-fit Poisson goals after. See groupStageNegBin.js and elo-negbin-revised.md Section 4.",
+    "ratingSource": "Ratings are each team's CURRENT in-tournament ELOa (attack) / ELOd (defense), from elo_current_split.json (Phase 2), already reflecting every played result via a match-count-aware confidence ramp (see updateEloSplit.js). Unlike scenario.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (params: {\"alpha\":0.25,\"gamma\":0.48,\"sigma\":597.92,\"r\":12}, source: negbin_calibration.json (fitted against 72 matches, generated 2026-06-28T20:57:15.897Z)) - not decided via win-probability first, then forced-fit Poisson goals after. See groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "worldRank": "Each team's worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions_negbin.json) - i.e. the rank matches the same model used for the odds table, not raw rating.",
     "groupOrdering": "modal (most frequent) full 1st-4th ordering across 20,000 group simulations per group, using the NegBin engine (groupStageNegBin.js)",
     "groupModalStats": "each team in groups[letter].order also carries points/gd/gf (and played, always 3) - taken from the single most common JOINT final table among the 20,000-simulation runs that produced this group's modal ordering, same approach as the existing engine's scenario.json (see that file's methodology.groupModalStats for full detail) - just using NegBin-sampled goals instead of Poisson.",
@@ -139,7 +139,7 @@
           "name": "Bosnia-Herzegovina",
           "code": "BA",
           "elo": 1616,
-          "worldRank": 30,
+          "worldRank": 31,
           "fifaRank": 65,
           "positionProbabilities": [
             0,
@@ -180,7 +180,7 @@
           "name": "Brazil",
           "code": "BR",
           "elo": 1991,
-          "worldRank": 8,
+          "worldRank": 7,
           "fifaRank": 6,
           "positionProbabilities": [
             1,
@@ -572,7 +572,7 @@
           "name": "Cape Verde",
           "code": "CV",
           "elo": 1578,
-          "worldRank": 31,
+          "worldRank": 30,
           "fifaRank": 69,
           "positionProbabilities": [
             0,
@@ -797,7 +797,7 @@
           "name": "Portugal",
           "code": "PT",
           "elo": 1989,
-          "worldRank": 7,
+          "worldRank": 8,
           "fifaRank": 5,
           "positionProbabilities": [
             0,
@@ -1453,7 +1453,7 @@
       "code": "BA",
       "group": "B",
       "elo": 1616,
-      "worldRank": 30,
+      "worldRank": 31,
       "fifaRank": 65,
       "positionProbabilities": [
         0,
