@@ -581,20 +581,16 @@
 
   // ── renderKnockoutFlow ────────────────────────────────────────────────────
   //
-  // NEW DESIGN: per-opponent-node Sankey.
+  // Sankey layout (left → right):
+  //   [Team] → [R32] → [R16 nodes] → [QF nodes] → [SF nodes] → [Final nodes] → [Win] / [Don't Win]
   //
-  // Layout (left → right):
-  //   [Team] → [R32 node] → [R16 nodes…] → [QF nodes…] → [SF nodes…] → [Final nodes…] → [Win] + [Don't Win]
+  // Each intermediate column holds one node per possible opponent.
+  // Node height = joint probability (P(team reaches round AND faces that opponent)).
+  // Each node splits into a win flow (top, coloured → next column) and a loss
+  // flow (bottom, grey → "Don't Win" terminal on the right).
   //
-  // Each intermediate node represents one possible opponent at that round.
-  // Node height ∝ joint probability = P(team reaches round AND faces that opponent).
-  // From each node, two flows leave:
-  //   • Win flow (top, coloured) → fans out into the opponent nodes of the next round
-  //   • Loss flow (bottom, grey) → merges into the "Don't Win" terminal on the right
-  // Opponents with joint probability below a threshold are grouped into an "Other" node.
-  // Terminal nodes:
-  //   • "Win" (green, top-right) accumulates pChampion
-  //   • "Don't Win" (slate, bottom-right) accumulates 1 – pChampion
+  // Designed for a ~700px-wide modal on mobile: all measurements in a 700×480
+  // viewBox so elements are legible when the SVG is rendered at actual size.
 
   function renderKnockoutFlow(svgEl, team, scenarioData, predsList) {
     if (!team || !scenarioData) return;
@@ -603,369 +599,324 @@
     if (predsList) for (const t of predsList) predsByName[t.name] = t;
     predsByName[team.name] = team;
 
-    // ── 1. Build nodes per round ──────────────────────────────────────────
+    // ── Bracket tree ───────────────────────────────────────────────────────
+    const KO_P = {
+      M89:['M74','M77'], M90:['M73','M75'], M91:['M76','M78'], M92:['M79','M80'],
+      M93:['M83','M84'], M94:['M81','M82'], M95:['M86','M88'], M96:['M85','M87'],
+      M97:['M89','M90'], M98:['M93','M94'], M99:['M91','M92'], M100:['M95','M96'],
+      M101:['M97','M98'], M102:['M99','M100'], M104:['M101','M102'],
+    };
+    const r32Map = {};
+    for (const m of (scenarioData.r32||[])) r32Map[m.id] = m;
+    function teamSet(mid) {
+      if (r32Map[mid]) return new Set([r32Map[mid].home.name, r32Map[mid].away.name]);
+      const [a,b] = KO_P[mid]||[];
+      if (!a) return new Set();
+      return new Set([...teamSet(a), ...teamSet(b)]);
+    }
+    const SP = { r32:'pRoundOf32', r16:'pRoundOf16', qf:'pQuarterFinal', sf:'pSemiFinal', final:'pFinal' };
 
-    // Stage sequence and their pReach values
-    const STAGES = [
-      { key: 'r32',   label: 'Last 32', pKey: 'pRoundOf32'    },
-      { key: 'r16',   label: 'Last 16', pKey: 'pRoundOf16'    },
-      { key: 'qf',    label: 'QF',      pKey: 'pQuarterFinal' },
-      { key: 'sf',    label: 'SF',      pKey: 'pSemiFinal'    },
-      { key: 'final', label: 'Final',   pKey: 'pFinal'        },
-    ];
+    // ── Build opponent nodes per stage ────────────────────────────────────
+    const THRESHOLD = 0.02; // joint-p cutoff before grouping into "other"
+    const MAX_OPP = 5;
 
-    // Filter to stages the team actually reaches
-    const activeStages = STAGES.filter(s => (team[s.pKey] || 0) > 0.0001);
-    if (activeStages.length === 0) { svgEl.innerHTML = ''; return; }
-
-    // Joint P threshold: opponents below this are grouped into "Other"
-    const THRESHOLD = 0.025;
-    // Max shown per node before grouping
-    const MAX_SHOWN = 6;
-
-    // For each stage, build the list of opponent nodes:
-    // [{ oppName, jointP, condP }] sorted by jointP desc, with an "Other" bucket if needed
-    function buildOpponentNodes(stage) {
-      const pReach = team[stage.pKey] || 0;
+    function oppNodes(stage, pNext) {
+      // pNext = probability of reaching the NEXT stage (= what the node's win height represents)
+      // jp (joint probability shown on node) = P(win this match vs this opponent) = pNext × condP
+      // inflowJp = P(reach this round AND face this opponent) = pReach × condP
+      const pReach = team[SP[stage]] || 0;
       if (pReach < 0.0001) return [];
 
-      // R32: single fixed opponent
-      if (stage.key === 'r32') {
-        const r32m = (scenarioData.r32 || []).find(m =>
-          m.home?.name === team.name || m.away?.name === team.name
-        );
-        if (!r32m) return [];
-        const opp = r32m.home.name === team.name ? r32m.away : r32m.home;
-        return [{ oppName: opp.name, jointP: pReach, condP: 1.0, isOther: false }];
+      if (stage === 'r32') {
+        const m = (scenarioData.r32||[]).find(m => m.home?.name===team.name||m.away?.name===team.name);
+        if (!m) return [];
+        const opp = m.home.name === team.name ? m.away : m.home;
+        // jp = P(win R32) = pNext; inflow = pReach (= 1.0 for group-complete teams)
+        return [{ lbl: opp.name, jp: pNext, inflowJp: pReach, cp: 1, other: false }];
       }
 
-      // Later rounds: find opponent feed and weight by pReach of each potential opponent
-      // Find team's match at this stage
-      let stageMatches = scenarioData[stage.key] || [];
-      if (!Array.isArray(stageMatches)) stageMatches = [stageMatches];
-
-      let teamMatch = stageMatches.find(m =>
-        m.home?.name === team.name || m.away?.name === team.name
-      );
-
-      // For Final: team may not be in modal final — find via SF
-      if (!teamMatch && stage.key === 'final') {
-        const sfMatches = scenarioData.sf || [];
-        for (const sf of sfMatches) {
-          if (sf.home?.name === team.name || sf.away?.name === team.name) {
-            teamMatch = { id: 'M104' }; break;
-          }
+      let ms = scenarioData[stage]||[];
+      if (!Array.isArray(ms)) ms = [ms];
+      let tm = ms.find(m => m.home?.name===team.name||m.away?.name===team.name);
+      if (!tm && stage==='final') {
+        for (const sf of (scenarioData.sf||[])) {
+          if (sf.home?.name===team.name||sf.away?.name===team.name) { tm={id:'M104'}; break; }
         }
       }
-      if (!teamMatch) return [];
+      if (!tm) return [];
 
-      const [feedA, feedB] = KO_PAIRS[teamMatch.id] || [];
-      if (!feedA) return [];
+      const [fA, fB] = KO_P[tm.id]||[];
+      if (!fA) return [];
+      const oppFeed = teamSet(fA).has(team.name) ? fB : fA;
+      const oppList = [...teamSet(oppFeed)];
+      const pk = SP[stage];
+      const raw = oppList.map(n => ({ n, w: (predsByName[n]||{})[pk]||0 }));
+      const tot = raw.reduce((s,x)=>s+x.w, 0);
+      if (tot === 0) return [];
+      // jp = pNext × condP; inflowJp = pReach × condP
+      const sorted = raw.map(x=>({
+        lbl: x.n,
+        cp: x.w/tot,
+        jp: (x.w/tot) * pNext,
+        inflowJp: (x.w/tot) * pReach,
+      })).sort((a,b)=>b.jp-a.jp);
 
-      const inFeedA = teamsInMatch(feedA, scenarioData).has(team.name);
-      const oppFeed = inFeedA ? feedB : feedA;
-      const oppTeams = [...teamsInMatch(oppFeed, scenarioData)];
-
-      const pKey = STAGE_P_KEY[stage.key];
-      const weights = {};
-      for (const t of oppTeams) {
-        weights[t] = (predsByName[t] || {})[pKey] || 0;
-      }
-      const totalW = Object.values(weights).reduce((s, v) => s + v, 0);
-      if (totalW === 0) return [];
-
-      const rawNodes = Object.entries(weights)
-        .map(([name, w]) => ({ oppName: name, condP: w / totalW, jointP: (w / totalW) * pReach }))
-        .sort((a, b) => b.jointP - a.jointP);
-
-      // Apply threshold + max shown
-      const shown = rawNodes.filter((n, i) => n.jointP >= THRESHOLD && i < MAX_SHOWN);
-      const others = rawNodes.filter((n, i) => n.jointP < THRESHOLD || i >= MAX_SHOWN);
-
-      const result = shown.map(n => ({ ...n, isOther: false }));
-      if (others.length > 0) {
-        const otherJoint = others.reduce((s, n) => s + n.jointP, 0);
-        const otherCond  = others.reduce((s, n) => s + n.condP,  0);
-        result.push({ oppName: `+${others.length} others`, jointP: otherJoint, condP: otherCond, isOther: true });
+      // Threshold on jp (win probability), not inflowJp
+      const shown = sorted.filter((n,i)=>n.jp>=THRESHOLD && i<MAX_OPP);
+      const rest  = sorted.filter((n,i)=>n.jp< THRESHOLD || i>=MAX_OPP);
+      const result = shown.map(n=>({...n, other:false}));
+      if (rest.length) {
+        result.push({
+          lbl: `+${rest.length} others`,
+          jp:       rest.reduce((s,n)=>s+n.jp,       0),
+          inflowJp: rest.reduce((s,n)=>s+n.inflowJp, 0),
+          cp:       rest.reduce((s,n)=>s+n.cp,        0),
+          other: true,
+        });
       }
       return result;
     }
 
-    const stageNodes = activeStages.map(s => ({
-      ...s,
-      nodes: buildOpponentNodes(s),
-      pReach: team[s.pKey] || 0,
-      pReachNext: null, // filled below
-    }));
+    const STAGES = [
+      {key:'r32', lbl:'Last 32', pk:'pRoundOf32'},
+      {key:'r16', lbl:'Last 16', pk:'pRoundOf16'},
+      {key:'qf',  lbl:'QF',      pk:'pQuarterFinal'},
+      {key:'sf',  lbl:'SF',      pk:'pSemiFinal'},
+      {key:'final',lbl:'Final',  pk:'pFinal'},
+    ].filter(s=>(team[s.pk]||0)>0.0001);
 
-    // Fill pReachNext: probability of reaching the next stage
-    for (let i = 0; i < stageNodes.length; i++) {
-      if (i < stageNodes.length - 1) {
-        stageNodes[i].pReachNext = stageNodes[i + 1].pReach;
-      } else {
-        // Last stage (Final): pReachNext = pChampion
-        stageNodes[i].pReachNext = team.pChampion || 0;
-      }
-    }
+    if (!STAGES.length) { svgEl.innerHTML=''; return; }
 
-    // ── 2. Layout constants ───────────────────────────────────────────────
+    // Attach pReach, pNext, and nodes
+    STAGES.forEach((s,i)=>{
+      s.pReach = team[s.pk]||0;
+      s.pNext  = i<STAGES.length-1 ? team[STAGES[i+1].pk]||0 : team.pChampion||0;
+      s.nodes  = oppNodes(s.key, s.pNext);
+    });
 
-    const W = 1100, H = 480;
-    const PAD_TOP = 36, PAD_BOT = 28, PAD_LEFT = 72, PAD_RIGHT = 90;
-    const usableW = W - PAD_LEFT - PAD_RIGHT;
-    const usableH = H - PAD_TOP - PAD_BOT;
+    // ── Layout ─────────────────────────────────────────────────────────────
+    // Fixed viewBox — designed for ~700px modal width
+    const VW = 700, VH = 440;
+    const T = 38, B = 20, L = 8, R = 8;   // tight padding
+    const UW = VW - L - R;
+    const UH = VH - T - B;
 
-    // Columns: Team | R32 | R16 | QF | SF | Final | Win/DontWin
-    const nCols = stageNodes.length + 2; // +1 for team source, +1 for terminals
-    const colW = usableW / (nCols - 1);
-    const colX = i => PAD_LEFT + i * colW;
+    // Columns: [teamSrc] [stage cols…] [terminals]
+    const nCols = STAGES.length + 2;
+    const cW    = UW / (nCols - 1);
+    const cx    = i => L + i * cW;
 
-    const teamColX    = colX(0);
-    const stageColXs  = stageNodes.map((_, i) => colX(i + 1));
-    const terminalColX = colX(nCols - 1);
+    const teamCX    = cx(0);
+    const stageCXs  = STAGES.map((_,i)=>cx(i+1));
+    const termCX    = cx(nCols-1);
 
-    // Height scale: map probability to pixels
-    const SCALE = usableH * 0.88; // p=1 → 88% of usable height
-    const MIN_H  = 3;
-    const pH = p => Math.max(MIN_H, p * SCALE);
+    // Height mapping — p=1 → 75% of UH to leave room for labels
+    const HSCALE = UH * 0.72;
+    const MINH   = 3;
+    const ph     = p => Math.max(MINH, p * HSCALE);
 
-    const NODE_W = 10;
-    const GAP    = 5;  // gap between stacked nodes in a column
+    const NW   = 16;   // node bar width
+    const GAP  = 4;    // gap between stacked nodes
+    const LOFF = NW/2 + 4; // label x offset from node centre
 
-    // Win terminal centred in top 40% of usable area; Don't Win in bottom 40%
-    const winTermY   = PAD_TOP + usableH * 0.13;
-    const loseTermY  = PAD_TOP + usableH * 0.58;
+    // Vertical centre for the whole flow
+    const MID = T + UH * 0.46;
 
-    // ── 3. Position each node ─────────────────────────────────────────────
+    // ── Colours ────────────────────────────────────────────────────────────
+    const C = {
+      team:'#5eead4', r32:'#818cf8', r16:'#60a5fa',
+      qf:'#34d399', sf:'#fbbf24', final:'#f97316',
+      win:'#4ade80', lose:'#475569',
+    };
 
-    // For each stage column, stack nodes vertically centred on the column midpoint.
-    // Track y0 (top edge) of each node.
-    for (let si = 0; si < stageNodes.length; si++) {
-      const col = stageNodes[si];
-      const totalH = col.nodes.reduce((s, n) => s + pH(n.jointP), 0)
-                   + GAP * Math.max(0, col.nodes.length - 1);
-      let y = PAD_TOP + (usableH - totalH) / 2;
+    // ── Position nodes ─────────────────────────────────────────────────────
+    // Bar height = inflowJp (full probability of facing this opponent)
+    // Win portion (top) = jp = pNext × condP
+    // Loss portion (bottom) = inflowJp - jp = (pReach - pNext) × condP
+    for (let si=0; si<STAGES.length; si++) {
+      const col = STAGES[si];
+      // Stack by inflowJp so total column height = pReach
+      const totalH = col.nodes.reduce((s,n)=>s+ph(n.inflowJp),0) + GAP*Math.max(0,col.nodes.length-1);
+      let y = MID - totalH/2;
       for (const n of col.nodes) {
-        n.y0 = y;
-        n.h  = pH(n.jointP);
-        n.cx = stageColXs[si];
+        n.y0      = y;
+        n.h       = ph(n.inflowJp);  // full bar = inflow
+        n.winH    = ph(n.jp);         // bright top = win probability
+        n.loseH   = n.h - n.winH;    // dim bottom = loss probability
+        n.winY0   = n.y0;
+        n.winY1   = n.y0 + n.winH;
+        n.loseY0  = n.winY1;
+        n.loseY1  = n.y0 + n.h;
+        n.cx      = stageCXs[si];
         y += n.h + GAP;
       }
     }
 
-    // ── 4. SVG helpers ────────────────────────────────────────────────────
-
-    let svg = '<defs>';
-
-    // Colour per stage
-    const COL = {
-      r32: '#818cf8', r16: '#60a5fa', qf: '#34d399',
-      sf: '#fbbf24', final: '#f97316',
-      win: '#4ade80', lose: '#475569', team: '#5eead4',
-    };
-
-    // Gradient for each stage transition
-    for (let si = 0; si < stageNodes.length; si++) {
-      const c0 = si === 0 ? COL.team : COL[stageNodes[si - 1].key];
-      const c1 = COL[stageNodes[si].key];
-      svg += `<linearGradient id="kgA${si}" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="${c0}" stop-opacity="0.7"/>
-        <stop offset="100%" stop-color="${c1}" stop-opacity="0.7"/>
+    // ── SVG helpers ────────────────────────────────────────────────────────
+    // Terminal Y positions — defined here so ribbon sections 3 & 4 can use them
+    const pChamp    = team.pChampion || 0;
+    const pNoChamp  = 1 - pChamp;
+    const winTermH  = ph(pChamp);
+    const loseTermH = ph(pNoChamp);
+    const winTermY  = MID - UH * 0.35;
+    const loseTermY = MID + UH * 0.08;
+    let out = '<defs>';
+    // Per-stage advance gradients
+    STAGES.forEach((s,i)=>{
+      const c0 = i===0 ? C.team : C[STAGES[i-1].key];
+      const c1 = C[s.key];
+      out += `<linearGradient id="kgI${i}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="${c0}" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="${c1}" stop-opacity="0.55"/>
       </linearGradient>`;
-      // win→next gradient
-      if (si < stageNodes.length - 1) {
-        const cNext = COL[stageNodes[si + 1].key];
-        svg += `<linearGradient id="kgW${si}" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="${c1}" stop-opacity="0.6"/>
-          <stop offset="100%" stop-color="${cNext}" stop-opacity="0.6"/>
+      if (i<STAGES.length-1) {
+        const c2 = C[STAGES[i+1].key];
+        out += `<linearGradient id="kgW${i}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${c1}" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="${c2}" stop-opacity="0.5"/>
         </linearGradient>`;
       }
-    }
-    svg += '</defs>';
+    });
+    out += '</defs>';
 
-    // Draw a cubic bezier ribbon between two horizontal spans
-    function ribbon(x0, y0top, y0bot, x1, y1top, y1bot, fill, title='', opacity=0.5) {
-      const mx = (x0 + x1) / 2;
-      return `<path d="M${x0},${y0top} C${mx},${y0top} ${mx},${y1top} ${x1},${y1top}
-               L${x1},${y1bot} C${mx},${y1bot} ${mx},${y0bot} ${x0},${y0bot} Z"
-               fill="${fill}" opacity="${opacity}">
-               ${title ? `<title>${title}</title>` : ''}</path>`;
-    }
-
-    // Node rectangle + label
-    function nodeRect(x, y0, h, color, label, prob, isOther = false) {
-      const labelX = x + NODE_W / 2 + 5;
-      const midY   = y0 + h / 2;
-      const nameStyle = `font-size:9px;fill:${isOther ? '#64748b' : '#cbd5e1'};font-family:system-ui,sans-serif`;
-      const probStyle = `font-size:8px;fill:#94a3b8;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums`;
-      return `<rect x="${x - NODE_W/2}" y="${y0}" width="${NODE_W}" height="${Math.max(h,2)}"
-                fill="${color}" rx="2" opacity="${isOther ? 0.45 : 0.9}"/>
-              <text x="${labelX}" y="${midY - 1}" dominant-baseline="auto" style="${nameStyle}">${label}</text>
-              <text x="${labelX}" y="${midY + 10}" dominant-baseline="auto" style="${probStyle}">${prob}</text>`;
+    function rib(x0,y0t,y0b, x1,y1t,y1b, fill, op=0.45) {
+      if (y0b-y0t<0.4 || y1b-y1t<0.4) return '';
+      const mx=(x0+x1)/2;
+      return `<path d="M${x0},${y0t} C${mx},${y0t} ${mx},${y1t} ${x1},${y1t}
+        L${x1},${y1b} C${mx},${y1b} ${mx},${y0b} ${x0},${y0b}Z"
+        fill="${fill}" opacity="${op}"/>`;
     }
 
-    // ── 5. Draw flows ─────────────────────────────────────────────────────
-
-    // (a) Team source node → R32 node(s)
-    const teamH  = pH(team.pRoundOf32 || 1);
-    const teamY0 = PAD_TOP + (usableH - teamH) / 2;
-    const firstCol = stageNodes[0];
-
-    // Ribbon from team node to R32 nodes
-    let srcWinY = teamY0; // tracks where the win flow top is on the source node
-    for (const n of firstCol.nodes) {
-      // All flow from team → each R32 node is proportional to n.jointP / total
-      const ribbonH_src = pH(n.jointP);
-      svg += ribbon(
-        teamColX + NODE_W/2, srcWinY, srcWinY + ribbonH_src,
-        n.cx - NODE_W/2,     n.y0,    n.y0 + n.h,
-        `url(#kgA0)`, `${n.oppName}: ${fmtPct(n.jointP)}`
-      );
-      srcWinY += ribbonH_src;
+    function bar(cx,y0,h,col,op=0.92) {
+      return `<rect x="${cx-NW/2}" y="${y0}" width="${NW}" height="${Math.max(h,MINH)}" fill="${col}" rx="2" opacity="${op}"/>`;
     }
 
-    // (b) Within each stage: win flow → next stage nodes, loss flow → Don't Win terminal
-    for (let si = 0; si < stageNodes.length; si++) {
-      const col     = stageNodes[si];
-      const isLast  = si === stageNodes.length - 1;
-      const nextCol = isLast ? null : stageNodes[si + 1];
+    function txt(x,y,s,size,col,bold=false,anchor='start') {
+      return `<text x="${x}" y="${y}" text-anchor="${anchor}"
+        style="font-size:${size}px;fill:${col};font-family:system-ui,sans-serif${bold?';font-weight:600':''};">${s}</text>`;
+    }
 
-      // Conditional win rate for this stage
-      const pWinRate = col.pReach > 0 ? col.pReachNext / col.pReach : 0;
+    // ── Draw ribbons ────────────────────────────────────────────────────────
 
-      for (const n of col.nodes) {
-        const winH  = pH(n.jointP * pWinRate);
-        const loseH = pH(n.jointP * (1 - pWinRate));
-
-        // Win flow: top portion of node
-        n.winY0  = n.y0;
-        n.winY1  = n.y0 + winH;
-        // Loss flow: bottom portion
-        n.loseY0 = n.winY1;
-        n.loseY1 = n.y0 + n.h;
-
-        // Loss ribbon → Don't Win terminal (drawn later)
-        // Store for now; we'll accumulate them
+    // 1. Team source → R32 nodes (inflow ribbons — full pReach, not just win)
+    // Team source height = pReach of first stage (= 1.0 when group stage complete)
+    const teamH = ph(STAGES[0].pReach);
+    const teamY0 = MID - teamH/2;
+    {
+      let srcY = teamY0;
+      for (const n of STAGES[0].nodes) {
+        // Ribbon from team to each R32 node uses inflowJp (full bar height)
+        out += rib(teamCX+NW/2, srcY, srcY+ph(n.inflowJp),
+                   n.cx-NW/2,  n.y0, n.y0+n.h, `url(#kgI0)`);
+        srcY += ph(n.inflowJp);
       }
+    }
 
-      if (!isLast) {
-        // Fan out win flows from this stage's nodes to next stage's nodes.
-        //
-        // Each source node n has a win flow height of pH(n.jointP * pWinRate).
-        // Each destination node dn has a total incoming height of pH(dn.jointP).
-        // Ribbon from (n → dn) has height proportional to:
-        //   src contribution = winH(n) * dn.condP   (dn's share of the win pool)
-        //   dst contribution = pH(dn.jointP) * (winH(n) / totalWinH)  (n's share of dn's inflow)
-        // Both allocations are equivalent (same area), so we use a single consistent
-        // allocation: for each dn, carve pH(dn.jointP) from sources top-to-bottom.
+    // 2. Between consecutive stage columns — advance ribbons use jp (win probability)
+    // These connect the WIN portion of source nodes to the full bar of destination nodes.
+    // Source total win = sum(jp) = pNext of source stage.
+    // Destination total inflow = sum(inflowJp) = pReach of destination stage = same value.
+    for (let si=0; si<STAGES.length-1; si++) {
+      const src  = STAGES[si];
+      const dst  = STAGES[si+1];
+      const grad = `url(#kgW${si})`;
 
-        // Track current write position on each src node's win range
-        const srcCursors = Object.fromEntries(col.nodes.map(n => [n.oppName, n.winY0]));
+      // srcCursor tracks write position within each source node's WIN zone (winY0..winY1)
+      const srcCursor = {};
+      for (const sn of src.nodes) srcCursor[sn.lbl] = sn.winY0;
 
-        for (const dn of nextCol.nodes) {
-          let destCur = dn.y0;
-          // Allocate dn.jointP proportionally across src win flows
-          for (const sn of col.nodes) {
-            const snWinH = pH(sn.jointP * pWinRate);
-            if (snWinH < 0.5) continue;
-            // This src contributes condP(sn) * pH(dn.jointP) to dn's inflow
-            // and dn.condP * snWinH to dn's total from this src
-            const sliceH = snWinH * dn.condP; // how much of sn's win goes to dn
-            if (sliceH < 0.5) { srcCursors[sn.oppName] += sliceH; continue; }
-            const dstSlice = pH(dn.jointP) * (snWinH / pH(col.pReachNext));
-            if (dstSlice < 0.5) { srcCursors[sn.oppName] += sliceH; destCur += dstSlice; continue; }
-            svg += ribbon(
-              sn.cx + NODE_W/2, srcCursors[sn.oppName], srcCursors[sn.oppName] + sliceH,
-              dn.cx - NODE_W/2, destCur,                 destCur + dstSlice,
-              `url(#kgW${si})`,
-              `${sn.oppName} wins → vs ${dn.oppName}: ${fmtPct(sn.jointP * pWinRate * dn.condP)}`,
-              0.45
-            );
-            srcCursors[sn.oppName] += sliceH;
-            destCur += dstSlice;
+      for (const dn of dst.nodes) {
+        let dstY = dn.y0;  // write into dest node's full bar (= its inflowJp)
+        for (const sn of src.nodes) {
+          if (sn.winH < 0.3) continue;
+          // sn contributes (dn.cp) fraction of its win flow to dn
+          const sliceH_src = sn.winH * dn.cp;
+          // dn receives from sn proportional to sn.jp relative to dst.pReach
+          // dst.pReach = sum of inflowJp of dst nodes = sum of jp of src nodes (= src.pNext)
+          const dstFrac   = src.pNext > 0 ? sn.jp / src.pNext : 0;
+          const sliceH_dst = ph(dn.inflowJp) * dstFrac;
+          if (sliceH_src < 0.3 || sliceH_dst < 0.3) {
+            srcCursor[sn.lbl] += sliceH_src;
+            dstY += sliceH_dst;
+            continue;
           }
-        }
-      } else {
-        // Last stage (Final): win flows → Win terminal
-        let winTermCur = winTermY;
-        for (const n of col.nodes) {
-          const wh = n.winY1 - n.winY0;
-          if (wh < 0.5) continue;
-          svg += ribbon(
-            n.cx + NODE_W/2, n.winY0, n.winY1,
-            terminalColX - NODE_W/2, winTermCur, winTermCur + wh,
-            `url(#kgW${si})` , `${n.oppName} final: ${fmtPct(n.jointP * pWinRate)}`, 0.5
-          );
-          winTermCur += wh;
+          out += rib(sn.cx+NW/2, srcCursor[sn.lbl], srcCursor[sn.lbl]+sliceH_src,
+                     dn.cx-NW/2, dstY,               dstY+sliceH_dst, grad);
+          srcCursor[sn.lbl] += sliceH_src;
+          dstY += sliceH_dst;
         }
       }
     }
 
-    // (c) Loss flows → Don't Win terminal
-    // Collect all loss ribbons in order (top-to-bottom within each stage col)
-    let loseCur = loseTermY;
-    for (let si = 0; si < stageNodes.length; si++) {
-      const col = stageNodes[si];
-      const pWinRate = col.pReach > 0 ? col.pReachNext / col.pReach : 0;
-      for (const n of col.nodes) {
-        const lh = n.loseY1 - n.loseY0;
-        if (lh < 0.5) continue;
-        svg += ribbon(
-          n.cx + NODE_W/2, n.loseY0, n.loseY1,
-          terminalColX - NODE_W/2, loseCur, loseCur + lh,
-          COL.lose, `Out at ${col.label}: ${fmtPct(n.jointP * (1 - pWinRate))}`, 0.28
-        );
-        loseCur += lh;
+    // 3. Final win flows → Win terminal (using winH of each Final node)
+    {
+      const lastCol = STAGES[STAGES.length-1];
+      let destY = winTermY;
+      for (const sn of lastCol.nodes) {
+        if (sn.winH < 0.3) continue;
+        out += rib(sn.cx+NW/2, sn.winY0, sn.winY1,
+                   termCX-NW/2, destY, destY+sn.winH, C.win, 0.4);
+        destY += sn.winH;
       }
     }
 
-    // ── 6. Draw nodes (on top of ribbons) ─────────────────────────────────
-
-    // Team source node
-    svg += `<rect x="${teamColX - NODE_W/2}" y="${teamY0}" width="${NODE_W}" height="${teamH}"
-              fill="${COL.team}" rx="2" opacity="0.9"/>`;
-    svg += `<text x="${teamColX + NODE_W/2 + 5}" y="${teamY0 + teamH/2 + 1}"
-              dominant-baseline="middle"
-              style="font-size:10px;font-weight:700;fill:#e2e8f0;font-family:system-ui,sans-serif">${team.name}</text>`;
-
-    // Stage nodes
-    for (let si = 0; si < stageNodes.length; si++) {
-      const col = stageNodes[si];
-      const color = COL[col.key];
-      for (const n of col.nodes) {
-        svg += nodeRect(n.cx, n.y0, n.h, color, n.oppName, fmtPct(n.jointP), n.isOther);
+    // 4. All loss flows → Don't Win terminal
+    {
+      let destY = loseTermY;
+      for (const col of STAGES) {
+        for (const sn of col.nodes) {
+          if (sn.loseH < 0.3) continue;
+          out += rib(sn.cx+NW/2, sn.loseY0, sn.loseY1,
+                     termCX-NW/2, destY, destY+sn.loseH, C.lose, 0.28);
+          destY += sn.loseH;
+        }
       }
-      // Column header
-      svg += `<text x="${stageColXs[si]}" y="${PAD_TOP - 14}" text-anchor="middle"
-                style="font-size:9px;fill:#64748b;font-family:system-ui,sans-serif">${col.label}</text>`;
-      svg += `<text x="${stageColXs[si]}" y="${PAD_TOP - 4}" text-anchor="middle"
-                style="font-size:10px;font-weight:600;fill:#94a3b8;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums">${fmtPct(col.pReach)}</text>`;
+    }
+
+    // ── Draw nodes and labels (on top of ribbons) ──────────────────────────
+
+    // Team source
+    out += bar(teamCX, teamY0, teamH, C.team);
+    out += txt(teamCX+LOFF, teamY0+teamH/2+4, team.name, 10, '#e2e8f0', true);
+
+    // Stage columns
+    for (let si=0; si<STAGES.length; si++) {
+      const col  = STAGES[si];
+      const scx  = stageCXs[si];
+      const col_color = C[col.key];
+
+      // Column header (round name + reach probability)
+      out += txt(scx, T-20, col.lbl,  8, '#64748b', false, 'middle');
+      out += txt(scx, T-8,  fmtPct(col.pReach), 9, '#94a3b8', true, 'middle');
+
+      for (const n of col.nodes) {
+        // Win portion (brighter)
+        if (n.winH > 0) out += bar(scx, n.y0, n.winH, col_color, 0.92);
+        // Loss portion (dimmer)
+        if (n.loseH > 0) out += bar(scx, n.loseY0, n.loseH, col_color, 0.38);
+
+        // Label: opponent name + joint probability
+        const midY = n.y0 + n.h/2;
+        const fill = n.other ? '#64748b' : '#cbd5e1';
+        const nameStr = n.lbl.length > 14 ? n.lbl.slice(0,13)+'…' : n.lbl;
+        out += txt(scx+LOFF, midY-1, nameStr, 8.5, fill, !n.other);
+        out += txt(scx+LOFF, midY+10, fmtPct(n.jp), 7.5, '#94a3b8', false);
+      }
     }
 
     // Terminal nodes
-    const winH_terminal  = pH(team.pChampion || 0);
-    const loseH_terminal = pH(1 - (team.pChampion || 0));
-    svg += `<rect x="${terminalColX - NODE_W/2}" y="${winTermY}" width="${NODE_W}" height="${winH_terminal}"
-              fill="${COL.win}" rx="2" opacity="0.9"/>
-            <text x="${terminalColX + NODE_W/2 + 5}" y="${winTermY + winH_terminal/2 - 5}"
-              dominant-baseline="middle"
-              style="font-size:9px;font-weight:700;fill:#4ade80;font-family:system-ui,sans-serif">Win</text>
-            <text x="${terminalColX + NODE_W/2 + 5}" y="${winTermY + winH_terminal/2 + 8}"
-              dominant-baseline="middle"
-              style="font-size:10px;font-weight:700;fill:#4ade80;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums">${fmtPct(team.pChampion)}</text>`;
+    out += bar(termCX, winTermY, winTermH, C.win, 0.9);
+    out += txt(termCX+LOFF, winTermY + winTermH/2 - 4, 'Win', 9, '#4ade80', true);
+    out += txt(termCX+LOFF, winTermY + winTermH/2 + 8, fmtPct(pChamp), 9, '#4ade80', true);
 
-    svg += `<rect x="${terminalColX - NODE_W/2}" y="${loseTermY}" width="${NODE_W}" height="${loseH_terminal}"
-              fill="${COL.lose}" rx="2" opacity="0.7"/>
-            <text x="${terminalColX + NODE_W/2 + 5}" y="${loseTermY + loseH_terminal/2 - 5}"
-              dominant-baseline="middle"
-              style="font-size:9px;fill:#94a3b8;font-family:system-ui,sans-serif">Don't win</text>
-            <text x="${terminalColX + NODE_W/2 + 5}" y="${loseTermY + loseH_terminal/2 + 8}"
-              dominant-baseline="middle"
-              style="font-size:10px;fill:#94a3b8;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums">${fmtPct(1 - (team.pChampion || 0))}</text>`;
+    out += bar(termCX, loseTermY, loseTermH, C.lose, 0.7);
+    out += txt(termCX+LOFF, loseTermY + loseTermH/2 - 4, "Don't win", 9, '#94a3b8', false);
+    out += txt(termCX+LOFF, loseTermY + loseTermH/2 + 8, fmtPct(pNoChamp), 9, '#94a3b8', false);
 
-    svgEl.innerHTML = svg;
-    svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svgEl.innerHTML = out;
+    svgEl.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
   }
+
 
   window.ScenarioFlow = { fmtPct, flagImgHtml, OUTCOME_BUCKETS, sumPct, bucketTotal, renderGauge, renderFlow, renderKnockoutFlow };
 })();
