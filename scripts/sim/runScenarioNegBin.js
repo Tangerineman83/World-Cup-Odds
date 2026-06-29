@@ -207,9 +207,9 @@ async function main() {
   console.log('Building bracket (NegBin engine)...');
   const scenario = buildBracketNegBin(groupResults, bestThirds, teamsByName);
 
-  // Override bracket winners with actual results for any known knockout matches.
-  // buildBracketNegBin always picks the chalk (most probable) winner — once a
-  // match has been played we must use the real result instead.
+  // Override bracket winners AND pWin with actual results for any known knockout matches.
+  // buildBracketNegBin always picks the chalk (most probable) winner and sets pWin from
+  // Elo calculations — once a match has been played the winner is certain (pWin = 1.0).
   if (knownByMatchId.size > 0) {
     // Build a name→team lookup from the scenario r32 participants
     const allKoTeams = new Map();
@@ -222,10 +222,12 @@ async function main() {
       if (!known) continue;
       const winnerName = known.homeGoals > known.awayGoals ? known.home
                        : known.awayGoals > known.homeGoals ? known.away
-                       : null; // draw — keep chalk winner
+                       : null; // draw after 90 mins — keep chalk winner, but pWin is still 1.0
       if (winnerName) {
         m.winner = allKoTeams.get(winnerName) || m.winner;
       }
+      // Result is known — probability of the winner winning is 1.0
+      m.pWin = 1.0;
     }
   }
 
