@@ -1,21 +1,34 @@
-name: Build ELO attack/defense split
+name: Build ELO split and calibrate parameters
 
-# Manual trigger only (workflow_dispatch), not on a schedule or push.
+# Manual trigger only — run this when you want to refresh the baseline
+# ratings and re-fit the NegBin parameters from scratch. Two reasons to
+# trigger this deliberately rather than automatically:
 #
-# Why manual: buildEloSplit.js fetches a third-party historical dataset over
-# the network (martj42/international_results on GitHub) and is still Phase 1
-# / under review (feeds temp.html, not the live site - see
-# elo-negbin-revised.md and the ongoing dual-Elo project). Re-run it
-# deliberately when you want to refresh elo_baseline_split.json (e.g. after
-# tweaking CALIBRATION_WINDOW_MATCHES or KAPPA_PLACEHOLDER in the script, or
-# to pick up new upstream data), not on every commit. This mirrors
-# refresh-predictions.yml's own note that network-dependent scripts
-# (compareToLive.js) are deliberately kept out of automatic/scheduled runs.
+#   1. buildEloSplit.js fetches a third-party historical dataset over the
+#      network (martj42/international_results on GitHub). Network-dependent
+#      steps are kept out of the scheduled refresh to avoid flaky failures.
 #
-# This workflow is intentionally separate from refresh-predictions.yml - it
-# has no dependency on runSimulation.js / runScenario.js output and they have
-# none on this, so there's no ordering requirement between them, and a
-# failure here can never block or break the live predictions refresh.
+#   2. Changing KAPPA_PLACEHOLDER or the calibration window in buildEloSplit.js
+#      is a deliberate modelling decision — you want to review the output
+#      (team ratings, kappa sanity check) before it feeds into predictions.
+#
+# What this workflow now does (in order):
+#   1. buildEloSplit.js     — fetches historical data, derives attack/defence
+#                             split ratings, writes elo_baseline_split.json
+#   2. calibrateNegBin.js   — fits alpha/gamma/sigma/r jointly against all
+#                             played results, writes negbin_calibration.json
+#
+# Step 2 is added here because changing the baseline (step 1) changes the
+# pre-match ratings used in the likelihood fit — the two outputs are coupled.
+# Running calibration immediately after baseline generation ensures
+# negbin_calibration.json always reflects the current baseline, not a stale
+# one from a prior run. The scheduled refresh-predictions workflow then picks
+# up both fresh files when it next runs.
+#
+# refresh-predictions.yml also runs calibrateNegBin.js as step 2 of its own
+# sequence (via runFullNegBinPipeline.js) — so calibration always re-runs on
+# new match results too, regardless of whether this workflow has been
+# triggered recently.
 
 on:
   workflow_dispatch: {}
@@ -24,7 +37,7 @@ permissions:
   contents: write
 
 jobs:
-  build-elo-split:
+  build-and-calibrate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,50 +46,68 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run buildEloSplit.js
+      - name: Step 1 — buildEloSplit.js (baseline attack/defence ratings)
         run: node scripts/sim/buildEloSplit.js
-        # No install step: this script only uses Node core modules (fs,
-        # path, fetch) - no dependencies to install. If that changes, add
-        # an install step here.
 
-      - name: Sanity-check output
+      - name: Sanity-check elo_baseline_split.json
         run: |
           node -e "
             const fs = require('fs');
             if (!fs.existsSync('elo_baseline_split.json')) {
-              console.error('ERROR: elo_baseline_split.json was not written. Refusing to commit.');
+              console.error('ERROR: elo_baseline_split.json was not written. Refusing to continue.');
               process.exit(1);
             }
             const data = require('./elo_baseline_split.json');
             const teams = Object.keys(data.ratings || {});
             console.log('Teams in output:', teams.length, '(expect 48)');
             if (teams.length !== 48) {
-              console.error('ERROR: expected 48 teams, got ' + teams.length + '. Refusing to commit.');
+              console.error('ERROR: expected 48 teams, got ' + teams.length + '. Refusing to continue.');
               process.exit(1);
             }
             const zeroMatch = teams.filter(t => data.ratings[t].matchesUsed === 0);
             const thin = teams.filter(t => data.ratings[t].thinHistory);
-            console.log('Teams with zero matches found (fell back to overall):', zeroMatch.length, zeroMatch);
-            console.log('Teams with thin/wide-spanning history:', thin.length, thin);
+            console.log('Teams with zero matches (fell back to overall):', zeroMatch.length, zeroMatch);
+            console.log('Teams with thin history:', thin.length, thin);
             console.log('kappa:', data.kappa, '(' + data.kappaStatus + ')');
           "
 
-      - name: Commit updated elo_baseline_split.json if changed
+      - name: Step 2 — calibrateNegBin.js (fit NegBin parameters)
+        run: node scripts/sim/calibrateNegBin.js
+
+      - name: Sanity-check negbin_calibration.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('negbin_calibration.json')) {
+              console.error('ERROR: negbin_calibration.json was not written. Refusing to commit.');
+              process.exit(1);
+            }
+            const c = require('./negbin_calibration.json');
+            const p = c.recommendedParams;
+            console.log('Fitted parameters:');
+            console.log('  alpha:', p.alpha, '  (exp(alpha) = avg goals balanced match:', Math.exp(p.alpha).toFixed(3) + ')');
+            console.log('  sigma:', p.sigma);
+            console.log('  gamma:', p.gamma);
+            console.log('  r:', p.r, '(dispersion — higher = fewer draws)');
+            console.log('  kappa:', p.kappa);
+            console.log('Match count used for fit:', c.matchCount);
+            if (p.alpha < 0 || p.alpha > 1)   { console.error('WARNING: alpha out of expected range (0-1)'); }
+            if (p.sigma < 200 || p.sigma > 1200) { console.error('WARNING: sigma out of expected range (200-1200)'); }
+            if (p.r < 1 || p.r > 50)           { console.error('WARNING: r out of expected range (1-50)'); }
+          "
+
+      - name: Commit updated files if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add elo_baseline_split.json
+          git add elo_baseline_split.json negbin_calibration.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Update elo_baseline_split.json ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          git commit -m "Rebuild ELO split and calibrate parameters ($(date -u +'%Y-%m-%d %H:%M UTC'))"
 
-          # Same rebase-retry approach as refresh-predictions.yml, in case
-          # main has moved since checkout. Our changes are only to a single
-          # generated JSON file, so a rebase here should not conflict in
-          # normal use.
           for i in 1 2 3 4 5; do
             git fetch origin main
             if git rebase origin/main; then
@@ -85,7 +116,7 @@ jobs:
                 exit 0
               fi
             else
-              echo "Rebase conflict - aborting rebase. Manual intervention needed."
+              echo "Rebase conflict - aborting. Manual intervention needed."
               git rebase --abort
               exit 1
             fi
@@ -95,4 +126,3 @@ jobs:
 
           echo "ERROR: failed to push after retries."
           exit 1
-
