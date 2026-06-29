@@ -4,56 +4,52 @@
 // Single entry point for the entire dual-Elo Negative Binomial pipeline,
 // run in the correct dependency order, in ONE Node process:
 //
-//   1. updateEloSplit.js   (Phase 2: elo_baseline_split.json + results.json
-//                            -> elo_current_split.json)
-//   2. calibrateNegBin.js  (Phase 3a: elo_baseline_split.json + results.json
-//                            -> negbin_calibration.json)
-//   3. runSimulationNegBin.js (Phase 3b/4: elo_current_split.json +
-//                            negbin_calibration.json -> predictions_negbin.json,
-//                            full Monte Carlo)
-//   4. runScenarioNegBin.js   (Phase 4: elo_current_split.json +
-//                            negbin_calibration.json + predictions_negbin.json
-//                            -> scenario_negbin.json, single modal scenario)
+//   1. updateEloSplit.js      — applies in-tournament results to baseline
+//                               attack/defence ratings
+//                               reads:  elo_baseline_split.json + results.json
+//                               writes: elo_current_split.json
+//
+//   2. calibrateNegBin.js     — fits NegBin parameters (alpha, gamma, sigma,
+//                               r) by maximum likelihood against all played
+//                               results; always runs before simulation so the
+//                               Monte Carlo uses the freshest fitted parameters
+//                               reads:  elo_baseline_split.json + results.json
+//                               writes: negbin_calibration.json
+//
+//   3. runSimulationNegBin.js — Monte Carlo simulation (100k tournaments)
+//                               reads:  elo_current_split.json +
+//                                       negbin_calibration.json
+//                               writes: predictions_negbin.json
+//
+//   4. runScenarioNegBin.js   — single modal scenario + bracket
+//                               reads:  elo_current_split.json +
+//                                       negbin_calibration.json +
+//                                       predictions_negbin.json
+//                               writes: scenario_negbin.json
 //
 // Usage: node scripts/sim/runFullNegBinPipeline.js [numSimulations]
-//   numSimulations defaults to 100000, same as runSimulationNegBin.js's own
-//   default, and is passed through to step 3 only (the others don't take a
-//   simulation count).
+//
+// WHY CALIBRATION RUNS EVERY TIME: as results accumulate the joint
+// likelihood surface shifts — what maximised fit against 36 matches will
+// not maximise it against 73. Running calibrateNegBin.js before every
+// simulation batch ensures predictions always reflect parameters fitted to
+// the most complete available data, not a snapshot from a prior run.
+// The compute cost is modest (~30s) relative to the simulation (~3min).
 //
 // WHY ONE SCRIPT: this dependency order has been a recurring real source of
-// errors across this project - separate scripts/workflows for each phase
-// meant the correct order ("ratings before calibration before simulation
-// before scenario") relied on a human remembering to trigger them in
-// sequence, which was missed more than once (see project history). Calling
-// each phase's exported main() directly, in one process, in this fixed
-// order, makes the correct sequence structural rather than a manual habit -
-// the same reasoning previously motivated combining several separate
-// per-phase workflows into one (see refresh-negbin-predictions.yml, which
-// now runs this entire script as its single step), now extended one level
-// deeper to cover the full chain through to the scenario output too.
+// errors — separate scripts for each phase meant the correct order relied on
+// a human remembering to trigger them in sequence. Calling each phase's
+// exported main() directly, in one process, in this fixed order, makes the
+// correct sequence structural rather than a manual habit.
 //
-// DOES NOT run buildEloSplit.js (Phase 1) - that script fetches a live
-// third-party dataset over the network and is deliberately kept
-// manual-only/separately-scheduled (see build-elo-split.yml's own header).
-// This pipeline assumes elo_baseline_split.json already exists and is
-// current; Phase 1 remains a separate, occasional, manually-triggered step.
+// DOES NOT run buildEloSplit.js — that script fetches a live third-party
+// dataset and is kept manual-only (see build-elo-split.yml). This pipeline
+// assumes elo_baseline_split.json already exists and is current.
 //
-// EACH PHASE'S OWN SANITY CHECKS STILL APPLY: this orchestrator does not
-// duplicate or replace e.g. calibrateNegBin.js's log-likelihood regression
-// check or runSimulationNegBin.js's missing-team check - if a phase's own
-// main() throws or sets a non-zero exit code, this script stops immediately
-// (does not proceed to the next phase with known-bad input) and exits
-// non-zero itself, so a CI workflow correctly fails rather than committing
-// partial/bad output.
-//
-// CACHE NOTE: see groupStageNegBin.js's clearParamsCache - calibrateNegBin.js
-// writes a FRESH negbin_calibration.json in step 2, but groupStageNegBin.js
-// caches a parsed copy at module level once first read. clearParamsCache()
-// is called explicitly between steps 2 and 3 below to guarantee step 3
-// reads the calibration this SAME run just produced, not a stale cached
-// value from earlier in the process (this only matters because multiple
-// phases now run in one process - a fresh `node script.js` CLI invocation
-// per phase never had this risk, since cachedParams always starts null).
+// CACHE NOTE: calibrateNegBin.js writes a fresh negbin_calibration.json in
+// step 2, but groupStageNegBin.js caches a parsed copy at module level.
+// clearParamsCache() is called between steps 2 and 3 to guarantee step 3
+// reads the calibration this run just produced.
 
 const path = require('path');
 
@@ -65,8 +61,8 @@ async function main() {
   console.log('NegBin full pipeline - single orchestrated run');
   console.log('='.repeat(70));
 
-  // --- Step 1: updateEloSplit.js (Phase 2) ---------------------------------
-  console.log('\n--- Step 1/4: updateEloSplit.js (current ELOa/ELOd) ---');
+  // --- Step 1: updateEloSplit.js -------------------------------------------
+  console.log('\n--- Step 1/4: updateEloSplit.js (apply in-tournament results to ratings) ---');
   const updateEloSplit = require('./updateEloSplit');
   await updateEloSplit.main();
   if (process.exitCode) {
@@ -74,8 +70,8 @@ async function main() {
     return;
   }
 
-  // --- Step 2: calibrateNegBin.js (Phase 3a) -------------------------------
-  console.log('\n--- Step 2/4: calibrateNegBin.js (fit NegBin constants) ---');
+  // --- Step 2: calibrateNegBin.js (parameter optimisation) ----------------
+  console.log('\n--- Step 2/4: calibrateNegBin.js (optimise NegBin parameters against current results) ---');
   const calibrateNegBin = require('./calibrateNegBin');
   await calibrateNegBin.main();
   if (process.exitCode) {
@@ -92,8 +88,8 @@ async function main() {
   const { clearParamsCache } = require('./groupStageNegBin');
   clearParamsCache();
 
-  // --- Step 3: runSimulationNegBin.js (Phase 3b/4, Monte Carlo) -----------
-  console.log(`\n--- Step 3/4: runSimulationNegBin.js (${numSimulations} simulations) ---`);
+  // --- Step 3: runSimulationNegBin.js (Monte Carlo) -----------------------
+  console.log(`\n--- Step 3/4: runSimulationNegBin.js (${numSimulations.toLocaleString()} simulations) ---`);
   const runSimulationNegBin = require('./runSimulationNegBin');
   await runSimulationNegBin.main(numSimulations);
   if (process.exitCode) {
@@ -101,7 +97,7 @@ async function main() {
     return;
   }
 
-  // --- Step 4: runScenarioNegBin.js (Phase 4, single modal scenario) ------
+  // --- Step 4: runScenarioNegBin.js (modal scenario) ----------------------
   console.log('\n--- Step 4/4: runScenarioNegBin.js (modal scenario + bracket) ---');
   const runScenarioNegBin = require('./runScenarioNegBin');
   await runScenarioNegBin.main();
@@ -112,8 +108,8 @@ async function main() {
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log('\n' + '='.repeat(70));
-  console.log(`Full NegBin pipeline complete in ${elapsedSec}s.`);
-  console.log('Wrote: elo_current_split.json, negbin_calibration.json, predictions_negbin.json, scenario_negbin.json');
+  console.log(`Full pipeline complete in ${elapsedSec}s.`);
+  console.log('Outputs: elo_current_split.json, negbin_calibration.json, predictions_negbin.json, scenario_negbin.json');
   console.log('='.repeat(70));
 }
 
