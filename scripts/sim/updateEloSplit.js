@@ -232,6 +232,25 @@ function taperedGoalDelta(actual, expected, didWinThisDimension) {
   return taperedDelta;
 }
 
+// --- Clean sheet trend bonus constants -----------------------------------
+//
+// Applied as a one-time post-processing step after all individual match
+// deltas have been computed. Rewards teams that kept a clean sheet in the
+// MAJORITY of their group stage matches — a pattern the per-match goal
+// model underweights because expected goals vs weak opponents are low
+// (e.g. Mexico vs South Africa: expOpp=0.29 → defDelta only +2 pts per
+// clean sheet from the goals formula alone).
+//
+// CS_TREND_BONUS: Elo points added when clean sheet rate = 100%.
+//   Scales linearly from 0 at CS_THRESHOLD to CS_TREND_BONUS at 100%.
+//   +20 at 3/3, +7 at 2/3, 0 at 1/3 or below.
+// CS_THRESHOLD: minimum clean sheet rate to qualify for any bonus (50%).
+// CS_MIN_MATCHES: minimum group matches played to be eligible (2).
+//   Prevents a 1-match sample triggering the trend logic.
+const CS_TREND_BONUS = 20;
+const CS_THRESHOLD   = 0.5;
+const CS_MIN_MATCHES = 2;
+
 const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
 function expectedGoals(attackElo, defenseElo, homeAdvantageMultiplier) {
@@ -385,6 +404,16 @@ function applyResultToSplit(ratingsByTeam, result) {
   awayRating.attack += awayAttackDelta;
   awayRating.defense += awayDefenseDelta;
 
+  // Track group-stage clean sheets for the post-processing trend bonus.
+  // Only group matches count — knockout clean sheets aren't part of the
+  // trend window (sample size is too small and opponent context differs).
+  if (isGroupMatch) {
+    homeRating.groupMatchesPlayed = (homeRating.groupMatchesPlayed || 0) + 1;
+    awayRating.groupMatchesPlayed = (awayRating.groupMatchesPlayed || 0) + 1;
+    if (awayGoals === 0) homeRating.groupCleanSheets = (homeRating.groupCleanSheets || 0) + 1;
+    if (homeGoals === 0) awayRating.groupCleanSheets = (awayRating.groupCleanSheets || 0) + 1;
+  }
+
   return {
     home, away, homeGoals, awayGoals,
     isGroupMatch,
@@ -425,6 +454,8 @@ function main() {
       overall: r.overall,
       matchesPlayed: 0,
       hostGroupMatchesPlayed: 0,
+      groupMatchesPlayed: 0,    // group-stage matches only, for clean sheet trend
+      groupCleanSheets: 0,      // group-stage clean sheets only
     });
   }
 
@@ -453,6 +484,52 @@ function main() {
     );
   }
 
+  // --- Clean sheet trend bonus -------------------------------------------
+  //
+  // A binary clean sheet bonus per match is already embedded in each
+  // match's defDelta via taperedGoalDelta(expOpp, 0, true). But that bonus
+  // is proportional to the expected goals and can be modest (e.g. +2 pts
+  // for a clean sheet vs South Africa who were only expected to score 0.3).
+  //
+  // This post-processing step adds an additional bonus for teams that
+  // demonstrated a CONSISTENT DEFENSIVE TREND across the group stage —
+  // defined as keeping a clean sheet in more than half their group matches.
+  // A single clean sheet could be circumstantial; a majority rate signals
+  // a genuine defensive pattern the per-match goal model underweights.
+  //
+  // Bonus formula (continuous, proportional to clean sheet rate above 50%):
+  //   rate = groupCleanSheets / groupMatchesPlayed
+  //   scale = max(0, (rate - CS_THRESHOLD) / (1 - CS_THRESHOLD))
+  //   bonus = CS_TREND_BONUS * scale
+  //
+  // Results at three key points:
+  //   3/3 (100%): +20 pts  — recognised defensive excellence
+  //   2/3 ( 67%): + 7 pts  — modest trend signal
+  //   1/3 ( 33%): + 0 pts  — single match, no trend
+  //   0/3 (  0%): + 0 pts  — no credit
+  //
+  // Applied only to teams that played at least CS_MIN_MATCHES group matches,
+  // so a team with 1 played match can't accidentally qualify.
+
+  const csLog = [];
+  for (const [name, r] of ratingsByTeam.entries()) {
+    const gm = r.groupMatchesPlayed || 0;
+    const cs = r.groupCleanSheets  || 0;
+    if (gm < CS_MIN_MATCHES) continue;
+    const rate = cs / gm;
+    const scale = Math.max(0, (rate - CS_THRESHOLD) / (1 - CS_THRESHOLD));
+    const bonus = CS_TREND_BONUS * scale;
+    if (bonus < 0.01) continue;
+    r.defense += bonus;
+    csLog.push({ team: name, cleanSheets: cs, groupMatches: gm, rate: round2(rate), bonus: round2(bonus) });
+  }
+  if (csLog.length > 0) {
+    console.log('\nClean sheet trend bonuses applied:');
+    for (const e of csLog) {
+      console.log(`  ${e.team}: ${e.cleanSheets}/${e.groupMatches} clean sheets (${(e.rate*100).toFixed(0)}%) → +${e.bonus} defence`);
+    }
+  }
+
   const ratingsOut = {};
   for (const [name, r] of ratingsByTeam.entries()) {
     ratingsOut[name] = {
@@ -461,6 +538,8 @@ function main() {
       defense: round2(r.defense),
       matchesPlayed: r.matchesPlayed,
       hostGroupMatchesPlayed: r.hostGroupMatchesPlayed,
+      groupCleanSheets: r.groupCleanSheets || 0,
+      groupMatchesPlayed: r.groupMatchesPlayed || 0,
     };
   }
 
@@ -475,10 +554,14 @@ function main() {
       sigma: SIGMA_PLACEHOLDER,
       kGoals: K_GOALS_PLACEHOLDER,
       matchCountRampFull: MATCH_COUNT_RAMP_FULL,
-      status: 'PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md. kGoals is now match-count-ramped (see matchCountWeight) rather than flat - see header comment for rationale.',
+      csTrendBonus: CS_TREND_BONUS,
+      csThreshold: CS_THRESHOLD,
+      csMinMatches: CS_MIN_MATCHES,
+      status: 'PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md.',
     },
     ratings: ratingsOut,
     matchLog,
+    cleanSheetBonusLog: csLog,
   };
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2));
@@ -507,4 +590,7 @@ module.exports = {
   K_GOALS_PLACEHOLDER,
   SURPLUS_WEIGHT,
   MATCH_COUNT_RAMP_FULL,
+  CS_TREND_BONUS,
+  CS_THRESHOLD,
+  CS_MIN_MATCHES,
 };
