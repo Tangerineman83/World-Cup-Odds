@@ -104,94 +104,156 @@ const GAMMA_PLACEHOLDER = 0.15;
 const SIGMA_PLACEHOLDER = 250;
 
 // K_GOALS: scales how many Elo points a single goal of over/under-
-// performance (actual vs expected) moves attack/defense by. Placeholder,
-// deliberately modest relative to the existing WORLD_CUP_K=60 single-Elo
-// step, since this update fires on EVERY match (no goal-difference
-// weighting step function) and should not whipsaw a team's split rating on
-// a single fixture. Sized by checking two cases by hand: an evenly-matched
-// narrow win (TeamA beats TeamB 2-1 at equal ratings) should move ratings
-// by roughly the same scale as the existing eloUpdate.js's typical
-// per-match step (~10-30 points); a heavily lopsided mismatch (Scotland
-// 1-0 Haiti) should produce a clearly bigger swing than that, but not one
-// that consumes most of a team's entire pre-tournament attack/defense
-// spread in a single match. NOT fitted against real data (Section 5).
+// performance (actual vs expected) moves attack/defense by.
 //
-// This is now the FULLY-RAMPED ceiling (see MATCH_COUNT_RAMP below), not a
-// flat per-match value - raised from the original 12 because a team's
-// later matches (3rd onward) now carry MORE weight than a flat-12 system
-// gave them, to compensate for early matches carrying less.
-const K_GOALS_PLACEHOLDER = 16;
+// CALIBRATION RATIONALE:
+// The baseline is built from 20 historical matches per team. Each
+// tournament match should carry meaningful weight relative to that
+// history. At K=16 with a ramp to full weight by match 3, a fully-
+// weighted match moves ratings by at most 16*(actual-expected) points.
+// With expected goals capped at 3.0, the maximum swing per match is
+// ~16*3 = 48 points — but in practice expected goals are 1-2 and actual
+// deltas are smaller, giving typical moves of 5-20 points per match.
+// This means 3 tournament matches can shift a rating by at most ~60
+// points, while the baseline represents 20 matches of evidence. That's
+// a 3:20 ratio — too conservative for an event where in-tournament
+// performance is the primary signal we want to track.
+//
+// Raised to 40: a fully-weighted match now moves ratings by up to ~120
+// points (3*40), with typical moves of 10-40 points. Three matches can
+// shift a rating by ~80-120 points, enough to reflect a team's genuine
+// tournament performance and bring results like Ecuador's mixed group
+// stage (W1 D1 L1) into meaningful contrast with Mexico's perfect
+// group stage (W3 D0 L0). This preserves the baseline as a prior while
+// giving the in-tournament sample real explanatory weight.
+const K_GOALS_PLACEHOLDER = 40;
 
 // --- Match-count-aware confidence ramp ----------------------------------
 //
 // PROBLEM THIS SOLVES: a flat K_GOALS applies the same per-goal weight to
-// a team's 1st tournament match as its 5th. Testing (ad hoc
-// kGoalsSensitivity.js sweep, not committed to the repo) found that any
-// flat K_GOALS strong enough to meaningfully shift a team's rating after
-// 2 consistent results (e.g. USA's two convincing wins) ALSO produces
-// implausibly large single-match swings for teams with only 1 match played
-// - e.g. Cape Verde's one 0-0 draw away to Spain moved their defense
-// rating by +200+ points at K_GOALS=36, treating one result against one
-// specific opponent with the same confidence a 20-match historical
-// baseline carries. That's not a defensible weighting - one match is not
-// strong evidence about a team's true quality, no matter how surprising
-// the result.
+// a team's 1st tournament match as its 5th. Testing found that any flat
+// K_GOALS strong enough to meaningfully shift a team's rating after 2
+// consistent results ALSO produces implausibly large single-match swings
+// for teams with only 1 match played.
 //
 // FIX: each match's K_GOALS contribution is scaled by how many TOURNAMENT
 // matches that specific team has played so far (including the current
-// one), via the same min(1, x) confidence-shrinkage pattern already used
-// for historical-data confidence in buildEloSplit.js's shrinkFactor - so
-// this isn't a new ad hoc idea, it's applying an existing, already-reviewed
-// pattern to a second place it's needed. A team's Nth tournament match gets
-// weight min(1, N / MATCH_COUNT_RAMP_FULL), so:
-//   - 1st match: weight 1/3 of K_GOALS_PLACEHOLDER (still real movement,
-//     just appropriately cautious)
-//   - 2nd match: weight 2/3
-//   - 3rd match onward: full weight (1.0) - by the 3rd match a team has a
-//     complete group-stage sample, a natural, non-arbitrary threshold for
-//     "enough in-tournament evidence to weight as strongly as later
-//     matches", rather than picking an arbitrary cutoff.
-// This means EARLY matches move ratings less than under the old flat-12
-// system, while LATE matches (3rd+) move them MORE (full K_GOALS_PLACEHOLDER
-// = 16, vs the old flat 12) - both intentional: early caution, full
-// confidence once a team has shown a genuine in-tournament sample.
+// one), via min(1, x) confidence-shrinkage. Weight sequence:
+//   - 1st match: 1/3 of K_GOALS_PLACEHOLDER
+//   - 2nd match: 2/3
+//   - 3rd match onward: full weight (1.0)
+//
+// NOTE: ramp starts at 1/3, NOT 0. A team's first tournament match
+// carries real (if cautious) weight - setting it to zero meant e.g.
+// Mexico's 2-0 win vs South Africa contributed nothing to their ratings,
+// which is indefensible: a played result is always evidence.
 const MATCH_COUNT_RAMP_FULL = 3;
 
 function matchCountWeight(matchNumberForTeam) {
+  // matchNumberForTeam is 1-indexed (1 = first match).
+  // Returns 1/RAMP_FULL for match 1, rising linearly to 1.0 at RAMP_FULL.
   return Math.min(1, matchNumberForTeam / MATCH_COUNT_RAMP_FULL);
+}
+
+// --- Result-alignment taper on goal deltas ------------------------------
+//
+// PROBLEM: when a team performs exactly as expected (e.g. Mexico expected
+// 2.54 vs Czechia, scores 3), the raw delta (3 - 2.54 = +0.46) gives a
+// small attack boost. But when a strong team beats a very weak one by
+// less than predicted (expected 5, actual 2), the raw delta (-3) gives a
+// *penalty* — even though the team still won. This punishes strong teams
+// for not running up huge scores against weak opponents.
+//
+// More broadly, goals that are "aligned" with the prediction (actual on
+// the same side of zero as expected) carry less new information than
+// surprise goals (actual opposite side). A team scoring 2 when expected
+// 0.5 is much more informative than a team scoring 3 when expected 2.5.
+//
+// FIX: apply a taper to the raw goal delta. The taper works as follows:
+//   delta_raw = actual - expected
+//   aligned   = actual and expected are on the same side (both > 0 always,
+//               so "aligned" means actual >= expected and expected > 1, or
+//               actual <= expected and expected < 1) — effectively whether
+//               the OVER/UNDER direction is the expected one.
+//
+// Simpler practical formulation: use Elo-implied goals as the reference
+// and taper the delta proportionally — goals "within" the expectation
+// get full credit; goals BEYOND the expectation in an already-predicted
+// direction get a taper so the surplus counts at half weight.
+//
+// Concretely:
+//   If actual > expected (scored more than expected):
+//     delta = (expected - 0) * 1.0 + (actual - expected) * SURPLUS_WEIGHT
+//   If actual < expected (scored less than expected):
+//     delta = actual - expected  (full penalty, no taper — failing to score
+//             when expected to is genuinely informative)
+//   The net result: beating expectations upward is tapered; falling short
+//   is not. This is intentionally asymmetric — a clean sheet when you
+//   were expected to concede 2 is a clear signal; scoring 1 when expected
+//   2 is also a clear signal; scoring 4 when expected 3 is only a weak
+//   incremental signal.
+//
+// SURPLUS_WEIGHT: 0.5 means the surplus above expectation counts at half
+// the per-goal rate. This preserves direction but prevents cascading
+// boosts from large margins against weak opposition.
+const SURPLUS_WEIGHT = 0.5;
+
+function taperedGoalDelta(actual, expected, didWinThisDimension) {
+  // actual:              goals the team scored (for attack) or opponent scored (for defence)
+  // expected:            goals the model expected
+  // didWinThisDimension: true when the actual result is "good" in this dimension
+  //                      (attack: team actually scored more than opponent;
+  //                       defence: opponent actually scored fewer than expected)
+  //
+  // RULE 1 — Taper upside surplus:
+  //   When actual > expected, the excess above expectation counts at SURPLUS_WEIGHT.
+  //   This prevents large margins against weak opponents generating implausibly
+  //   large rating boosts.
+  //
+  // RULE 2 — Win protection:
+  //   When a team WON in this dimension (didWinThisDimension=true) but the model's
+  //   expected value was so extreme it implies a PENALTY despite winning, clamp the
+  //   delta at 0. A team should never LOSE attack/defence rating for a positive
+  //   real-world outcome. E.g. Mexico score 2 when expected 5 vs South Africa:
+  //   they won the match; they should not lose attack rating.
+  //
+  // RULE 3 — Full penalty when underperforming:
+  //   When actual < expected and we don't have win protection, full penalty applies.
+  //   Failing to score when expected to is genuinely informative.
+  const rawDelta = actual - expected;
+  const taperedDelta = rawDelta > 0
+    ? rawDelta * SURPLUS_WEIGHT          // Rule 1: taper surplus
+    : rawDelta;                           // Rule 3: full penalty
+
+  // Rule 2: clamp at 0 when the team actually performed well in this dimension
+  if (didWinThisDimension && taperedDelta < 0) return 0;
+
+  return taperedDelta;
 }
 
 const HOST_NATIONS = new Set(['USA', 'Canada', 'Mexico']);
 
 function expectedGoals(attackElo, defenseElo, homeAdvantageMultiplier) {
-  // The raw (attackElo - defenseElo) / SIGMA term grows unboundedly with
-  // the Elo gap, and because it sits inside exp(), an extreme mismatch
-  // (e.g. Scotland vs Haiti, a ~400+ point gap) can push expected goals
-  // into implausible territory (8-10+ goals) for a single match - no real
-  // World Cup match should have an expected-goals figure that high, and
-  // K_GOALS_PLACEHOLDER was sized assuming expected goals stays in a sane
-  // few-goals range. Capping the gap term at +/-1.5 (an already-large
-  // log-goal-rate swing) keeps expected goals bounded at roughly
-  // exp(ALPHA + GAMMA + 1.5) =~ 6.5 goals even for the most lopsided
-  // realistic matchup, rather than letting it grow without limit. This is
-  // a stopgap for Phase 2's placeholder formula, not a substitute for
-  // properly fitting ALPHA/GAMMA/SIGMA against real data (Section 5).
+  // The raw (attackElo - defenseElo) / SIGMA term grows with the Elo gap.
+  // Capping the gap term at +/-1.5 keeps expected goals bounded but still
+  // allows exp(ALPHA + GAMMA + 1.5) ≈ 6.5 goals for extreme mismatches.
+  // At these levels a real underperformance (Ecuador 0-0 vs Curacao when
+  // expected 5.83) generates implausibly large penalties (62 Elo points
+  // from a single match). The underlying issue is that the SIGMA/ALPHA
+  // constants are not yet fitted against real data (Section 5).
   //
-  // homeAdvantageMultiplier: a continuous 0-1 value (0 = no home
-  // advantage, 1 = full strength), NOT a boolean - changed from a boolean
-  // isHomeAdvantage flag to fix a real bug where every played host-nation
-  // match was scored against a FULL home-advantage expectation regardless
-  // of group match number, ignoring the same HOME_ADVANTAGE_SCHEDULE taper
-  // (1, 0.75, 0.5) already applied correctly elsewhere for unplayed
-  // fixtures (groupStageNegBin.js/groupStage.js) - see applyResultToSplit's
-  // own comment for the full explanation and a concrete example (Canada vs
-  // Qatar) of the bug this fixes.
+  // Additional cap: expected goals are clamped at MAX_EXPECTED_GOALS (3.0).
+  // No real World Cup team is ever genuinely "expected" to score more than
+  // 3 goals in a competitive match - beyond that point the expectation is
+  // an artefact of the unfitted model, not a real prediction. This makes
+  // the Elo update robust to extreme mismatches until proper calibration.
+  const MAX_EXPECTED_GOALS = 3.0;
   const rawGapTerm = (attackElo - defenseElo) / SIGMA_PLACEHOLDER;
   const cappedGapTerm = Math.max(-1.5, Math.min(1.5, rawGapTerm));
   const logMu = ALPHA_PLACEHOLDER
     + (GAMMA_PLACEHOLDER * homeAdvantageMultiplier)
     + cappedGapTerm;
-  return Math.exp(logMu);
+  return Math.min(MAX_EXPECTED_GOALS, Math.exp(logMu));
 }
 
 // --- Loading inputs ---------------------------------------------------
@@ -299,15 +361,23 @@ function applyResultToSplit(ratingsByTeam, result) {
   const homeWeight = matchCountWeight(homeRating.matchesPlayed);
   const awayWeight = matchCountWeight(awayRating.matchesPlayed);
 
-  // Independent deltas - see header comment for why these are NOT zero-sum.
-  // Each side's deltas are scaled by THAT side's own match-count weight,
-  // not a shared one - e.g. a side playing its 1st tournament match against
-  // an opponent playing its 3rd gets appropriately different confidence
-  // applied to each side's own movement from the same single fixture.
-  const homeAttackDelta = K_GOALS_PLACEHOLDER * homeWeight * (homeGoals - expectedHomeGoals);
-  const homeDefenseDelta = K_GOALS_PLACEHOLDER * homeWeight * (expectedAwayGoals - awayGoals);
-  const awayAttackDelta = K_GOALS_PLACEHOLDER * awayWeight * (awayGoals - expectedAwayGoals);
-  const awayDefenseDelta = K_GOALS_PLACEHOLDER * awayWeight * (expectedHomeGoals - homeGoals);
+  // Independent deltas. Goal deltas are tapered via taperedGoalDelta():
+  //   - surplus above expectation counts at half rate (SURPLUS_WEIGHT)
+  //   - no penalty when a team performed well in that dimension vs the match outcome
+  // "Win this dimension" flags:
+  //   home attack wins if home scored more goals than away (home won match)
+  //   home defence wins if away scored fewer goals than model expected
+  //   (symmetric for away)
+  const homeWonMatch = homeGoals > awayGoals;
+  const awayWonMatch = awayGoals > homeGoals;
+  const homeAttackDelta  = K_GOALS_PLACEHOLDER * homeWeight
+    * taperedGoalDelta(homeGoals, expectedHomeGoals, homeWonMatch);
+  const homeDefenseDelta = K_GOALS_PLACEHOLDER * homeWeight
+    * taperedGoalDelta(expectedAwayGoals, awayGoals, awayGoals < expectedAwayGoals);
+  const awayAttackDelta  = K_GOALS_PLACEHOLDER * awayWeight
+    * taperedGoalDelta(awayGoals, expectedAwayGoals, awayWonMatch);
+  const awayDefenseDelta = K_GOALS_PLACEHOLDER * awayWeight
+    * taperedGoalDelta(expectedHomeGoals, homeGoals, homeGoals < expectedHomeGoals);
 
   homeRating.attack += homeAttackDelta;
   homeRating.defense += homeDefenseDelta;
@@ -429,9 +499,11 @@ module.exports = {
   expectedGoals,
   applyResultToSplit,
   matchCountWeight,
+  taperedGoalDelta,
   ALPHA_PLACEHOLDER,
   GAMMA_PLACEHOLDER,
   SIGMA_PLACEHOLDER,
   K_GOALS_PLACEHOLDER,
+  SURPLUS_WEIGHT,
   MATCH_COUNT_RAMP_FULL,
 };
