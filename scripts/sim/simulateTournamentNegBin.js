@@ -31,7 +31,7 @@ const {
 // from elo_current_split.json). rand: PRNG returning [0,1). knownByGroup:
 // same shape as simulateTournament.js's own parameter (Map of group letter
 // -> completed fixtures).
-function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map()) {
+function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map(), knownByMatchId = new Map()) {
   const groupStandings = {};
 
   for (const [letter, names] of Object.entries(GROUPS)) {
@@ -63,7 +63,27 @@ function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map()) {
   }
 
   for (const m of r32Matches) {
-    const winner = playKnockoutNegBin(withAttackDefense(m.home), withAttackDefense(m.away), rand);
+    const known = knownByMatchId.get(m.id);
+    let winner;
+    if (known) {
+      // Result already played — determine winner from actual score.
+      // Burn rand() calls to keep PRNG state varied across sims (same
+      // pattern as groupStageNegBin.js's entropy burn for known results).
+      for (let _b = 0; _b < 8; _b++) rand();
+      const homeWon = known.homeGoals > known.awayGoals;
+      const awayWon = known.awayGoals > known.homeGoals;
+      // Match home/away in knownByMatchId to home/away in r32Matches by name
+      if (homeWon) {
+        winner = m.home.name === known.home ? m.home : m.away;
+      } else if (awayWon) {
+        winner = m.home.name === known.away ? m.home : m.away;
+      } else {
+        // Drawn after 90 mins — penalties (50/50 + small Elo tilt)
+        winner = playKnockoutNegBin(withAttackDefense(m.home), withAttackDefense(m.away), rand);
+      }
+    } else {
+      winner = playKnockoutNegBin(withAttackDefense(m.home), withAttackDefense(m.away), rand);
+    }
     matchesById.set(m.id, { ...m, winner });
   }
 
@@ -72,7 +92,22 @@ function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map()) {
     for (const [matchId, [fromA, fromB]] of pairs) {
       const home = matchesById.get(fromA).winner;
       const away = matchesById.get(fromB).winner;
-      const winner = playKnockoutNegBin(withAttackDefense(home), withAttackDefense(away), rand);
+      const known = knownByMatchId.get(matchId);
+      let winner;
+      if (known) {
+        for (let _b = 0; _b < 8; _b++) rand();
+        const homeWon = known.homeGoals > known.awayGoals;
+        const awayWon = known.awayGoals > known.homeGoals;
+        if (homeWon) {
+          winner = home.name === known.home ? home : away;
+        } else if (awayWon) {
+          winner = home.name === known.away ? home : away;
+        } else {
+          winner = playKnockoutNegBin(withAttackDefense(home), withAttackDefense(away), rand);
+        }
+      } else {
+        winner = playKnockoutNegBin(withAttackDefense(home), withAttackDefense(away), rand);
+      }
       const entry = { id: matchId, home, away, winner };
       matchesById.set(matchId, entry);
       results.push(entry);

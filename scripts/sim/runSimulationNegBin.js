@@ -108,9 +108,12 @@ async function main(numSimulations) {
     console.log('  WARNING: running with placeholder constants, not a real calibration. Run scripts/sim/calibrateNegBin.js (Phase 3a) first for meaningful output.');
   }
 
-  const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
+  const { knownByGroup, knownByMatchId, resultsCount, lastUpdated } = getKnownResultsByGroup();
   if (resultsCount > 0) {
     console.log(`  ${resultsCount} completed result(s) applied directly (results.json last updated ${lastUpdated}).`);
+    if (knownByMatchId.size > 0) {
+      console.log(`  ${knownByMatchId.size} known knockout result(s): ${[...knownByMatchId.keys()].join(', ')}`);
+    }
   }
 
   const currentStanding = new Map();
@@ -144,7 +147,7 @@ async function main(numSimulations) {
 
   for (let i = 0; i < N_SIMULATIONS; i++) {
     const rand = mulberry32((Math.random() * 2 ** 31) | 0);
-    const result = simulateTournamentNegBin(teamsByName, rand, knownByGroup);
+    const result = simulateTournamentNegBin(teamsByName, rand, knownByGroup, knownByMatchId);
 
     for (const standings of Object.values(result.groupStandings)) {
       stageCounts.get(standings[0].name).groupWinner++;

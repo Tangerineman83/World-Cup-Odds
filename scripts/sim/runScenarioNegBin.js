@@ -140,7 +140,10 @@ async function main() {
   const { params, source: paramsSource } = loadCalibratedParams();
   console.log(`Using NegBin constants: ${JSON.stringify(params)}`);
 
-  const { knownByGroup, resultsCount, lastUpdated } = getKnownResultsByGroup();
+  const { knownByGroup, knownByMatchId, resultsCount, lastUpdated } = getKnownResultsByGroup();
+  if (knownByMatchId.size > 0) {
+    console.log(`  ${knownByMatchId.size} known knockout result(s) will override chalk bracket: ${[...knownByMatchId.keys()].join(', ')}`);
+  }
   const allResultsJson = JSON.parse(fs.readFileSync(RESULTS_PATH, 'utf-8'));
   const allResults = allResultsJson.results;
 
@@ -203,6 +206,28 @@ async function main() {
 
   console.log('Building bracket (NegBin engine)...');
   const scenario = buildBracketNegBin(groupResults, bestThirds, teamsByName);
+
+  // Override bracket winners with actual results for any known knockout matches.
+  // buildBracketNegBin always picks the chalk (most probable) winner — once a
+  // match has been played we must use the real result instead.
+  if (knownByMatchId.size > 0) {
+    // Build a name→team lookup from the scenario r32 participants
+    const allKoTeams = new Map();
+    for (const m of scenario.r32) {
+      allKoTeams.set(m.home.name, m.home);
+      allKoTeams.set(m.away.name, m.away);
+    }
+    for (const m of scenario.r32) {
+      const known = knownByMatchId.get(m.id);
+      if (!known) continue;
+      const winnerName = known.homeGoals > known.awayGoals ? known.home
+                       : known.awayGoals > known.homeGoals ? known.away
+                       : null; // draw — keep chalk winner
+      if (winnerName) {
+        m.winner = allKoTeams.get(winnerName) || m.winner;
+      }
+    }
+  }
 
   const eloRank = [...allTeams].sort((a, b) => teamsByName.get(b).elo - teamsByName.get(a).elo);
   const eloRankByName = new Map(eloRank.map((name, i) => [name, i + 1]));

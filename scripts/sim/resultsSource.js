@@ -21,8 +21,12 @@ function loadResults() {
 // completed fixtures are excluded from simulation (the real scoreline is
 // used directly for that group's standings instead).
 //
-// results.json lists ALL 72 group-stage fixtures as placeholders
-// (homeGoals/awayGoals: null) so team names/groups never need to be typed by
+// Also returns a Map from match id -> { home, away, homeGoals, awayGoals }
+// for known knockout results, used by simulateTournamentNegBin to lock in
+// completed knockout matches instead of re-simulating them.
+//
+// results.json lists ALL fixtures (group + knockout) as placeholders
+// (homeGoals/awayGoals: null) so team names never need to be typed by
 // hand - only entries where BOTH homeGoals and awayGoals are non-null are
 // treated as "played"; everything else is ignored (and still simulated
 // normally).
@@ -36,14 +40,23 @@ function getKnownResultsByGroup() {
   const results = allFixtures.filter((r) => r.homeGoals != null && r.awayGoals != null);
 
   const knownByGroup = new Map();
+  const knownByMatchId = new Map();
+
   for (const r of results) {
-    if (!knownByGroup.has(r.group)) knownByGroup.set(r.group, []);
-    knownByGroup.get(r.group).push({
+    const payload = {
       home: r.home, away: r.away, homeGoals: r.homeGoals, awayGoals: r.awayGoals,
-    });
+    };
+    if (r.group) {
+      // Group stage result — bucket by group letter
+      if (!knownByGroup.has(r.group)) knownByGroup.set(r.group, []);
+      knownByGroup.get(r.group).push(payload);
+    } else if (r.id) {
+      // Knockout result — bucket by match id (e.g. 'M73')
+      knownByMatchId.set(r.id, payload);
+    }
   }
 
-  return { knownByGroup, resultsCount: results.length, lastUpdated };
+  return { knownByGroup, knownByMatchId, resultsCount: results.length, lastUpdated };
 }
 
 module.exports = { loadResults, getKnownResultsByGroup, RESULTS_PATH };
