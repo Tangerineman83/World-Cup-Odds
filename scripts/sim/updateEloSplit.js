@@ -193,37 +193,38 @@ function matchCountWeight(matchNumberForTeam) {
 //   2 is also a clear signal; scoring 4 when expected 3 is only a weak
 //   incremental signal.
 //
-// SURPLUS_WEIGHT: 0.5 means the surplus above expectation counts at half
-// the per-goal rate. This preserves direction but prevents cascading
-// boosts from large margins against weak opposition.
+// SURPLUS_WEIGHT: taper applied to both over- and under-performance.
+// 0.5 means each goal above OR below expectation counts at half the
+// base per-goal rate. Symmetric tapering is correct because expected
+// goals is a model estimate with real uncertainty — scoring 1 when
+// expected 3 carries no more information per unit than scoring 5 when
+// expected 3. The asymmetric design (full penalty downward, tapered
+// upward) produced a pathological case where Japan scoring 1 vs Sweden
+// when expected 3.0 (the cap) generated -80 attack points from a single
+// draw — a result that anyone watching the match would not interpret as
+// a catastrophic signal about Japan's attacking quality.
 const SURPLUS_WEIGHT = 0.5;
 
 function taperedGoalDelta(actual, expected, didWinThisDimension) {
   // actual:              goals the team scored (for attack) or opponent scored (for defence)
   // expected:            goals the model expected
   // didWinThisDimension: true when the actual result is "good" in this dimension
-  //                      (attack: team actually scored more than opponent;
-  //                       defence: opponent actually scored fewer than expected)
+  //                      (attack: team scored more goals than opponent;
+  //                       defence: opponent scored fewer goals than expected)
   //
-  // RULE 1 — Taper upside surplus:
-  //   When actual > expected, the excess above expectation counts at SURPLUS_WEIGHT.
-  //   This prevents large margins against weak opponents generating implausibly
-  //   large rating boosts.
+  // RULE 1 — Symmetric taper on all deltas:
+  //   Both surplus (actual > expected) and shortfall (actual < expected)
+  //   are tapered at SURPLUS_WEIGHT. Each goal of deviation from expectation
+  //   counts at half rate. This prevents both large margins generating
+  //   implausible boosts AND extreme caps generating implausible penalties.
   //
   // RULE 2 — Win protection:
-  //   When a team WON in this dimension (didWinThisDimension=true) but the model's
-  //   expected value was so extreme it implies a PENALTY despite winning, clamp the
-  //   delta at 0. A team should never LOSE attack/defence rating for a positive
-  //   real-world outcome. E.g. Mexico score 2 when expected 5 vs South Africa:
-  //   they won the match; they should not lose attack rating.
-  //
-  // RULE 3 — Full penalty when underperforming:
-  //   When actual < expected and we don't have win protection, full penalty applies.
-  //   Failing to score when expected to is genuinely informative.
+  //   When a team performed well in this dimension (didWinThisDimension=true)
+  //   but the tapered delta is still negative (can happen when the cap is hit
+  //   and actual is below the capped expectation), clamp to 0. A team should
+  //   never lose attack/defence rating from a positive real-world outcome.
   const rawDelta = actual - expected;
-  const taperedDelta = rawDelta > 0
-    ? rawDelta * SURPLUS_WEIGHT          // Rule 1: taper surplus
-    : rawDelta;                           // Rule 3: full penalty
+  const taperedDelta = rawDelta * SURPLUS_WEIGHT;  // symmetric taper both ways
 
   // Rule 2: clamp at 0 when the team actually performed well in this dimension
   if (didWinThisDimension && taperedDelta < 0) return 0;
