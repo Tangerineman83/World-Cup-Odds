@@ -14,7 +14,6 @@
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
   const scenarioModalTitle = document.getElementById('scenario-modal-title');
-
   let data = null;           // scenario_negbin.json
   let predictionsByName = null;  // predictions_negbin.json teams map
   let allResults = [];       // results.json
