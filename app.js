@@ -1,6 +1,6 @@
 (function () {
   const groupResultsGrid = document.getElementById('group-results-grid');
-  const r32ResultsGrid = document.getElementById('r32-results-grid');
+  const oddsTableWrap = document.getElementById('odds-table-wrap');
   const bracket = document.getElementById('bracket');
   const bracketWrap = document.getElementById('bracket-wrap');
   const svg = document.getElementById('bracket-lines');
@@ -72,59 +72,60 @@
     groupResultsGrid.innerHTML = html;
   }
 
-  // ── R32 results display ───────────────────────────────────────────────────
+  // ── Tournament odds table ─────────────────────────────────────────────────
 
-  function renderR32Results() {
-    if (!r32ResultsGrid || !data) return;
+  function renderOddsTable() {
+    if (!oddsTableWrap || !predictionsByName) return;
 
-    // Build a lookup of actual played R32 results from results.json
-    const r32Played = {};
+    // Build per-team stats from all played results (group stage + knockout)
+    const stats = {};
     for (const r of allResults) {
-      if (r.homeGoals != null && !r.group) {
-        // Knockout match — no group field
-        r32Played[`${r.home}|${r.away}`] = r;
-        r32Played[`${r.away}|${r.home}`] = r;
+      if (r.homeGoals == null) continue;
+      for (const [name, gf, ga, won] of [
+        [r.home, r.homeGoals, r.awayGoals, r.homeGoals > r.awayGoals],
+        [r.away, r.awayGoals, r.homeGoals, r.awayGoals > r.homeGoals],
+      ]) {
+        if (!stats[name]) stats[name] = { w: 0, gf: 0, ga: 0 };
+        stats[name].gf += gf;
+        stats[name].ga += ga;
+        if (won) stats[name].w += 1;
       }
     }
 
-    // R32 matches come from scenario data; home/away ordering from tournament.js
-    // is already encoded in data.r32[].home / .away
-    const rounds = [
-      { label: 'Round of 32', matches: data.r32 || [] },
-    ];
+    // Build rows from predictions, sorted by pChampion desc
+    const rows = [...predictionsByName.values()]
+      .sort((a, b) => (b.pChampion || 0) - (a.pChampion || 0));
 
-    // Split 16 matches into two columns of 8
-    const matches = data.r32 || [];
-    const left = matches.slice(0, 8);
-    const right = matches.slice(8);
+    let html = `<table class="odds-table">
+      <thead>
+        <tr>
+          <th class="ot-team">Team</th>
+          <th class="ot-num ot-highlight" title="Chance of winning the tournament">🏆 To win</th>
+          <th class="ot-num" title="Total wins including group stage">Wins</th>
+          <th class="ot-num" title="Goals scored across all played matches">GF</th>
+          <th class="ot-num" title="Goals conceded across all played matches">GA</th>
+        </tr>
+      </thead>
+      <tbody>`;
 
-    function matchCard(m) {
-      // Check if this match has an actual result
-      const played = r32Played[`${m.home.name}|${m.away.name}`];
-      const hGoals = played?.homeGoals;
-      const aGoals = played?.awayGoals;
-      const hasResult = hGoals != null;
-      const hWon = hasResult ? hGoals > aGoals : (m.winner?.name === m.home?.name);
-      const aWon = hasResult ? aGoals > hGoals : (m.winner?.name === m.away?.name);
-      const pctLabel = !hasResult && m.pWin != null ? `${(m.pWin * 100).toFixed(0)}%` : '';
-      const scoreHtml = hasResult
-        ? `<span class="r32-score">${hGoals}–${aGoals}</span>`
-        : `<span class="r32-score r32-score-pred">${pctLabel}</span>`;
-      return `<div class="r32-match">
-        <div class="r32-team ${hWon ? 'r32-winner' : 'r32-loser'}" data-team="${m.home?.name || ''}">
-          ${teamButton(m.home)}
-        </div>
-        ${scoreHtml}
-        <div class="r32-team ${aWon ? 'r32-winner' : 'r32-loser'}" data-team="${m.away?.name || ''}">
-          ${teamButton(m.away)}
-        </div>
-      </div>`;
+    for (let i = 0; i < rows.length; i++) {
+      const t = rows[i];
+      const s = stats[t.name] || { w: 0, gf: 0, ga: 0 };
+      const pct = t.pChampion || 0;
+      // Heatmap intensity on the win odds cell
+      const alpha = Math.min(pct / 0.25, 1) * 0.4; // scale so 25%+ = full intensity
+      const bg = `background:rgba(74,222,128,${alpha.toFixed(3)})`;
+      html += `<tr class="ot-row" data-team="${t.name.replace(/"/g,'&quot;')}">
+        <td class="ot-team">${flagImgHtml(t.code, 20)}<button class="team-cell ot-name-btn" data-team="${t.name.replace(/"/g,'&quot;')}">${t.name}</button></td>
+        <td class="ot-num ot-highlight" style="${bg}">${fmtPct(pct)}</td>
+        <td class="ot-num">${s.w}</td>
+        <td class="ot-num">${s.gf}</td>
+        <td class="ot-num">${s.ga}</td>
+      </tr>`;
     }
 
-    r32ResultsGrid.innerHTML = `
-      <div class="r32-col">${left.map(matchCard).join('')}</div>
-      <div class="r32-col">${right.map(matchCard).join('')}</div>
-    `;
+    html += `</tbody></table>`;
+    oddsTableWrap.innerHTML = html;
   }
 
   // ── Modal: team knockout pathway Sankey ───────────────────────────────────
@@ -491,7 +492,7 @@
 
     renderMeta();
     renderGroupResults();
-    renderR32Results();
+    renderOddsTable();
     renderBracket();
     requestAnimationFrame(() => requestAnimationFrame(drawConnectors));
 
