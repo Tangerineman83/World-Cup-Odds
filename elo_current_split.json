@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-29T16:25:44.414Z",
+  "generatedAt": "2026-06-29T16:38:38.229Z",
   "baselineSource": "https://raw.githubusercontent.com/martj42/international_results/master/results.csv",
-  "baselineGeneratedAt": "2026-06-29T16:25:08.103Z",
+  "baselineGeneratedAt": "2026-06-29T16:37:56.496Z",
   "resultsApplied": 73,
   "constants": {
     "alpha": 0.26236426446749106,
@@ -9,344 +9,443 @@
     "sigma": 250,
     "kGoals": 40,
     "matchCountRampFull": 3,
-    "status": "PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md. kGoals is now match-count-ramped (see matchCountWeight) rather than flat - see header comment for rationale."
+    "csTrendBonus": 20,
+    "csThreshold": 0.5,
+    "csMinMatches": 2,
+    "status": "PLACEHOLDER - not yet fitted by regression, see Section 5 of elo-negbin-revised.md."
   },
   "ratings": {
     "Mexico": {
       "overall": 1881,
       "attack": 1864.67,
-      "defense": 1928.7,
+      "defense": 1948.7,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 3
+      "hostGroupMatchesPlayed": 3,
+      "groupCleanSheets": 3,
+      "groupMatchesPlayed": 3
     },
     "South Africa": {
       "overall": 1511,
       "attack": 1512.43,
       "defense": 1653.24,
       "matchesPlayed": 4,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "South Korea": {
       "overall": 1786,
       "attack": 1714.61,
       "defense": 1794.18,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Czechia": {
       "overall": 1712,
       "attack": 1686.28,
       "defense": 1688.04,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Canada": {
       "overall": 1767,
       "attack": 1780.27,
       "defense": 1819.09,
       "matchesPlayed": 4,
-      "hostGroupMatchesPlayed": 3
+      "hostGroupMatchesPlayed": 3,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Bosnia-Herzegovina": {
       "overall": 1616,
       "attack": 1608.61,
       "defense": 1578.44,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Qatar": {
       "overall": 1421,
       "attack": 1397.95,
       "defense": 1354.54,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Switzerland": {
       "overall": 1891,
       "attack": 1905.58,
       "defense": 1845.25,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Brazil": {
       "overall": 1991,
       "attack": 1987.82,
-      "defense": 1993.46,
+      "defense": 2000.12,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Morocco": {
       "overall": 1827,
       "attack": 1860.45,
       "defense": 1889.2,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Haiti": {
       "overall": 1548,
       "attack": 1590.22,
       "defense": 1536.36,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Scotland": {
       "overall": 1782,
       "attack": 1754.13,
       "defense": 1779.54,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "USA": {
       "overall": 1780,
       "attack": 1819.79,
       "defense": 1741.03,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 3
+      "hostGroupMatchesPlayed": 3,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Paraguay": {
       "overall": 1780,
       "attack": 1734.58,
-      "defense": 1821.89,
+      "defense": 1828.56,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Australia": {
       "overall": 1777,
       "attack": 1722.26,
-      "defense": 1811.32,
+      "defense": 1817.98,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Turkiye": {
       "overall": 1911,
       "attack": 1896.13,
       "defense": 1870.44,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Germany": {
       "overall": 1932,
       "attack": 1973.12,
       "defense": 1890.6,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Curacao": {
       "overall": 1434,
       "attack": 1422.76,
       "defense": 1465.93,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Ivory Coast": {
       "overall": 1695,
       "attack": 1705.98,
-      "defense": 1788.73,
+      "defense": 1795.39,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Ecuador": {
       "overall": 1938,
       "attack": 1854.32,
       "defense": 2021.91,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Netherlands": {
       "overall": 1948,
       "attack": 1997.58,
       "defense": 1914.03,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Japan": {
       "overall": 1906,
       "attack": 1895.8,
       "defense": 1950.18,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Sweden": {
       "overall": 1712,
       "attack": 1760.16,
       "defense": 1690.75,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Tunisia": {
       "overall": 1628,
       "attack": 1625.89,
       "defense": 1590.15,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Belgium": {
       "overall": 1894,
       "attack": 1908.16,
       "defense": 1876.1,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Egypt": {
       "overall": 1696,
       "attack": 1682.72,
       "defense": 1736.96,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Iran": {
       "overall": 1772,
       "attack": 1754.94,
       "defense": 1804.43,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "New Zealand": {
       "overall": 1562,
       "attack": 1579.1,
       "defense": 1499.25,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Spain": {
       "overall": 2157,
       "attack": 2188.38,
-      "defense": 2156.9,
+      "defense": 2176.9,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 3,
+      "groupMatchesPlayed": 3
     },
     "Cape Verde": {
       "overall": 1578,
       "attack": 1557.24,
-      "defense": 1633.49,
+      "defense": 1640.16,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Saudi Arabia": {
       "overall": 1576,
       "attack": 1525.8,
       "defense": 1590.37,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Uruguay": {
       "overall": 1892,
       "attack": 1807.66,
       "defense": 1919.69,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "France": {
       "overall": 2063,
       "attack": 2117.62,
       "defense": 2046.46,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Senegal": {
       "overall": 1860,
       "attack": 1932.01,
       "defense": 1867.28,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Iraq": {
       "overall": 1607,
       "attack": 1565.68,
       "defense": 1551.83,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Norway": {
       "overall": 1914,
       "attack": 1966.87,
       "defense": 1884.35,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Argentina": {
       "overall": 2115,
       "attack": 2125.14,
-      "defense": 2160.73,
+      "defense": 2167.39,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Algeria": {
       "overall": 1772,
       "attack": 1823.26,
       "defense": 1777.96,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Austria": {
       "overall": 1830,
       "attack": 1862.24,
       "defense": 1817.19,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Jordan": {
       "overall": 1680,
       "attack": 1696.76,
       "defense": 1642.65,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Portugal": {
       "overall": 1989,
       "attack": 1987.21,
-      "defense": 2012,
+      "defense": 2018.67,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Congo DR": {
       "overall": 1652,
       "attack": 1678.71,
       "defense": 1724.53,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Uzbekistan": {
       "overall": 1714,
       "attack": 1685.51,
       "defense": 1662.02,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     },
     "Colombia": {
       "overall": 1982,
       "attack": 1961.55,
-      "defense": 1998.38,
+      "defense": 2005.05,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "England": {
       "overall": 2024,
       "attack": 2014.75,
-      "defense": 2086.65,
+      "defense": 2093.32,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Croatia": {
       "overall": 1912,
       "attack": 1923.41,
       "defense": 1883.99,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 1,
+      "groupMatchesPlayed": 3
     },
     "Ghana": {
       "overall": 1510,
       "attack": 1491.95,
-      "defense": 1576.78,
+      "defense": 1583.45,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 2,
+      "groupMatchesPlayed": 3
     },
     "Panama": {
       "overall": 1730,
       "attack": 1707.79,
       "defense": 1755.64,
       "matchesPlayed": 3,
-      "hostGroupMatchesPlayed": 0
+      "hostGroupMatchesPlayed": 0,
+      "groupCleanSheets": 0,
+      "groupMatchesPlayed": 3
     }
   },
   "matchLog": [
@@ -1663,6 +1762,92 @@
       "homeDefenseDelta": 30.74,
       "awayAttackDelta": 0,
       "awayDefenseDelta": 8.14
+    }
+  ],
+  "cleanSheetBonusLog": [
+    {
+      "team": "Mexico",
+      "cleanSheets": 3,
+      "groupMatches": 3,
+      "rate": 1,
+      "bonus": 20
+    },
+    {
+      "team": "Brazil",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Paraguay",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Australia",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Ivory Coast",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Spain",
+      "cleanSheets": 3,
+      "groupMatches": 3,
+      "rate": 1,
+      "bonus": 20
+    },
+    {
+      "team": "Cape Verde",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Argentina",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Portugal",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Colombia",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "England",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
+    },
+    {
+      "team": "Ghana",
+      "cleanSheets": 2,
+      "groupMatches": 3,
+      "rate": 0.67,
+      "bonus": 6.67
     }
   ]
 }
