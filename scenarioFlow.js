@@ -617,8 +617,9 @@
     const SP = { r32:'pRoundOf32', r16:'pRoundOf16', qf:'pQuarterFinal', sf:'pSemiFinal', final:'pFinal' };
 
     // ── Build opponent nodes per stage ────────────────────────────────────
-    const THRESHOLD = 0.02; // joint-p cutoff before grouping into "other"
-    const MAX_OPP = 5;
+    const THRESHOLD = 0.01; // joint-p cutoff before grouping into "other"
+    const MIN_SHOWN = 2;    // always label at least this many opponents per stage
+    const MAX_OPP = 6;
 
     function oppNodes(stage, pNext, matchId) {
       // matchId: the team's match id at this stage (pre-resolved by findMatchId)
@@ -648,8 +649,10 @@
         inflowJp: (x.w/tot) * pReach,
       })).sort((a,b)=>b.jp-a.jp);
 
-      const shown = sorted.filter((n,i)=>n.jp>=THRESHOLD && i<MAX_OPP);
-      const rest  = sorted.filter((n,i)=>n.jp< THRESHOLD || i>=MAX_OPP);
+      // Show if above threshold OR within the guaranteed minimum — whichever is more generous.
+      // This ensures at least MIN_SHOWN opponents are always labelled at every stage.
+      const shown = sorted.filter((n,i) => (n.jp >= THRESHOLD || i < MIN_SHOWN) && i < MAX_OPP);
+      const rest  = sorted.filter((n,i) => !(n.jp >= THRESHOLD || i < MIN_SHOWN) || i >= MAX_OPP);
       const result = shown.map(n=>({...n, other:false}));
       if (rest.length) {
         result.push({
@@ -943,6 +946,10 @@
     }
 
     // Terminal nodes
+    // Column header above Win/Don't Win
+    out += txt(termCX, T-30, '🏆', 13, '#4ade80', false, 'middle');
+    out += txt(termCX, T-14, 'Result', 8, '#64748b', false, 'middle');
+
     out += bar(termCX, winTermY, winTermH, C.win, 0.9);
     out += txt(termCX+LOFF, winTermY + winTermH/2 - 4, 'Win', 9, '#4ade80', true);
     out += txt(termCX+LOFF, winTermY + winTermH/2 + 8, fmtPct(pChamp), 9, '#4ade80', true);
