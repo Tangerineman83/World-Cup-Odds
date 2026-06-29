@@ -91,14 +91,14 @@ const TOURNAMENT_CUTOFF_DATE = '2026-06-11';
 // pass of output to examine, not hand-picked. Flagging clearly so it isn't
 // mistaken for a calibrated figure.
 //
-// Reduced from 120 to 80. At 120, teams with extreme GA ratios (e.g.
+// Reduced from 80 to 60. Reduced from 120 to 80. At 120, teams with extreme GA ratios (e.g.
 // Ecuador at 0.35 GA/match vs pool average 0.98) received defence bonuses
 // of 120+ Elo points over their overall rating — landing them 4th in the
 // world defensively despite an overall rating of 1938. At 80 the same team
 // gets a ~82-point bonus (defence ~2020), which preserves the directional
 // signal (Ecuador genuinely defended well in CONMEBOL qualifying) while
 // keeping the magnitude proportionate to their overall quality.
-const KAPPA_PLACEHOLDER = 80;
+const KAPPA_PLACEHOLDER = 60;
 
 // --- Team name reconciliation -----------------------------------------
 //
