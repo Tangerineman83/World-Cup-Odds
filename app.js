@@ -233,18 +233,27 @@
   }
 
   function matchHtml(m, roundKey) {
-    const homeWon = m.winner && m.home && m.winner.name === m.home.name;
-    const awayWon = m.winner && m.away && m.winner.name === m.away.name;
-    const pctLabel = m.pWin != null ? `${(m.pWin * 100).toFixed(0)}%` : '';
+    // Check if this match has an actual result in allResults
+    const played = allResults.find(r => r.id === m.id && r.homeGoals != null);
+    const hasResult = !!played;
+    const homeWon = hasResult
+      ? played.homeGoals > played.awayGoals
+      : (m.winner && m.home && m.winner.name === m.home.name);
+    const awayWon = hasResult
+      ? played.awayGoals > played.homeGoals
+      : (m.winner && m.away && m.winner.name === m.away.name);
+    const scoreOrPct = hasResult
+      ? `<span class="win-pct">${played.homeGoals}–${played.awayGoals}</span>`
+      : (m.pWin != null ? `<span class="win-pct">${(m.pWin * 100).toFixed(0)}%</span>` : '');
     return `
       <div class="match" data-match-id="${m.id}" data-round="${roundKey}">
         <div class="match-team ${homeWon ? 'match-winner' : 'match-loser'}" data-team="${m.home ? m.home.name : ''}">
           ${teamButton(m.home)}
-          ${homeWon ? `<span class="win-pct">${pctLabel}</span>` : ''}
+          ${homeWon ? scoreOrPct : ''}
         </div>
         <div class="match-team ${awayWon ? 'match-winner' : 'match-loser'}" data-team="${m.away ? m.away.name : ''}">
           ${teamButton(m.away)}
-          ${awayWon ? `<span class="win-pct">${pctLabel}</span>` : ''}
+          ${awayWon ? scoreOrPct : ''}
         </div>
       </div>
     `;
