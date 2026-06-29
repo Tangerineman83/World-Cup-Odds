@@ -620,32 +620,20 @@
     const THRESHOLD = 0.02; // joint-p cutoff before grouping into "other"
     const MAX_OPP = 5;
 
-    function oppNodes(stage, pNext) {
-      // pNext = probability of reaching the NEXT stage (= what the node's win height represents)
-      // jp (joint probability shown on node) = P(win this match vs this opponent) = pNext × condP
-      // inflowJp = P(reach this round AND face this opponent) = pReach × condP
+    function oppNodes(stage, pNext, matchId) {
+      // matchId: the team's match id at this stage (pre-resolved by findMatchId)
       const pReach = team[SP[stage]] || 0;
       if (pReach < 0.0001) return [];
+      if (!matchId) return [];
 
       if (stage === 'r32') {
-        const m = (scenarioData.r32||[]).find(m => m.home?.name===team.name||m.away?.name===team.name);
+        const m = r32Map[matchId];
         if (!m) return [];
         const opp = m.home.name === team.name ? m.away : m.home;
-        // jp = P(win R32) = pNext; inflow = pReach (= 1.0 for group-complete teams)
         return [{ lbl: opp.name, jp: pNext, inflowJp: pReach, cp: 1, other: false }];
       }
 
-      let ms = scenarioData[stage]||[];
-      if (!Array.isArray(ms)) ms = [ms];
-      let tm = ms.find(m => m.home?.name===team.name||m.away?.name===team.name);
-      if (!tm && stage==='final') {
-        for (const sf of (scenarioData.sf||[])) {
-          if (sf.home?.name===team.name||sf.away?.name===team.name) { tm={id:'M104'}; break; }
-        }
-      }
-      if (!tm) return [];
-
-      const [fA, fB] = KO_P[tm.id]||[];
+      const [fA, fB] = KO_P[matchId]||[];
       if (!fA) return [];
       const oppFeed = teamSet(fA).has(team.name) ? fB : fA;
       const oppList = [...teamSet(oppFeed)];
@@ -653,7 +641,6 @@
       const raw = oppList.map(n => ({ n, w: (predsByName[n]||{})[pk]||0 }));
       const tot = raw.reduce((s,x)=>s+x.w, 0);
       if (tot === 0) return [];
-      // jp = pNext × condP; inflowJp = pReach × condP
       const sorted = raw.map(x=>({
         lbl: x.n,
         cp: x.w/tot,
@@ -661,7 +648,6 @@
         inflowJp: (x.w/tot) * pReach,
       })).sort((a,b)=>b.jp-a.jp);
 
-      // Threshold on jp (win probability), not inflowJp
       const shown = sorted.filter((n,i)=>n.jp>=THRESHOLD && i<MAX_OPP);
       const rest  = sorted.filter((n,i)=>n.jp< THRESHOLD || i>=MAX_OPP);
       const result = shown.map(n=>({...n, other:false}));
@@ -687,17 +673,70 @@
 
     if (!STAGES.length) { svgEl.innerHTML=''; return; }
 
+    // Build a lookup: for any match id, which match id does it feed into?
+    // Used to trace a team's bracket path forward when they lost before the Final.
+    const feedsInto = {};
+    for (const [matchId, [a, b]] of Object.entries(KO_P)) {
+      feedsInto[a] = matchId;
+      feedsInto[b] = matchId;
+    }
+
+    // Find a team's match id at a given stage by tracing forward from their
+    // last known modal appearance (handles teams that lose early in the modal).
+    function findMatchId(stageKey) {
+      // First try direct lookup in scenario data
+      const stageMatches = scenarioData[stageKey] || [];
+      const ms = Array.isArray(stageMatches) ? stageMatches : [stageMatches];
+      const direct = ms.find(m => m.home?.name===team.name || m.away?.name===team.name);
+      if (direct) return direct.id;
+
+      // Not in modal scenario for this stage — trace forward from last known match.
+      // Order of stages to search backwards from:
+      const stageOrder = ['r32','r16','qf','sf','final'];
+      const targetIdx = stageOrder.indexOf(stageKey);
+      if (targetIdx < 0) return null;
+
+      // Find the most recent stage where the team appears in the modal scenario
+      let lastMatchId = null;
+      for (let i = targetIdx - 1; i >= 0; i--) {
+        const prevStage = stageOrder[i];
+        const prevMatches = scenarioData[prevStage] || [];
+        const pms = Array.isArray(prevMatches) ? prevMatches : [prevMatches];
+        const found = pms.find(m => m.home?.name===team.name || m.away?.name===team.name);
+        if (found) { lastMatchId = found.id; break; }
+      }
+      if (!lastMatchId) return null;
+
+      // Trace forward through feedsInto until we reach the target stage
+      let cur = lastMatchId;
+      const stageMatchIds = {
+        r32:  new Set((scenarioData.r32||[]).map(m=>m.id)),
+        r16:  new Set((scenarioData.r16||[]).map(m=>m.id)),
+        qf:   new Set((scenarioData.qf||[]).map(m=>m.id)),
+        sf:   new Set((scenarioData.sf||[]).map(m=>m.id)),
+        final: new Set([scenarioData.final?.id].filter(Boolean)),
+      };
+      for (let steps = 0; steps < 5; steps++) {
+        const next = feedsInto[cur];
+        if (!next) break;
+        cur = next;
+        if (stageMatchIds[stageKey]?.has(cur)) return cur;
+        // Final is a single object, also check directly
+        if (stageKey === 'final' && cur === 'M104') return cur;
+      }
+      return null;
+    }
+
     // Attach pReach, pNext, and nodes
     STAGES.forEach((s,i)=>{
       s.pReach = team[s.pk]||0;
       s.pNext  = i<STAGES.length-1 ? team[STAGES[i+1].pk]||0 : team.pChampion||0;
-      s.nodes  = oppNodes(s.key, s.pNext);
+      s.nodes  = oppNodes(s.key, s.pNext, findMatchId(s.key));
     });
 
     // ── Layout ─────────────────────────────────────────────────────────────
-    // Fixed viewBox — designed for ~700px modal width
-    const VW = 700, VH = 440;
-    const T = 38, B = 20, L = 8, R = 8;   // tight padding
+    const VW = 820, VH = 440;
+    const T = 48, B = 20, L = 8, R = 120;  // R=120 gives terminal labels room
     const UW = VW - L - R;
     const UH = VH - T - B;
 
@@ -883,9 +922,10 @@
       const scx  = stageCXs[si];
       const col_color = C[col.key];
 
-      // Column header (round name + reach probability)
-      out += txt(scx, T-20, col.lbl,  8, '#64748b', false, 'middle');
-      out += txt(scx, T-8,  fmtPct(col.pReach), 9, '#94a3b8', true, 'middle');
+      // Column header: round name + "chance of reaching" probability
+      out += txt(scx, T-30, col.lbl,  8, '#64748b', false, 'middle');
+      out += txt(scx, T-18, 'to reach', 7, '#475569', false, 'middle');
+      out += txt(scx, T-6,  fmtPct(col.pReach), 10, '#94a3b8', true, 'middle');
 
       for (const n of col.nodes) {
         // Win portion (brighter)

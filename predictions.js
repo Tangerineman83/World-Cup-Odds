@@ -11,7 +11,8 @@
 
   let currentData = null;
   let scenarioData = null;
-  let sortKey = 'eloRating';
+  let baselineData = null;
+  let sortKey = 'eloOverall';
   let sortDir = 'desc';
   let selectedTeamName = null;
   let selectedFlowCol = null;
@@ -25,17 +26,29 @@
     return `background: color-mix(in srgb, var(${colorVar}) ${(alpha * 100).toFixed(0)}%, transparent);`;
   }
 
+  function fmtDelta(current, baseline) {
+    if (current == null || baseline == null) return '—';
+    const d = Math.round(current - baseline);
+    if (d === 0) return '<span class="delta-neutral">–</span>';
+    const cls = d > 0 ? 'delta-pos' : 'delta-neg';
+    const sign = d > 0 ? '+' : '';
+    return `<span class="${cls}">${sign}${d}</span>`;
+  }
+
   function render() {
     if (!currentData) return;
+    const baselineRatings = baselineData?.ratings || {};
     const rows = currentData.teams.map(t => ({
       ...t,
-      eloRating: t.eloOverall,
-      eloChange: null,
-      eloBaseline: null,
+      baselineAttack:  (baselineRatings[t.name]?.attack  ?? null),
+      baselineDefense: (baselineRatings[t.name]?.defense ?? null),
     }));
 
     rows.sort((a, b) => {
       const av = a[sortKey], bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
       if (typeof av === 'string') {
         const cmp = av.localeCompare(bv);
         return sortDir === 'asc' ? cmp : -cmp;
@@ -63,11 +76,21 @@
       tdFifa.textContent = row.fifaRank != null ? '#' + row.fifaRank : '—';
       tdFifa.title = 'Official FIFA World Ranking (June 2026)';
 
-      const tdRating = document.createElement('td');
-      tdRating.className = 'col-num col-rating';
-      tdRating.textContent = row.eloRating != null ? Math.round(row.eloRating) : '—';
+      // Attack rating + delta
+      const tdAtk = document.createElement('td');
+      tdAtk.className = 'col-num col-rating';
+      tdAtk.title = 'Attack rating (pre-tournament baseline in brackets)';
+      const atkDelta = fmtDelta(row.eloAttack, row.baselineAttack);
+      tdAtk.innerHTML = `${row.eloAttack != null ? Math.round(row.eloAttack) : '—'} ${atkDelta}`;
 
-      tr.append(tdTeam, tdGroup, tdFifa, tdRating);
+      // Defence rating + delta
+      const tdDef = document.createElement('td');
+      tdDef.className = 'col-num col-rating';
+      tdDef.title = 'Defence rating (pre-tournament baseline in brackets)';
+      const defDelta = fmtDelta(row.eloDefense, row.baselineDefense);
+      tdDef.innerHTML = `${row.eloDefense != null ? Math.round(row.eloDefense) : '—'} ${defDelta}`;
+
+      tr.append(tdTeam, tdGroup, tdFifa, tdAtk, tdDef);
 
       for (const [key, colorVar] of [
         ['pRoundOf16', '--host'],
@@ -102,17 +125,19 @@
 
   async function load() {
     try {
-      const [predRes, scenRes] = await Promise.all([
+      const [predRes, scenRes, baseRes] = await Promise.all([
         fetch('predictions_negbin.json?_=' + Date.now()),
         fetch('scenario_negbin.json?_=' + Date.now()),
+        fetch('elo_baseline_split.json?_=' + Date.now()),
       ]);
       if (!predRes.ok) throw new Error('predictions_negbin.json not found');
       currentData = await predRes.json();
       if (scenRes.ok) scenarioData = await scenRes.json();
+      if (baseRes.ok) baselineData = await baseRes.json();
       renderMeta();
       render();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="9" class="error-row">Couldn't load predictions: ${e.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" class="error-row">Couldn't load predictions: ${e.message}</td></tr>`;
     }
   }
 
@@ -160,7 +185,6 @@
     selectedFlowKey = null;
     scenarioModalTitle.innerHTML = `${flagImgHtml(team.code, 32)}${team.name}`;
 
-    // Gauge shows knockout progression
     const pChamp = team.pChampion || 0;
     scenarioModalGauge.innerHTML = `
       <div class="gauge-headline">
@@ -176,7 +200,6 @@
       </div>
     `;
 
-    // Knockout Sankey
     renderKnockoutFlow(scenarioModalFlow, team, scenarioData, currentData?.teams || []);
     scenarioModalBackdrop.hidden = false;
   }
