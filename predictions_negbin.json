@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-30T12:38:43.726Z",
+  "generatedAt": "2026-06-30T12:45:27.312Z",
   "numSimulations": 100000,
   "model": "dual-Elo Negative Binomial (Phase 3) - see elo-negbin-revised.md",
   "negBinConstants": {
@@ -8,7 +8,7 @@
     "sigma": 593.75,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 76 matches, generated 2026-06-30T12:38:26.781Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 76 matches, generated 2026-06-30T12:45:16.913Z)",
   "methodology": {
     "ratingSource": "eloOverall/eloAttack/eloDefense are each team's CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "knockoutModel": "Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren't a goals-from-form event either model claims to predict).",
@@ -26,11 +26,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.89237,
-      "pQuarterFinal": 0.7284,
-      "pSemiFinal": 0.50314,
-      "pFinal": 0.32649,
-      "pChampion": 0.21252,
+      "pRoundOf16": 0.88987,
+      "pQuarterFinal": 0.72644,
+      "pSemiFinal": 0.5029,
+      "pFinal": 0.32697,
+      "pChampion": 0.21323,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -92,11 +92,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.79956,
-      "pQuarterFinal": 0.56069,
-      "pSemiFinal": 0.33568,
-      "pFinal": 0.24825,
-      "pChampion": 0.15459,
+      "pRoundOf16": 0.80069,
+      "pQuarterFinal": 0.55858,
+      "pSemiFinal": 0.33177,
+      "pFinal": 0.24487,
+      "pChampion": 0.15243,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -158,11 +158,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.78696,
-      "pQuarterFinal": 0.47305,
-      "pSemiFinal": 0.27757,
-      "pFinal": 0.14411,
-      "pChampion": 0.08118,
+      "pRoundOf16": 0.78729,
+      "pQuarterFinal": 0.47228,
+      "pSemiFinal": 0.2769,
+      "pFinal": 0.14409,
+      "pChampion": 0.08193,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -214,72 +214,6 @@
       ]
     },
     {
-      "name": "Brazil",
-      "code": "BR",
-      "group": "C",
-      "fifaRank": 6,
-      "eloOverall": 1991,
-      "eloAttack": 1995.75,
-      "eloDefense": 1999.82,
-      "pGroupWinner": 1,
-      "pRunnerUp": 0,
-      "pRoundOf32": 1,
-      "pRoundOf16": 1,
-      "pQuarterFinal": 0.6235,
-      "pSemiFinal": 0.30954,
-      "pFinal": 0.14889,
-      "pChampion": 0.07963,
-      "thirdPlaceScenarios": [],
-      "outcomeScenarios": {
-        "first": [
-          {
-            "points": 7,
-            "gd": 6,
-            "gf": 7,
-            "pct": 1
-          }
-        ],
-        "second": [],
-        "thirdQualified": [],
-        "thirdEliminated": [],
-        "fourth": []
-      },
-      "pooledScenarios": [
-        {
-          "points": 7,
-          "gd": 6,
-          "total": 1,
-          "byBucket": {
-            "first": 1
-          },
-          "showLabel": true
-        }
-      ],
-      "currentStanding": {
-        "points": 7,
-        "gd": 6,
-        "gf": 7,
-        "ga": 1,
-        "played": 3
-      },
-      "pointsNodes": [
-        {
-          "points": 7,
-          "total": 1,
-          "byGd": {
-            "6": 1
-          }
-        }
-      ],
-      "r32Opponents": [
-        {
-          "opponent": "Japan",
-          "code": "JP",
-          "pct": 1
-        }
-      ]
-    },
-    {
       "name": "France",
       "code": "FR",
       "group": "I",
@@ -290,11 +224,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.74846,
-      "pQuarterFinal": 0.60934,
-      "pSemiFinal": 0.30148,
-      "pFinal": 0.14259,
-      "pChampion": 0.07778,
+      "pRoundOf16": 0.74584,
+      "pQuarterFinal": 0.60766,
+      "pSemiFinal": 0.30482,
+      "pFinal": 0.14522,
+      "pChampion": 0.07896,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -346,6 +280,72 @@
       ]
     },
     {
+      "name": "Brazil",
+      "code": "BR",
+      "group": "C",
+      "fifaRank": 6,
+      "eloOverall": 1991,
+      "eloAttack": 1995.75,
+      "eloDefense": 1999.82,
+      "pGroupWinner": 1,
+      "pRunnerUp": 0,
+      "pRoundOf32": 1,
+      "pRoundOf16": 1,
+      "pQuarterFinal": 0.62643,
+      "pSemiFinal": 0.31035,
+      "pFinal": 0.14878,
+      "pChampion": 0.07852,
+      "thirdPlaceScenarios": [],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 7,
+            "gd": 6,
+            "gf": 7,
+            "pct": 1
+          }
+        ],
+        "second": [],
+        "thirdQualified": [],
+        "thirdEliminated": [],
+        "fourth": []
+      },
+      "pooledScenarios": [
+        {
+          "points": 7,
+          "gd": 6,
+          "total": 1,
+          "byBucket": {
+            "first": 1
+          },
+          "showLabel": true
+        }
+      ],
+      "currentStanding": {
+        "points": 7,
+        "gd": 6,
+        "gf": 7,
+        "ga": 1,
+        "played": 3
+      },
+      "pointsNodes": [
+        {
+          "points": 7,
+          "total": 1,
+          "byGd": {
+            "6": 1
+          }
+        }
+      ],
+      "r32Opponents": [
+        {
+          "opponent": "Japan",
+          "code": "JP",
+          "pct": 1
+        }
+      ]
+    },
+    {
       "name": "Colombia",
       "code": "CO",
       "group": "K",
@@ -356,11 +356,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.8424,
-      "pQuarterFinal": 0.50375,
-      "pSemiFinal": 0.23015,
-      "pFinal": 0.11864,
-      "pChampion": 0.06151,
+      "pRoundOf16": 0.83988,
+      "pQuarterFinal": 0.49757,
+      "pSemiFinal": 0.22637,
+      "pFinal": 0.11464,
+      "pChampion": 0.05978,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -422,11 +422,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.71313,
-      "pQuarterFinal": 0.32967,
-      "pSemiFinal": 0.24322,
-      "pFinal": 0.14038,
-      "pChampion": 0.0429,
+      "pRoundOf16": 0.71154,
+      "pQuarterFinal": 0.3283,
+      "pSemiFinal": 0.24303,
+      "pFinal": 0.14039,
+      "pChampion": 0.04282,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -488,11 +488,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.59252,
-      "pQuarterFinal": 0.23719,
-      "pSemiFinal": 0.12851,
-      "pFinal": 0.07678,
-      "pChampion": 0.03643,
+      "pRoundOf16": 0.59317,
+      "pQuarterFinal": 0.23753,
+      "pSemiFinal": 0.12951,
+      "pFinal": 0.07666,
+      "pChampion": 0.03664,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -555,10 +555,10 @@
       "pRunnerUp": 1,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.5461,
-      "pSemiFinal": 0.23373,
-      "pFinal": 0.09042,
-      "pChampion": 0.03414,
+      "pQuarterFinal": 0.54864,
+      "pSemiFinal": 0.2329,
+      "pFinal": 0.09007,
+      "pChampion": 0.03461,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -621,9 +621,9 @@
       "pRunnerUp": 1,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.4539,
-      "pSemiFinal": 0.28096,
-      "pFinal": 0.10323,
+      "pQuarterFinal": 0.45136,
+      "pSemiFinal": 0.27859,
+      "pFinal": 0.10247,
       "pChampion": 0.03363,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
@@ -686,11 +686,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.50007,
-      "pQuarterFinal": 0.2321,
-      "pSemiFinal": 0.12057,
-      "pFinal": 0.05043,
-      "pChampion": 0.02922,
+      "pRoundOf16": 0.5017,
+      "pQuarterFinal": 0.23262,
+      "pSemiFinal": 0.12034,
+      "pFinal": 0.05045,
+      "pChampion": 0.02921,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -752,11 +752,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.67275,
-      "pQuarterFinal": 0.28526,
-      "pSemiFinal": 0.12887,
-      "pFinal": 0.05232,
-      "pChampion": 0.02422,
+      "pRoundOf16": 0.66934,
+      "pQuarterFinal": 0.28258,
+      "pSemiFinal": 0.12877,
+      "pFinal": 0.05174,
+      "pChampion": 0.02379,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -818,11 +818,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.59802,
-      "pQuarterFinal": 0.3756,
-      "pSemiFinal": 0.12441,
-      "pFinal": 0.06224,
-      "pChampion": 0.02365,
+      "pRoundOf16": 0.59874,
+      "pQuarterFinal": 0.37829,
+      "pSemiFinal": 0.12699,
+      "pFinal": 0.06232,
+      "pChampion": 0.02328,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -884,11 +884,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.49993,
-      "pQuarterFinal": 0.2322,
-      "pSemiFinal": 0.11124,
-      "pFinal": 0.04803,
-      "pChampion": 0.02314,
+      "pRoundOf16": 0.4983,
+      "pQuarterFinal": 0.23402,
+      "pSemiFinal": 0.11247,
+      "pFinal": 0.04813,
+      "pChampion": 0.02265,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -957,11 +957,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.51535,
-      "pQuarterFinal": 0.24204,
-      "pSemiFinal": 0.09139,
-      "pFinal": 0.03824,
-      "pChampion": 0.01603,
+      "pRoundOf16": 0.51368,
+      "pQuarterFinal": 0.24443,
+      "pSemiFinal": 0.09193,
+      "pFinal": 0.04006,
+      "pChampion": 0.01742,
       "thirdPlaceScenarios": [
         {
           "points": 3,
@@ -1030,11 +1030,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.48465,
-      "pQuarterFinal": 0.22224,
-      "pSemiFinal": 0.08242,
-      "pFinal": 0.03337,
-      "pChampion": 0.01408,
+      "pRoundOf16": 0.48632,
+      "pQuarterFinal": 0.22462,
+      "pSemiFinal": 0.08427,
+      "pFinal": 0.03487,
+      "pChampion": 0.01491,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -1096,11 +1096,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.40748,
-      "pQuarterFinal": 0.12643,
-      "pSemiFinal": 0.06503,
-      "pFinal": 0.03268,
-      "pChampion": 0.01277,
+      "pRoundOf16": 0.40683,
+      "pQuarterFinal": 0.12934,
+      "pSemiFinal": 0.06672,
+      "pFinal": 0.03409,
+      "pChampion": 0.0136,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1163,10 +1163,10 @@
       "pRunnerUp": 0,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.24759,
-      "pSemiFinal": 0.11634,
-      "pFinal": 0.03817,
-      "pChampion": 0.00951,
+      "pQuarterFinal": 0.24681,
+      "pSemiFinal": 0.11508,
+      "pFinal": 0.0382,
+      "pChampion": 0.0098,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1235,11 +1235,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.25154,
-      "pQuarterFinal": 0.14307,
-      "pSemiFinal": 0.06749,
-      "pFinal": 0.02456,
-      "pChampion": 0.008,
+      "pRoundOf16": 0.25416,
+      "pQuarterFinal": 0.14553,
+      "pSemiFinal": 0.06861,
+      "pFinal": 0.02485,
+      "pChampion": 0.00763,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1308,11 +1308,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.40198,
-      "pQuarterFinal": 0.21772,
-      "pSemiFinal": 0.05509,
-      "pFinal": 0.02199,
-      "pChampion": 0.0068,
+      "pRoundOf16": 0.40126,
+      "pQuarterFinal": 0.21565,
+      "pSemiFinal": 0.05466,
+      "pFinal": 0.02174,
+      "pChampion": 0.00693,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1381,11 +1381,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.20044,
-      "pQuarterFinal": 0.07569,
-      "pSemiFinal": 0.0374,
-      "pFinal": 0.01639,
-      "pChampion": 0.0057,
+      "pRoundOf16": 0.19931,
+      "pQuarterFinal": 0.07455,
+      "pSemiFinal": 0.03712,
+      "pFinal": 0.01671,
+      "pChampion": 0.00574,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1447,11 +1447,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.55737,
-      "pQuarterFinal": 0.14004,
-      "pSemiFinal": 0.0505,
-      "pFinal": 0.01624,
-      "pChampion": 0.00563,
+      "pRoundOf16": 0.55771,
+      "pQuarterFinal": 0.14015,
+      "pSemiFinal": 0.05159,
+      "pFinal": 0.01708,
+      "pChampion": 0.00555,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1513,11 +1513,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.32725,
-      "pQuarterFinal": 0.09124,
-      "pSemiFinal": 0.03522,
-      "pFinal": 0.00891,
-      "pChampion": 0.00282,
+      "pRoundOf16": 0.33066,
+      "pQuarterFinal": 0.09099,
+      "pSemiFinal": 0.03535,
+      "pFinal": 0.00931,
+      "pChampion": 0.00298,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1579,11 +1579,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.44263,
-      "pQuarterFinal": 0.09145,
-      "pSemiFinal": 0.0283,
-      "pFinal": 0.0077,
-      "pChampion": 0.00197,
+      "pRoundOf16": 0.44229,
+      "pQuarterFinal": 0.09334,
+      "pSemiFinal": 0.02838,
+      "pFinal": 0.00763,
+      "pChampion": 0.00206,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1645,11 +1645,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.21304,
-      "pQuarterFinal": 0.06265,
-      "pSemiFinal": 0.01699,
-      "pFinal": 0.00405,
-      "pChampion": 0.00122,
+      "pRoundOf16": 0.21271,
+      "pQuarterFinal": 0.06108,
+      "pSemiFinal": 0.01582,
+      "pFinal": 0.00351,
+      "pChampion": 0.00087,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1718,11 +1718,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.28687,
-      "pQuarterFinal": 0.07701,
-      "pSemiFinal": 0.01066,
-      "pFinal": 0.00232,
-      "pChampion": 0.00043,
+      "pRoundOf16": 0.28846,
+      "pQuarterFinal": 0.07776,
+      "pSemiFinal": 0.0102,
+      "pFinal": 0.00241,
+      "pChampion": 0.00054,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1791,11 +1791,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.10763,
-      "pQuarterFinal": 0.04011,
-      "pSemiFinal": 0.0092,
-      "pFinal": 0.00168,
-      "pChampion": 0.00034,
+      "pRoundOf16": 0.11013,
+      "pQuarterFinal": 0.04007,
+      "pSemiFinal": 0.00957,
+      "pFinal": 0.00185,
+      "pChampion": 0.00041,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1857,11 +1857,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.1576,
-      "pQuarterFinal": 0.03197,
-      "pSemiFinal": 0.0049,
-      "pFinal": 0.0009,
-      "pChampion": 0.00016,
+      "pRoundOf16": 0.16012,
+      "pQuarterFinal": 0.03338,
+      "pSemiFinal": 0.00499,
+      "pFinal": 0.00089,
+      "pChampion": 0.00008,
       "thirdPlaceScenarios": [
         {
           "points": 4,

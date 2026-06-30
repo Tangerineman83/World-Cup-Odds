@@ -236,15 +236,40 @@
     // Check if this match has an actual result in allResults
     const played = allResults.find(r => r.id === m.id && r.homeGoals != null);
     const hasResult = !!played;
-    const wentToPenalties = hasResult && played.homeGoals === played.awayGoals && played.penaltyWinner;
-    const homeWon = hasResult
-      ? (wentToPenalties ? played.penaltyWinner === 'home' : played.homeGoals > played.awayGoals)
-      : (m.winner && m.home && m.winner.name === m.home.name);
-    const awayWon = hasResult
-      ? (wentToPenalties ? played.penaltyWinner === 'away' : played.awayGoals > played.homeGoals)
-      : (m.winner && m.away && m.winner.name === m.away.name);
+
+    // Winner resolution mirrors scripts/sim/knockoutResult.js's
+    // resolveKnockoutWinner() precedence: 90min score -> AET score ->
+    // penaltyWinner. Browser code can't require() that Node module, so the
+    // same three-step logic is duplicated here — keep both in sync if the
+    // precedence ever changes.
+    let homeWon = false, awayWon = false, decidedBy = null;
+    if (hasResult) {
+      if (played.homeGoals > played.awayGoals) { homeWon = true; decidedBy = '90min'; }
+      else if (played.awayGoals > played.homeGoals) { awayWon = true; decidedBy = '90min'; }
+      else if (played.aetHomeGoals != null && played.aetAwayGoals != null && played.aetHomeGoals !== played.aetAwayGoals) {
+        if (played.aetHomeGoals > played.aetAwayGoals) { homeWon = true; decidedBy = 'aet'; }
+        else { awayWon = true; decidedBy = 'aet'; }
+      } else if (played.penaltyWinner === 'home') { homeWon = true; decidedBy = 'penalties'; }
+      else if (played.penaltyWinner === 'away') { awayWon = true; decidedBy = 'penalties'; }
+      // else: level after 90 (and AET, if recorded) with no penalty winner
+      // recorded yet — neither side highlighted, falls through to the
+      // unplayed/chalk display below via hasResult staying true but
+      // homeWon/awayWon both false (existing behaviour for this edge case).
+    } else {
+      homeWon = m.winner && m.home && m.winner.name === m.home.name;
+      awayWon = m.winner && m.away && m.winner.name === m.away.name;
+    }
+
+    // Score display: show the AET score if that's what decided it
+    // (e.g. 2-1 after extra time, having been 1-1 at 90), otherwise the
+    // 90-minute score, with a '(pens)' suffix whenever penalties decided it
+    // regardless of which score line is shown.
+    let scoreLine = hasResult ? `${played.homeGoals}–${played.awayGoals}` : '';
+    if (decidedBy === 'aet') scoreLine = `${played.aetHomeGoals}–${played.aetAwayGoals}`;
+    if (decidedBy === 'penalties') scoreLine += ' (pens)';
+
     const scoreOrPct = hasResult
-      ? `<span class="win-pct">${played.homeGoals}–${played.awayGoals}${wentToPenalties ? ' (pens)' : ''}</span>`
+      ? `<span class="win-pct">${scoreLine}</span>`
       : (m.pWin != null ? `<span class="win-pct">${(m.pWin * 100).toFixed(0)}%</span>` : '');
     return `
       <div class="match" data-match-id="${m.id}" data-round="${roundKey}">
