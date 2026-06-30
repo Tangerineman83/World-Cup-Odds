@@ -236,14 +236,15 @@
     // Check if this match has an actual result in allResults
     const played = allResults.find(r => r.id === m.id && r.homeGoals != null);
     const hasResult = !!played;
+    const wentToPenalties = hasResult && played.homeGoals === played.awayGoals && played.penaltyWinner;
     const homeWon = hasResult
-      ? played.homeGoals > played.awayGoals
+      ? (wentToPenalties ? played.penaltyWinner === 'home' : played.homeGoals > played.awayGoals)
       : (m.winner && m.home && m.winner.name === m.home.name);
     const awayWon = hasResult
-      ? played.awayGoals > played.homeGoals
+      ? (wentToPenalties ? played.penaltyWinner === 'away' : played.awayGoals > played.homeGoals)
       : (m.winner && m.away && m.winner.name === m.away.name);
     const scoreOrPct = hasResult
-      ? `<span class="win-pct">${played.homeGoals}–${played.awayGoals}</span>`
+      ? `<span class="win-pct">${played.homeGoals}–${played.awayGoals}${wentToPenalties ? ' (pens)' : ''}</span>`
       : (m.pWin != null ? `<span class="win-pct">${(m.pWin * 100).toFixed(0)}%</span>` : '');
     return `
       <div class="match" data-match-id="${m.id}" data-round="${roundKey}">
