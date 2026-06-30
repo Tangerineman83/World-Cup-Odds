@@ -20,6 +20,7 @@
 const { simulateGroup } = require('./groupStageNegBin');
 const { playKnockoutNegBin } = require('./knockoutNegBin');
 const { resolveRoundOf32 } = require('./simulateTournament');
+const { resolveKnockoutWinner } = require('./knockoutResult');
 const {
   GROUPS, ROUND_OF_16_PAIRS, QUARTER_FINAL_PAIRS, SEMI_FINAL_PAIRS,
   FINAL_PAIR, THIRD_PLACE_PAIR,
@@ -66,27 +67,17 @@ function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map(), k
     const known = knownByMatchId.get(m.id);
     let winner;
     if (known) {
-      // Result already played — determine winner from actual score.
-      // Burn rand() calls to keep PRNG state varied across sims (same
-      // pattern as groupStageNegBin.js's entropy burn for known results).
+      // Result already played — determine winner via resolveKnockoutWinner
+      // (checks 90min -> AET -> penalties in order). Burn rand() calls to
+      // keep PRNG state varied across sims (same pattern as
+      // groupStageNegBin.js's entropy burn for known results).
       for (let _b = 0; _b < 8; _b++) rand();
-      const homeWon = known.homeGoals > known.awayGoals;
-      const awayWon = known.awayGoals > known.homeGoals;
-      // Match home/away in knownByMatchId to home/away in r32Matches by name
-      if (homeWon) {
-        winner = m.home.name === known.home ? m.home : m.away;
-      } else if (awayWon) {
-        winner = m.home.name === known.away ? m.home : m.away;
-      } else if (known.penaltyWinner) {
-        // Level after 90 minutes, real shootout result is known — use it
-        // directly rather than simulating a coin flip. penaltyWinner is
-        // 'home' or 'away' relative to results.json's home/away fields,
-        // which match known.home / known.away.
-        const winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
+      const { winnerName } = resolveKnockoutWinner(known);
+      if (winnerName) {
         winner = m.home.name === winnerName ? m.home : m.away;
       } else {
-        // Drawn after 90 mins, shootout not yet recorded — penalties
-        // (50/50 + small Elo tilt), same as an unplayed match.
+        // Not yet decided (level after 90/AET, no penalty winner recorded
+        // yet) — simulate penalties as if this were an unplayed match.
         winner = playKnockoutNegBin(withAttackDefense(m.home), withAttackDefense(m.away), rand);
       }
     } else {
@@ -104,14 +95,8 @@ function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map(), k
       let winner;
       if (known) {
         for (let _b = 0; _b < 8; _b++) rand();
-        const homeWon = known.homeGoals > known.awayGoals;
-        const awayWon = known.awayGoals > known.homeGoals;
-        if (homeWon) {
-          winner = home.name === known.home ? home : away;
-        } else if (awayWon) {
-          winner = home.name === known.away ? home : away;
-        } else if (known.penaltyWinner) {
-          const winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
+        const { winnerName } = resolveKnockoutWinner(known);
+        if (winnerName) {
           winner = home.name === winnerName ? home : away;
         } else {
           winner = playKnockoutNegBin(withAttackDefense(home), withAttackDefense(away), rand);

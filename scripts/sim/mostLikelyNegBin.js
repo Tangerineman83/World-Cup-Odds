@@ -33,6 +33,7 @@ const { HOST_NATIONS, KNOCKOUT_HOME_ADVANTAGE_MULTIPLIER, GROUPS,
 const { simulateGroup, expectedGoals, negBinJointWinProbability, loadCalibratedParams } = require('./groupStageNegBin');
 const { assignThirdPlaceSlots } = require('./thirdPlace');
 const { mulberry32 } = require('./shared');
+const { resolveKnockoutWinner } = require('./knockoutResult');
 
 // Runs N group simulations using the NegBin engine and returns the same
 // shape mostLikely.js's modalGroupOrdering returns (order, probability,
@@ -210,18 +211,15 @@ function buildBracketNegBin(groupResults, bestThirds, teamsByName, knownByMatchI
   // winner and pWin=1.0 if this match id has a known actual result;
   // otherwise returns the chalk pick unchanged. Centralised here (rather
   // than left to each round's own logic) so every round - r32 through the
-  // final - applies the override identically.
+  // final - applies the override identically. Winner resolution itself
+  // (90min -> AET -> penalties) is delegated to resolveKnockoutWinner so
+  // every consumer of knownByMatchId checks these in the same order.
   function resolveWinner(matchId, home, away, chalkWinner, chalkPWin) {
     const known = knownByMatchId.get(matchId);
     if (!known) return { winner: chalkWinner, pWin: chalkPWin };
 
-    let winnerName = known.homeGoals > known.awayGoals ? known.home
-                   : known.awayGoals > known.homeGoals ? known.away
-                   : null; // level after 90 minutes
-    if (!winnerName && known.penaltyWinner) {
-      winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
-    }
-    if (!winnerName) return { winner: chalkWinner, pWin: chalkPWin }; // shouldn't happen once shootout is recorded
+    const { winnerName } = resolveKnockoutWinner(known);
+    if (!winnerName) return { winner: chalkWinner, pWin: chalkPWin }; // not yet decided
 
     const realWinner = home.name === winnerName ? home : away.name === winnerName ? away : null;
     if (!realWinner) {

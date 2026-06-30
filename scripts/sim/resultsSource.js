@@ -22,8 +22,17 @@ function loadResults() {
 // used directly for that group's standings instead).
 //
 // Also returns a Map from match id -> { home, away, homeGoals, awayGoals,
-// penaltyWinner } for known knockout results, used by simulateTournamentNegBin
-// to lock in completed knockout matches instead of re-simulating them.
+// aetHomeGoals, aetAwayGoals, penaltyWinner } for known knockout results,
+// used by simulateTournamentNegBin to lock in completed knockout matches
+// instead of re-simulating them.
+//
+// aetHomeGoals / aetAwayGoals: 'after extra time' score. null by default;
+// populated only if extra time changed the scoreline (rare — most level
+// matches after 90 stay level through ET and go to penalties, but the
+// schema supports a stoppage/golden-goal-style ET winner). homeGoals/
+// awayGoals ALWAYS represent the 90-minute score regardless of what
+// happens afterward — this is what Elo updates are based on (extra time
+// goals are a tiny, noisy sample and not used for rating purposes).
 //
 // penaltyWinner: 'home' | 'away' | undefined. Knockout matches cannot end
 // level — a draw after 90 minutes goes to extra time and then penalties if
@@ -34,11 +43,11 @@ function loadResults() {
 // extra minutes of football would be modelling noise as signal). Instead,
 // when a real knockout match finishes level on goals, results.json records
 // the 90-minute scoreline AS PLAYED (so Elo updates still reflect the
-// actual goals scored) plus this separate penaltyWinner flag recording
-// who actually progressed. Downstream consumers (simulateTournamentNegBin,
-// runScenarioNegBin, app.js) check this flag only when homeGoals===awayGoals
-// in a knockout context; group stage matches never use it (group matches
-// can end in a draw with no shootout).
+// actual goals scored) plus aetHomeGoals/aetAwayGoals (if ET changed the
+// score) and/or penaltyWinner recording who actually progressed.
+// resolveKnockoutWinner() in knockoutResult.js is the single shared place
+// that checks all three in the correct order (90min -> AET -> penalties) —
+// downstream consumers should call that rather than re-deriving this logic.
 //
 // results.json lists ALL fixtures (group + knockout) as placeholders
 // (homeGoals/awayGoals: null) so team names never need to be typed by
@@ -60,6 +69,8 @@ function getKnownResultsByGroup() {
   for (const r of results) {
     const payload = {
       home: r.home, away: r.away, homeGoals: r.homeGoals, awayGoals: r.awayGoals,
+      aetHomeGoals: r.aetHomeGoals != null ? r.aetHomeGoals : null,
+      aetAwayGoals: r.aetAwayGoals != null ? r.aetAwayGoals : null,
       penaltyWinner: r.penaltyWinner || null,
     };
     if (r.group) {
