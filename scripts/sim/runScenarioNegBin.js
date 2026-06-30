@@ -205,34 +205,16 @@ async function main() {
     .map((t) => ({ name: t.name, elo: t.elo, group: t.group }));
 
   console.log('Building bracket (NegBin engine)...');
-  const scenario = buildBracketNegBin(groupResults, bestThirds, teamsByName);
-
-  // Override bracket winners AND pWin with actual results for any known knockout matches.
-  // buildBracketNegBin always picks the chalk (most probable) winner and sets pWin from
-  // Elo calculations — once a match has been played the winner is certain (pWin = 1.0).
-  if (knownByMatchId.size > 0) {
-    // Build a name→team lookup from the scenario r32 participants
-    const allKoTeams = new Map();
-    for (const m of scenario.r32) {
-      allKoTeams.set(m.home.name, m.home);
-      allKoTeams.set(m.away.name, m.away);
-    }
-    for (const m of scenario.r32) {
-      const known = knownByMatchId.get(m.id);
-      if (!known) continue;
-      let winnerName = known.homeGoals > known.awayGoals ? known.home
-                     : known.awayGoals > known.homeGoals ? known.away
-                     : null; // level after 90 mins — resolved below if a shootout result is known
-      if (!winnerName && known.penaltyWinner) {
-        winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
-      }
-      if (winnerName) {
-        m.winner = allKoTeams.get(winnerName) || m.winner;
-      }
-      // Result is known — probability of the winner winning is 1.0
-      m.pWin = 1.0;
-    }
-  }
+  // knownByMatchId is passed in here (not patched on afterward) so that
+  // any known knockout result is substituted for the chalk pick AT THE
+  // POINT each round is built — this is essential because r16/qf/sf/final
+  // are each built by reading the PREVIOUS round's winner. A prior version
+  // of this code patched scenario.r32[].winner AFTER buildBracketNegBin had
+  // already run, which corrected the r32 entry shown in the UI but did
+  // nothing for r16 onward, since those rounds had already locked in the
+  // chalk (wrong) r32 winner as having progressed. See buildBracketNegBin's
+  // own header comment in mostLikelyNegBin.js for the full explanation.
+  const scenario = buildBracketNegBin(groupResults, bestThirds, teamsByName, knownByMatchId);
 
   const eloRank = [...allTeams].sort((a, b) => teamsByName.get(b).elo - teamsByName.get(a).elo);
   const eloRankByName = new Map(eloRank.map((name, i) => [name, i + 1]));

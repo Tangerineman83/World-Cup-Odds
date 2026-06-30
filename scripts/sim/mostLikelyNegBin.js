@@ -164,7 +164,19 @@ function computeGroupResultsNegBin(teamsByName, knownByGroup = new Map()) {
 // Phase 2: chalk bracket (R32 onward), NegBin engine. Same structure as
 // mostLikely.js's buildBracket, swapping in chalkWinnerNegBin and
 // attack/defense-aware team objects.
-function buildBracketNegBin(groupResults, bestThirds, teamsByName) {
+// knownByMatchId: optional Map from match id -> { home, away, homeGoals,
+// awayGoals, penaltyWinner }, from resultsSource.js's getKnownResultsByGroup.
+// When a match id in this map matches an R32/R16/QF/SF/Final fixture, the
+// REAL winner is substituted for the chalk pick at the point the round is
+// built — not as a fix-up afterward. This matters because every later round
+// is built by reading the PREVIOUS round's .winner field (see playRound
+// below): if a correction is only applied to r32 after the whole bracket is
+// built, r16/qf/sf/final have already locked in the wrong team as having
+// progressed, and no amount of patching r32 alone after the fact will fix
+// them - the wrong team is already baked into every subsequent round's
+// home/away. Applying the override at each round's construction means the
+// correct team is what actually gets passed on to the next round's pairing.
+function buildBracketNegBin(groupResults, bestThirds, teamsByName, knownByMatchId = new Map()) {
   const winners = {};
   const runnersUp = {};
 
@@ -194,12 +206,40 @@ function buildBracketNegBin(groupResults, bestThirds, teamsByName) {
     throw new Error(`Unknown slot: ${slot}`);
   };
 
+  // Given a chalk winner/pWin and a match's home/away, returns the REAL
+  // winner and pWin=1.0 if this match id has a known actual result;
+  // otherwise returns the chalk pick unchanged. Centralised here (rather
+  // than left to each round's own logic) so every round - r32 through the
+  // final - applies the override identically.
+  function resolveWinner(matchId, home, away, chalkWinner, chalkPWin) {
+    const known = knownByMatchId.get(matchId);
+    if (!known) return { winner: chalkWinner, pWin: chalkPWin };
+
+    let winnerName = known.homeGoals > known.awayGoals ? known.home
+                   : known.awayGoals > known.homeGoals ? known.away
+                   : null; // level after 90 minutes
+    if (!winnerName && known.penaltyWinner) {
+      winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
+    }
+    if (!winnerName) return { winner: chalkWinner, pWin: chalkPWin }; // shouldn't happen once shootout is recorded
+
+    const realWinner = home.name === winnerName ? home : away.name === winnerName ? away : null;
+    if (!realWinner) {
+      // Defensive: the known result's team names don't match this match's
+      // actual participants (e.g. a data entry error). Fall back to chalk
+      // rather than silently picking a team not in this fixture.
+      return { winner: chalkWinner, pWin: chalkPWin };
+    }
+    return { winner: realWinner, pWin: 1.0 };
+  }
+
   const matchesById = new Map();
 
   const r32 = ROUND_OF_32.map((m) => {
     const home = lookup(m.home, m.id);
     const away = lookup(m.away, m.id);
-    const { winner, pWin } = chalkWinnerNegBin(home, away);
+    const chalk = chalkWinnerNegBin(home, away);
+    const { winner, pWin } = resolveWinner(m.id, home, away, chalk.winner, chalk.pWin);
     const entry = { id: m.id, home, away, winner, pWin };
     matchesById.set(m.id, entry);
     return entry;
@@ -209,7 +249,8 @@ function buildBracketNegBin(groupResults, bestThirds, teamsByName) {
     return pairs.map(([matchId, [fromA, fromB]]) => {
       const home = matchesById.get(fromA).winner;
       const away = matchesById.get(fromB).winner;
-      const { winner, pWin } = chalkWinnerNegBin(home, away);
+      const chalk = chalkWinnerNegBin(home, away);
+      const { winner, pWin } = resolveWinner(matchId, home, away, chalk.winner, chalk.pWin);
       const entry = { id: matchId, home, away, winner, pWin };
       matchesById.set(matchId, entry);
       return entry;
@@ -223,7 +264,8 @@ function buildBracketNegBin(groupResults, bestThirds, teamsByName) {
   const [finalId, [finalA, finalB]] = FINAL_PAIR;
   const finalHome = matchesById.get(finalA).winner;
   const finalAway = matchesById.get(finalB).winner;
-  const { winner: champion, pWin: finalPWin } = chalkWinnerNegBin(finalHome, finalAway);
+  const finalChalk = chalkWinnerNegBin(finalHome, finalAway);
+  const { winner: champion, pWin: finalPWin } = resolveWinner(finalId, finalHome, finalAway, finalChalk.winner, finalChalk.pWin);
   const final = { id: finalId, home: finalHome, away: finalAway, winner: champion, pWin: finalPWin };
   matchesById.set(finalId, final);
 
@@ -233,7 +275,8 @@ function buildBracketNegBin(groupResults, bestThirds, teamsByName) {
   const loser = (m) => (m.winner.name === m.home.name ? m.away : m.home);
   const tpHome = loser(semiA);
   const tpAway = loser(semiB);
-  const { winner: tpWinner, pWin: tpPWin } = chalkWinnerNegBin(tpHome, tpAway);
+  const tpChalk = chalkWinnerNegBin(tpHome, tpAway);
+  const { winner: tpWinner, pWin: tpPWin } = resolveWinner(tpId, tpHome, tpAway, tpChalk.winner, tpChalk.pWin);
   const thirdPlacePlayoff = { id: tpId, home: tpHome, away: tpAway, winner: tpWinner, pWin: tpPWin };
 
   return {
