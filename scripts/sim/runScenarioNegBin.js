@@ -220,9 +220,12 @@ async function main() {
     for (const m of scenario.r32) {
       const known = knownByMatchId.get(m.id);
       if (!known) continue;
-      const winnerName = known.homeGoals > known.awayGoals ? known.home
-                       : known.awayGoals > known.homeGoals ? known.away
-                       : null; // draw after 90 mins — keep chalk winner, but pWin is still 1.0
+      let winnerName = known.homeGoals > known.awayGoals ? known.home
+                     : known.awayGoals > known.homeGoals ? known.away
+                     : null; // level after 90 mins — resolved below if a shootout result is known
+      if (!winnerName && known.penaltyWinner) {
+        winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
+      }
       if (winnerName) {
         m.winner = allKoTeams.get(winnerName) || m.winner;
       }

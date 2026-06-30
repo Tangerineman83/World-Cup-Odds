@@ -77,8 +77,16 @@ function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map(), k
         winner = m.home.name === known.home ? m.home : m.away;
       } else if (awayWon) {
         winner = m.home.name === known.away ? m.home : m.away;
+      } else if (known.penaltyWinner) {
+        // Level after 90 minutes, real shootout result is known — use it
+        // directly rather than simulating a coin flip. penaltyWinner is
+        // 'home' or 'away' relative to results.json's home/away fields,
+        // which match known.home / known.away.
+        const winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
+        winner = m.home.name === winnerName ? m.home : m.away;
       } else {
-        // Drawn after 90 mins — penalties (50/50 + small Elo tilt)
+        // Drawn after 90 mins, shootout not yet recorded — penalties
+        // (50/50 + small Elo tilt), same as an unplayed match.
         winner = playKnockoutNegBin(withAttackDefense(m.home), withAttackDefense(m.away), rand);
       }
     } else {
@@ -102,6 +110,9 @@ function simulateTournamentNegBin(teamsByName, rand, knownByGroup = new Map(), k
           winner = home.name === known.home ? home : away;
         } else if (awayWon) {
           winner = home.name === known.away ? home : away;
+        } else if (known.penaltyWinner) {
+          const winnerName = known.penaltyWinner === 'home' ? known.home : known.away;
+          winner = home.name === winnerName ? home : away;
         } else {
           winner = playKnockoutNegBin(withAttackDefense(home), withAttackDefense(away), rand);
         }

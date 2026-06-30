@@ -21,9 +21,24 @@ function loadResults() {
 // completed fixtures are excluded from simulation (the real scoreline is
 // used directly for that group's standings instead).
 //
-// Also returns a Map from match id -> { home, away, homeGoals, awayGoals }
-// for known knockout results, used by simulateTournamentNegBin to lock in
-// completed knockout matches instead of re-simulating them.
+// Also returns a Map from match id -> { home, away, homeGoals, awayGoals,
+// penaltyWinner } for known knockout results, used by simulateTournamentNegBin
+// to lock in completed knockout matches instead of re-simulating them.
+//
+// penaltyWinner: 'home' | 'away' | undefined. Knockout matches cannot end
+// level — a draw after 90 minutes goes to extra time and then penalties if
+// still level. We deliberately do NOT model extra time or penalty shootouts
+// as goal-scoring events (the existing penalty-shootout logic in
+// knockoutNegBin.js's simulated draws is already an explicit ~50/50-plus-
+// small-Elo-tilt coin flip, not a goals model — extending that to a few
+// extra minutes of football would be modelling noise as signal). Instead,
+// when a real knockout match finishes level on goals, results.json records
+// the 90-minute scoreline AS PLAYED (so Elo updates still reflect the
+// actual goals scored) plus this separate penaltyWinner flag recording
+// who actually progressed. Downstream consumers (simulateTournamentNegBin,
+// runScenarioNegBin, app.js) check this flag only when homeGoals===awayGoals
+// in a knockout context; group stage matches never use it (group matches
+// can end in a draw with no shootout).
 //
 // results.json lists ALL fixtures (group + knockout) as placeholders
 // (homeGoals/awayGoals: null) so team names never need to be typed by
@@ -45,6 +60,7 @@ function getKnownResultsByGroup() {
   for (const r of results) {
     const payload = {
       home: r.home, away: r.away, homeGoals: r.homeGoals, awayGoals: r.awayGoals,
+      penaltyWinner: r.penaltyWinner || null,
     };
     if (r.group) {
       // Group stage result — bucket by group letter
