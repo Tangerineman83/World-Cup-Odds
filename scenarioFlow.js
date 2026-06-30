@@ -15,6 +15,12 @@
 (function () {
   function fmtPct(p) {
     if (p == null) return '—';
+    // Genuinely zero (e.g. an eliminated team, 0 of N simulated tournaments
+    // produced this outcome) is shown as a plain 0% rather than '<0.1%' —
+    // '<0.1%' implies "a small but real chance", which is misleading once
+    // a team is mathematically out. Anything strictly between 0 and 0.1%
+    // (a real, if tiny, surviving chance) still shows as '<0.1%'.
+    if (p === 0) return '0%';
     if (p < 0.001) return '<0.1%';
     return (p * 100).toFixed(1) + '%';
   }
