@@ -990,23 +990,23 @@
     const predsByName = {};
     for (const t of predsList) predsByName[t.name] = t;
 
-    // Bracket ordering: R32 match ids top→bottom in official bracket order
+    // Bracket ordering for R32: match ids top→bottom in official bracket order.
+    // Teams within each match: home first. This gives the base team list; each
+    // stage then re-sorts by that stage's own probability (highest at top).
     const R32_ORDER = [
       'M73','M74','M75','M76','M77','M78','M79','M80',
       'M81','M82','M83','M84','M85','M86','M87','M88',
     ];
 
-    // Build R32 match lookup from scenario
     const r32Map = {};
     for (const m of (scenarioData.r32||[])) r32Map[m.id] = m;
 
-    // Build ordered team list — two teams per R32 match, home first
-    const orderedTeams = [];
+    const allTeams = [];
     for (const mid of R32_ORDER) {
       const m = r32Map[mid];
-      if (m) { orderedTeams.push(m.home.name); orderedTeams.push(m.away.name); }
+      if (m) { allTeams.push(m.home.name); allTeams.push(m.away.name); }
     }
-    if (!orderedTeams.length) return;
+    if (!allTeams.length) return;
 
     // Stage definitions
     const STAGES = [
@@ -1018,55 +1018,73 @@
       { key:'win',   pk:'pChampion',     label:'Champion',  nextPk:null            },
     ];
 
-    // Stage colours — consistent with individual team Sankey
     const SC = {
       r32:'#818cf8', r16:'#60a5fa', qf:'#34d399',
       sf:'#fbbf24',  final:'#f97316', win:'#4ade80',
     };
 
-    // ── Layout ────────────────────────────────────────────────────────────
-    const VW = 900, VH = 600;
-    const T = 44, B = 12, L = 6, R = 6;
-    const UW = VW - L - R;
-    const UH = VH - T - B;
+    // ── Scale ─────────────────────────────────────────────────────────────
+    // Each stage has the same 32 teams but with different probabilities.
+    // A team with pRoundOf32=1.0 should get the same pixel height as a
+    // team with pChampion=1.0 would (if they existed). The anchor is:
+    // all 32 teams in R32 sum to 32 units → we allocate a fixed pixel
+    // budget and divide: H_PER_UNIT = budget / 32.
+    // ph(p) = max(MINH, p * H_PER_UNIT). A team with p=0.21 in the
+    // champion column gets 21% of what a full-p team would.
 
-    const nCols = STAGES.length;        // 6 columns
+    const N_TEAMS = allTeams.length;      // 32
+    const NW      = 12;                   // node bar width px
+    const GAP     = 3;                    // gap between nodes px
+    const MINH    = 2;                    // minimum rendered bar height
+
+    // VH is calculated to fit content exactly rather than being fixed.
+    // At the R32 column every team has p=1 so the full column is the
+    // tallest; add header space T, footer B, and inter-node gaps.
+    const T = 46, B = 16, L = 8, R = 100; // R=100 for champion labels
+    const COL_H = 480;   // usable column height (px) — governs vertical feel
+    const H_PER_UNIT = (COL_H - GAP * (N_TEAMS - 1)) / N_TEAMS;
+    const ph = p => Math.max(MINH, p * H_PER_UNIT);
+
+    // SVG intrinsic size — wide for 6 columns, tall enough for content
+    const VH = T + COL_H + B;
+    const VW = 880;
+    const UW = VW - L - R;
+
+    const nCols = STAGES.length;
     const cW    = UW / (nCols - 1);
     const cx    = i => L + i * cW;
 
-    // Height scale: R32 column (32 teams, sum=32) maps to ~90% of UH
-    const MAX_SUM = 32;
-    const HSCALE  = (UH * 0.88) / MAX_SUM;
-    const MINH    = 2;
-    const ph      = p => Math.max(MINH, p * HSCALE * 32); // p is per-team [0,1]
-    // Each stage sums to Nteams (not 1), so node height = p * HSCALE * 32
-    // gives the same absolute height regardless of stage
-
-    const NW  = 10;   // node bar width
-    const GAP = 2;    // gap between stacked nodes in same column
-
-    // ── Build nodes per stage ─────────────────────────────────────────────
-    // stageNodes[si] = array of { name, code, pReach, pNext, y0, h, advH, dimH }
-    const stageNodes = STAGES.map((s, si) => {
-      return orderedTeams.map(name => {
-        const t = predsByName[name];
-        if (!t) return null;
-        const pReach = t[s.pk] || 0;
-        const pNext  = s.nextPk ? (t[s.nextPk] || 0) : 0;
-        return { name, code: t.code, pReach, pNext, h: ph(pReach), advH: ph(pNext) };
-      }).filter(Boolean);
+    // ── Build nodes per stage, sorted by that stage's probability ─────────
+    // Sorting highest-probability teams to the top within each column means
+    // the fattest ribbons (the most likely paths) cluster at the top where
+    // they are immediately visible, and the diagram tapers toward eliminated
+    // teams at the bottom. Ribbons will snake between columns wherever a
+    // team's rank changes — this is intentional and visually encodes the
+    // surprise of an upset (a large cross means a big ranking change).
+    const stageNodes = STAGES.map((s) => {
+      return allTeams
+        .map(name => {
+          const t = predsByName[name];
+          if (!t) return null;
+          const pReach = t[s.pk] || 0;
+          const pNext  = s.nextPk ? (t[s.nextPk] || 0) : 0;
+          return { name, code: t.code, pReach, pNext, h: ph(pReach), advH: ph(pNext) };
+        })
+        .filter(Boolean)
+        // Sort highest probability at top — break ties by name for stability
+        .sort((a, b) => b.pReach - a.pReach || a.name.localeCompare(b.name));
     });
 
-    // Position nodes vertically — stacked, centred around mid
-    const MID = T + UH * 0.5;
+    // Position nodes — top-aligned within each column (not centred), so
+    // the full-probability R32 column fills the whole column height and
+    // later stages taper naturally downward as teams are eliminated.
     stageNodes.forEach((nodes, si) => {
       const colCX = cx(si);
-      const totalH = nodes.reduce((s,n) => s + n.h, 0) + GAP * Math.max(0, nodes.length - 1);
-      let y = MID - totalH / 2;
+      let y = T;
       for (const n of nodes) {
         n.y0    = y;
-        n.advY0 = y;                    // advance portion at top (brighter)
-        n.dimY0 = y + n.advH;           // eliminated portion below
+        n.advY0 = y;
+        n.dimY0 = y + n.advH;
         n.dimH  = Math.max(0, n.h - n.advH);
         n.cx    = colCX;
         y += n.h + GAP;
@@ -1079,8 +1097,8 @@
       const mx = (x0+x1)/2;
       return `<path d="M${x0},${y0t} C${mx},${y0t} ${mx},${y1t} ${x1},${y1t} L${x1},${y1b} C${mx},${y1b} ${mx},${y0b} ${x0},${y0b}Z" fill="${fill}" opacity="${op}"/>`;
     }
-    function bar(cx,y0,h,col,op=0.88) {
-      return `<rect x="${cx-NW/2}" y="${y0}" width="${NW}" height="${Math.max(h,MINH)}" fill="${col}" rx="1" opacity="${op}"/>`;
+    function bar(bx,y0,h,col,op=0.88) {
+      return `<rect x="${bx-NW/2}" y="${y0}" width="${NW}" height="${Math.max(h,MINH)}" fill="${col}" rx="1" opacity="${op}"/>`;
     }
     function txt(x,y,s,size,col,bold=false,anchor='start') {
       return `<text x="${x}" y="${y}" text-anchor="${anchor}" style="font-size:${size}px;fill:${col};font-family:system-ui,sans-serif${bold?';font-weight:600':''};">${s}</text>`;
@@ -1105,22 +1123,22 @@
       out += txt(colCX, T-28, s.label, 8, '#64748b', false, 'middle');
     });
 
-    // ── Ribbons (advance only — between consecutive stages) ────────────────
-    // For each team: advance ribbon from stage si → si+1
-    // The ribbon at stage si has height ph(pNext) at the source,
-    // and ph(pNext) = ph(pReach at stage si+1) at the destination.
-    // We position ribbons within each column's NODE in order of team list
-    // (which is fixed bracket order, so no tracking of cursor needed).
+    // ── Ribbons ────────────────────────────────────────────────────────────
+    // Teams are sorted independently per column, so source and destination
+    // positions differ. Build a name→node map for each stage, then for each
+    // team draw its advance ribbon from stage si to si+1. The ribbon connects
+    // the team's ADVANCE portion at the source (advY0..advY0+advH) to the
+    // team's FULL node at the destination (y0..y0+h), both of height ph(pNext).
     for (let si = 0; si < STAGES.length - 1; si++) {
-      const srcNodes = stageNodes[si];
-      const dstNodes = stageNodes[si+1];
+      const srcByName = {};
+      for (const n of stageNodes[si]) srcByName[n.name] = n;
+      const dstByName = {};
+      for (const n of stageNodes[si+1]) dstByName[n.name] = n;
       const grad = `url(#msg${si})`;
-      for (let ti = 0; ti < orderedTeams.length; ti++) {
-        const src = srcNodes[ti];
-        const dst = dstNodes[ti];
+      for (const name of allTeams) {
+        const src = srcByName[name];
+        const dst = dstByName[name];
         if (!src || !dst || src.advH < 0.3 || dst.h < 0.3) continue;
-        // Source: advance portion runs from advY0 → advY0+advH
-        // Destination: full node runs from y0 → y0+h
         out += rib(
           src.cx + NW/2, src.advY0, src.advY0 + src.advH,
           dst.cx - NW/2, dst.y0,    dst.y0    + dst.h,
@@ -1181,6 +1199,8 @@
 
     svgEl.innerHTML = out;
     svgEl.setAttribute('viewBox', `0 0 ${VW} ${VH}`);
+    svgEl.setAttribute('width',  `${VW}`);
+    svgEl.setAttribute('height', `${VH}`);
   }
 
   window.ScenarioFlow = { fmtPct, flagImgHtml, OUTCOME_BUCKETS, sumPct, bucketTotal, renderGauge, renderFlow, renderKnockoutFlow, renderMasterSankey };

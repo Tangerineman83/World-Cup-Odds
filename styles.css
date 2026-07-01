@@ -1547,15 +1547,19 @@ td.col-team .flag-icon {
 }
 
 /* ── Master Sankey SVG ─────────────────────────────────────────────────── */
+#ko-view-sankey {
+  padding: 4px 0 4px;
+}
+.master-sankey-wrap {
+  width: 100%;
+  max-height: 520px;          /* fixed visible window — scrolls for the rest */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  background: var(--card);
+}
 .master-sankey-svg {
   display: block;
-  width: 100%;
-  max-width: 900px;
-  height: auto;
-  min-height: 320px;
-  margin: 0 auto;
-  overflow: visible;
-}
-#ko-view-sankey {
-  padding: 8px 4px 4px;
+  /* SVG has explicit width/height set by JS — don't override with CSS width:100% */
+  /* The container scrolls to reveal the full diagram */
 }
