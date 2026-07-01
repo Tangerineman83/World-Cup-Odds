@@ -1024,28 +1024,37 @@
     };
 
     // ── Scale ─────────────────────────────────────────────────────────────
-    // Each stage has the same 32 teams but with different probabilities.
-    // A team with pRoundOf32=1.0 should get the same pixel height as a
-    // team with pChampion=1.0 would (if they existed). The anchor is:
-    // all 32 teams in R32 sum to 32 units → we allocate a fixed pixel
-    // budget and divide: H_PER_UNIT = budget / 32.
-    // ph(p) = max(MINH, p * H_PER_UNIT). A team with p=0.21 in the
-    // champion column gets 21% of what a full-p team would.
+    // At R32 every team has pRoundOf32=1, so the column sums to 32.
+    // At the champion column the column sums to 1.0 (all pChampion values).
+    // A fixed H_PER_UNIT sized for R32 makes champion nodes microscopic
+    // (Argentina 21% = 0.21 * 12px = 2.5px — indistinguishable from 0%).
+    //
+    // Fix: each stage uses a scale derived from THAT stage's column sum, so
+    // the total rendered column height is always ~COL_H regardless of stage.
+    // A team with the highest probability at any stage fills the same visual
+    // fraction of the column height. This makes the champion column readable
+    // (Argentina fills ~21% of COL_H ≈ 100px) while the R32 column still
+    // shows all 32 teams at equal small heights.
+    //
+    // Per-stage scale:  H_PER_UNIT(si) = (COL_H - GAP*(nNodes-1)) / colSum(si)
+    // ph(p, scale)    = max(MINH, p * scale)
 
-    const N_TEAMS = allTeams.length;      // 32
-    const NW      = 12;                   // node bar width px
-    const GAP     = 3;                    // gap between nodes px
-    const MINH    = 2;                    // minimum rendered bar height
+    const N_TEAMS = allTeams.length;  // 32
+    const NW      = 12;
+    const GAP     = 3;
+    const MINH    = 2;
+    const COL_H   = 480;
 
-    // VH is calculated to fit content exactly rather than being fixed.
-    // At the R32 column every team has p=1 so the full column is the
-    // tallest; add header space T, footer B, and inter-node gaps.
-    const T = 46, B = 16, L = 8, R = 100; // R=100 for champion labels
-    const COL_H = 480;   // usable column height (px) — governs vertical feel
-    const H_PER_UNIT = (COL_H - GAP * (N_TEAMS - 1)) / N_TEAMS;
-    const ph = p => Math.max(MINH, p * H_PER_UNIT);
+    // Pre-compute column sums so each stage gets its own scale
+    const colSums = STAGES.map(s =>
+      allTeams.reduce((sum, name) => sum + (predsByName[name]?.[s.pk] || 0), 0)
+    );
+    const colScales = colSums.map(sum =>
+      (COL_H - GAP * (N_TEAMS - 1)) / Math.max(sum, 0.001)
+    );
+    const ph = (p, scale) => Math.max(MINH, p * scale);
 
-    // SVG intrinsic size — wide for 6 columns, tall enough for content
+    const T = 46, B = 16, L = 8, R = 100;
     const VH = T + COL_H + B;
     const VW = 880;
     const UW = VW - L - R;
@@ -1055,29 +1064,28 @@
     const cx    = i => L + i * cW;
 
     // ── Build nodes per stage, sorted by that stage's probability ─────────
-    // Sorting highest-probability teams to the top within each column means
-    // the fattest ribbons (the most likely paths) cluster at the top where
-    // they are immediately visible, and the diagram tapers toward eliminated
-    // teams at the bottom. Ribbons will snake between columns wherever a
-    // team's rank changes — this is intentional and visually encodes the
-    // surprise of an upset (a large cross means a big ranking change).
-    const stageNodes = STAGES.map((s) => {
+    const stageNodes = STAGES.map((s, si) => {
+      const scale = colScales[si];
       return allTeams
         .map(name => {
           const t = predsByName[name];
           if (!t) return null;
           const pReach = t[s.pk] || 0;
           const pNext  = s.nextPk ? (t[s.nextPk] || 0) : 0;
-          return { name, code: t.code, pReach, pNext, h: ph(pReach), advH: ph(pNext) };
+          // advH uses next-stage scale so the ribbon height at source matches
+          // the node height at the destination (both sized by the destination scale)
+          const nextScale = si < STAGES.length - 1 ? colScales[si+1] : colScales[si];
+          return {
+            name, code: t.code, pReach, pNext,
+            h:    ph(pReach, scale),
+            advH: ph(pNext,  nextScale),
+          };
         })
         .filter(Boolean)
-        // Sort highest probability at top — break ties by name for stability
         .sort((a, b) => b.pReach - a.pReach || a.name.localeCompare(b.name));
     });
 
-    // Position nodes — top-aligned within each column (not centred), so
-    // the full-probability R32 column fills the whole column height and
-    // later stages taper naturally downward as teams are eliminated.
+    // Position nodes — top-aligned within each column
     stageNodes.forEach((nodes, si) => {
       const colCX = cx(si);
       let y = T;
