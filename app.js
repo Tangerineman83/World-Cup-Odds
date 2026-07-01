@@ -14,6 +14,10 @@
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
   const scenarioModalFlow = document.getElementById('scenario-modal-flow');
   const scenarioModalTitle = document.getElementById('scenario-modal-title');
+  const koViewBracket = document.getElementById('ko-view-bracket');
+  const koViewSankey = document.getElementById('ko-view-sankey');
+  const masterSankeySvg = document.getElementById('master-sankey-svg');
+  const koToggleBtns = document.querySelectorAll('.ko-toggle-btn');
   let data = null;           // scenario_negbin.json
   let predictionsByName = null;  // predictions_negbin.json teams map
   let allResults = [];       // results.json
@@ -22,8 +26,24 @@
   let scenarioFlowKey = null;
   let cachedRounds = null;
   let cachedRankByName = null;
+  let masterSankeyRendered = false;
 
-  const { flagImgHtml, fmtPct, renderGauge, renderFlow, renderKnockoutFlow } = window.ScenarioFlow;
+  const { flagImgHtml, fmtPct, renderGauge, renderFlow, renderKnockoutFlow, renderMasterSankey } = window.ScenarioFlow;
+
+  // ── KO view toggle ────────────────────────────────────────────────────────
+  koToggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      koToggleBtns.forEach(b => b.classList.toggle('active', b === btn));
+      koViewBracket.hidden = view !== 'bracket';
+      koViewSankey.hidden  = view !== 'sankey';
+      // Render master Sankey lazily on first switch to that view
+      if (view === 'sankey' && !masterSankeyRendered && data && predictionsByName) {
+        renderMasterSankey(masterSankeySvg, data, [...predictionsByName.values()]);
+        masterSankeyRendered = true;
+      }
+    });
+  });
 
   // ── Utility ───────────────────────────────────────────────────────────────
 

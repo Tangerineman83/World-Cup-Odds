@@ -51,15 +51,29 @@
     <section class="bracket-section">
       <div class="bracket-section-head">
         <h2>Knockout rounds</h2>
+        <div class="ko-view-toggle" id="ko-view-toggle">
+          <button class="ko-toggle-btn active" data-view="bracket" id="btn-bracket">Bracket</button>
+          <button class="ko-toggle-btn" data-view="sankey" id="btn-sankey">Flow diagram</button>
+        </div>
         <button id="clear-selection" class="clear-btn" hidden>Clear</button>
       </div>
-      <div class="bracket-wrap" id="bracket-wrap">
-        <svg class="bracket-lines" id="bracket-lines" aria-hidden="true"></svg>
-        <div class="bracket" id="bracket">
-          <!-- Bracket columns injected here -->
+
+      <div id="ko-view-bracket">
+        <div class="bracket-wrap" id="bracket-wrap">
+          <svg class="bracket-lines" id="bracket-lines" aria-hidden="true"></svg>
+          <div class="bracket" id="bracket">
+            <!-- Bracket columns injected here -->
+          </div>
         </div>
+        <p class="bracket-scroll-hint" id="scroll-hint">Slide to see more →</p>
       </div>
-      <p class="bracket-scroll-hint" id="scroll-hint">Slide to see more →</p>
+
+      <div id="ko-view-sankey" hidden>
+        <svg id="master-sankey-svg"
+             class="master-sankey-svg"
+             aria-label="Tournament flow diagram showing all teams' paths to the title">
+        </svg>
+      </div>
     </section>
 
     <footer class="footnote">

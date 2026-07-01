@@ -1513,3 +1513,49 @@ td.col-team .flag-icon {
   color: var(--text);
   border-radius: 4px;
 }
+
+/* ── KO view toggle ────────────────────────────────────────────────────── */
+.ko-view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.ko-toggle-btn {
+  background: none;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.ko-toggle-btn.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.ko-toggle-btn:hover:not(.active) {
+  color: var(--text);
+}
+
+/* ── Master Sankey SVG ─────────────────────────────────────────────────── */
+.master-sankey-svg {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  min-height: 320px;
+  margin: 0 auto;
+  overflow: visible;
+}
+#ko-view-sankey {
+  padding: 8px 4px 4px;
+}
