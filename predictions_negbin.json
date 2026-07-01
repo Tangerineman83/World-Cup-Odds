@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-06-30T23:08:51.592Z",
+  "generatedAt": "2026-07-01T05:09:57.021Z",
   "numSimulations": 100000,
   "model": "dual-Elo Negative Binomial (Phase 3) - see elo-negbin-revised.md",
   "negBinConstants": {
     "alpha": 0.24,
-    "gamma": 0.43,
-    "sigma": 591.67,
+    "gamma": 0.48,
+    "sigma": 593.75,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 78 matches, generated 2026-06-30T23:08:33.734Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 79 matches, generated 2026-07-01T05:09:39.833Z)",
   "methodology": {
     "ratingSource": "eloOverall/eloAttack/eloDefense are each team's CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "knockoutModel": "Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren't a goals-from-form event either model claims to predict).",
-    "liveResults": "78 completed group-stage result(s) as of 2026-06-20 are applied directly (not simulated) in every simulation run."
+    "liveResults": "79 completed group-stage result(s) as of 2026-06-20 are applied directly (not simulated) in every simulation run."
   },
   "teams": [
     {
@@ -26,11 +26,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.88912,
-      "pQuarterFinal": 0.72359,
-      "pSemiFinal": 0.49822,
-      "pFinal": 0.3246,
-      "pChampion": 0.20824,
+      "pRoundOf16": 0.88991,
+      "pQuarterFinal": 0.72521,
+      "pSemiFinal": 0.50202,
+      "pFinal": 0.32433,
+      "pChampion": 0.20808,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -92,11 +92,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.80083,
-      "pQuarterFinal": 0.55987,
-      "pSemiFinal": 0.33336,
-      "pFinal": 0.2393,
-      "pChampion": 0.14907,
+      "pRoundOf16": 0.7988,
+      "pQuarterFinal": 0.5597,
+      "pSemiFinal": 0.33066,
+      "pFinal": 0.23669,
+      "pChampion": 0.14244,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -159,10 +159,10 @@
       "pRunnerUp": 0,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.81565,
-      "pSemiFinal": 0.40597,
+      "pQuarterFinal": 0.81465,
+      "pSemiFinal": 0.40428,
       "pFinal": 0.19374,
-      "pChampion": 0.10651,
+      "pChampion": 0.10362,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -224,11 +224,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.78465,
-      "pQuarterFinal": 0.47121,
-      "pSemiFinal": 0.27328,
-      "pFinal": 0.14206,
-      "pChampion": 0.07867,
+      "pRoundOf16": 0.78177,
+      "pQuarterFinal": 0.45259,
+      "pSemiFinal": 0.26099,
+      "pFinal": 0.13581,
+      "pChampion": 0.07547,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -291,10 +291,10 @@
       "pRunnerUp": 0,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.57877,
-      "pSemiFinal": 0.28659,
-      "pFinal": 0.13685,
-      "pChampion": 0.07156,
+      "pQuarterFinal": 0.58127,
+      "pSemiFinal": 0.27701,
+      "pFinal": 0.13227,
+      "pChampion": 0.0693,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -346,6 +346,72 @@
       ]
     },
     {
+      "name": "Mexico",
+      "code": "MX",
+      "group": "A",
+      "fifaRank": 15,
+      "eloOverall": 1881,
+      "eloAttack": 1893.75,
+      "eloDefense": 1963.61,
+      "pGroupWinner": 1,
+      "pRunnerUp": 0,
+      "pRoundOf32": 1,
+      "pRoundOf16": 1,
+      "pQuarterFinal": 0.48998,
+      "pSemiFinal": 0.24689,
+      "pFinal": 0.11066,
+      "pChampion": 0.06491,
+      "thirdPlaceScenarios": [],
+      "outcomeScenarios": {
+        "first": [
+          {
+            "points": 9,
+            "gd": 6,
+            "gf": 6,
+            "pct": 1
+          }
+        ],
+        "second": [],
+        "thirdQualified": [],
+        "thirdEliminated": [],
+        "fourth": []
+      },
+      "pooledScenarios": [
+        {
+          "points": 9,
+          "gd": 6,
+          "total": 1,
+          "byBucket": {
+            "first": 1
+          },
+          "showLabel": true
+        }
+      ],
+      "currentStanding": {
+        "points": 9,
+        "gd": 6,
+        "gf": 6,
+        "ga": 0,
+        "played": 3
+      },
+      "pointsNodes": [
+        {
+          "points": 9,
+          "total": 1,
+          "byGd": {
+            "6": 1
+          }
+        }
+      ],
+      "r32Opponents": [
+        {
+          "opponent": "Ecuador",
+          "code": "EC",
+          "pct": 1
+        }
+      ]
+    },
+    {
       "name": "Colombia",
       "code": "CO",
       "group": "K",
@@ -356,11 +422,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.83946,
-      "pQuarterFinal": 0.50174,
-      "pSemiFinal": 0.23287,
-      "pFinal": 0.11863,
-      "pChampion": 0.05984,
+      "pRoundOf16": 0.83895,
+      "pQuarterFinal": 0.5014,
+      "pSemiFinal": 0.23187,
+      "pFinal": 0.1173,
+      "pChampion": 0.05891,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -422,11 +488,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.71171,
-      "pQuarterFinal": 0.32553,
-      "pSemiFinal": 0.24025,
-      "pFinal": 0.14661,
-      "pChampion": 0.04546,
+      "pRoundOf16": 0.71454,
+      "pQuarterFinal": 0.33259,
+      "pSemiFinal": 0.24472,
+      "pFinal": 0.14758,
+      "pChampion": 0.0442,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -489,10 +555,10 @@
       "pRunnerUp": 1,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.45536,
-      "pSemiFinal": 0.30749,
-      "pFinal": 0.11226,
-      "pChampion": 0.03616,
+      "pQuarterFinal": 0.45724,
+      "pSemiFinal": 0.3089,
+      "pFinal": 0.11497,
+      "pChampion": 0.03734,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -544,72 +610,6 @@
       ]
     },
     {
-      "name": "Portugal",
-      "code": "PT",
-      "group": "K",
-      "fifaRank": 5,
-      "eloOverall": 1989,
-      "eloAttack": 1984.02,
-      "eloDefense": 2019.57,
-      "pGroupWinner": 0,
-      "pRunnerUp": 1,
-      "pRoundOf32": 1,
-      "pRoundOf16": 0.5926,
-      "pQuarterFinal": 0.23734,
-      "pSemiFinal": 0.1299,
-      "pFinal": 0.073,
-      "pChampion": 0.03481,
-      "thirdPlaceScenarios": [],
-      "outcomeScenarios": {
-        "first": [],
-        "second": [
-          {
-            "points": 5,
-            "gd": 5,
-            "gf": 6,
-            "pct": 1
-          }
-        ],
-        "thirdQualified": [],
-        "thirdEliminated": [],
-        "fourth": []
-      },
-      "pooledScenarios": [
-        {
-          "points": 5,
-          "gd": 5,
-          "total": 1,
-          "byBucket": {
-            "second": 1
-          },
-          "showLabel": true
-        }
-      ],
-      "currentStanding": {
-        "points": 5,
-        "gd": 5,
-        "gf": 6,
-        "ga": 1,
-        "played": 3
-      },
-      "pointsNodes": [
-        {
-          "points": 5,
-          "total": 1,
-          "byGd": {
-            "5": 1
-          }
-        }
-      ],
-      "r32Opponents": [
-        {
-          "opponent": "Croatia",
-          "code": "HR",
-          "pct": 1
-        }
-      ]
-    },
-    {
       "name": "Norway",
       "code": "NO",
       "group": "I",
@@ -621,10 +621,10 @@
       "pRunnerUp": 1,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.42123,
-      "pSemiFinal": 0.19035,
-      "pFinal": 0.07728,
-      "pChampion": 0.03309,
+      "pQuarterFinal": 0.41873,
+      "pSemiFinal": 0.20004,
+      "pFinal": 0.08009,
+      "pChampion": 0.03601,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -676,67 +676,67 @@
       ]
     },
     {
-      "name": "Mexico",
-      "code": "MX",
-      "group": "A",
-      "fifaRank": 15,
-      "eloOverall": 1881,
-      "eloAttack": 1869.59,
-      "eloDefense": 1943.05,
-      "pGroupWinner": 1,
-      "pRunnerUp": 0,
+      "name": "Portugal",
+      "code": "PT",
+      "group": "K",
+      "fifaRank": 5,
+      "eloOverall": 1989,
+      "eloAttack": 1984.02,
+      "eloDefense": 2019.57,
+      "pGroupWinner": 0,
+      "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.50084,
-      "pQuarterFinal": 0.23308,
-      "pSemiFinal": 0.12269,
-      "pFinal": 0.05193,
-      "pChampion": 0.03056,
+      "pRoundOf16": 0.59304,
+      "pQuarterFinal": 0.23721,
+      "pSemiFinal": 0.13058,
+      "pFinal": 0.07344,
+      "pChampion": 0.03496,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
-        "first": [
+        "first": [],
+        "second": [
           {
-            "points": 9,
-            "gd": 6,
+            "points": 5,
+            "gd": 5,
             "gf": 6,
             "pct": 1
           }
         ],
-        "second": [],
         "thirdQualified": [],
         "thirdEliminated": [],
         "fourth": []
       },
       "pooledScenarios": [
         {
-          "points": 9,
-          "gd": 6,
+          "points": 5,
+          "gd": 5,
           "total": 1,
           "byBucket": {
-            "first": 1
+            "second": 1
           },
           "showLabel": true
         }
       ],
       "currentStanding": {
-        "points": 9,
-        "gd": 6,
+        "points": 5,
+        "gd": 5,
         "gf": 6,
-        "ga": 0,
+        "ga": 1,
         "played": 3
       },
       "pointsNodes": [
         {
-          "points": 9,
+          "points": 5,
           "total": 1,
           "byGd": {
-            "6": 1
+            "5": 1
           }
         }
       ],
       "r32Opponents": [
         {
-          "opponent": "Ecuador",
-          "code": "EC",
+          "opponent": "Croatia",
+          "code": "HR",
           "pct": 1
         }
       ]
@@ -753,10 +753,10 @@
       "pRunnerUp": 1,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.54464,
-      "pSemiFinal": 0.2006,
-      "pFinal": 0.07846,
-      "pChampion": 0.02967,
+      "pQuarterFinal": 0.54276,
+      "pSemiFinal": 0.19931,
+      "pFinal": 0.07703,
+      "pChampion": 0.0299,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -818,11 +818,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.59781,
-      "pQuarterFinal": 0.38131,
-      "pSemiFinal": 0.12786,
-      "pFinal": 0.05896,
-      "pChampion": 0.02343,
+      "pRoundOf16": 0.59991,
+      "pQuarterFinal": 0.37549,
+      "pSemiFinal": 0.12648,
+      "pFinal": 0.05787,
+      "pChampion": 0.02312,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -874,79 +874,6 @@
       ]
     },
     {
-      "name": "Ecuador",
-      "code": "EC",
-      "group": "E",
-      "fifaRank": 23,
-      "eloOverall": 1938,
-      "eloAttack": 1864.44,
-      "eloDefense": 2002.92,
-      "pGroupWinner": 0,
-      "pRunnerUp": 0,
-      "pRoundOf32": 1,
-      "pRoundOf16": 0.49916,
-      "pQuarterFinal": 0.23251,
-      "pSemiFinal": 0.11052,
-      "pFinal": 0.04599,
-      "pChampion": 0.02201,
-      "thirdPlaceScenarios": [
-        {
-          "points": 4,
-          "gd": 0,
-          "gf": 2,
-          "pct": 1
-        }
-      ],
-      "outcomeScenarios": {
-        "first": [],
-        "second": [],
-        "thirdQualified": [
-          {
-            "points": 4,
-            "gd": 0,
-            "gf": 2,
-            "pct": 1
-          }
-        ],
-        "thirdEliminated": [],
-        "fourth": []
-      },
-      "pooledScenarios": [
-        {
-          "points": 4,
-          "gd": 0,
-          "total": 1,
-          "byBucket": {
-            "thirdQualified": 1
-          },
-          "showLabel": true
-        }
-      ],
-      "currentStanding": {
-        "points": 4,
-        "gd": 0,
-        "gf": 2,
-        "ga": 2,
-        "played": 3
-      },
-      "pointsNodes": [
-        {
-          "points": 4,
-          "total": 1,
-          "byGd": {
-            "0": 1
-          }
-        }
-      ],
-      "r32Opponents": [
-        {
-          "opponent": "Mexico",
-          "code": "MX",
-          "pct": 1
-        }
-      ]
-    },
-    {
       "name": "Senegal",
       "code": "SN",
       "group": "I",
@@ -957,11 +884,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.51511,
-      "pQuarterFinal": 0.24236,
-      "pSemiFinal": 0.09168,
-      "pFinal": 0.039,
-      "pChampion": 0.01656,
+      "pRoundOf16": 0.51446,
+      "pQuarterFinal": 0.24282,
+      "pSemiFinal": 0.09138,
+      "pFinal": 0.0381,
+      "pChampion": 0.01607,
       "thirdPlaceScenarios": [
         {
           "points": 3,
@@ -1030,11 +957,11 @@
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.48489,
-      "pQuarterFinal": 0.22157,
-      "pSemiFinal": 0.08205,
-      "pFinal": 0.03349,
-      "pChampion": 0.01353,
+      "pRoundOf16": 0.48554,
+      "pQuarterFinal": 0.22202,
+      "pSemiFinal": 0.08077,
+      "pFinal": 0.03151,
+      "pChampion": 0.01312,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -1096,11 +1023,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.4074,
-      "pQuarterFinal": 0.12752,
-      "pSemiFinal": 0.06663,
-      "pFinal": 0.03173,
-      "pChampion": 0.01242,
+      "pRoundOf16": 0.40696,
+      "pQuarterFinal": 0.12767,
+      "pSemiFinal": 0.06607,
+      "pFinal": 0.03121,
+      "pChampion": 0.01262,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1163,10 +1090,10 @@
       "pRunnerUp": 0,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
-      "pQuarterFinal": 0.18435,
-      "pSemiFinal": 0.08594,
-      "pFinal": 0.02823,
-      "pChampion": 0.00728,
+      "pQuarterFinal": 0.18535,
+      "pSemiFinal": 0.08751,
+      "pFinal": 0.0296,
+      "pChampion": 0.00846,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1235,11 +1162,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.40219,
-      "pQuarterFinal": 0.21717,
-      "pSemiFinal": 0.05507,
-      "pFinal": 0.02059,
-      "pChampion": 0.00639,
+      "pRoundOf16": 0.40009,
+      "pQuarterFinal": 0.21433,
+      "pSemiFinal": 0.05394,
+      "pFinal": 0.02015,
+      "pChampion": 0.00665,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1298,72 +1225,6 @@
       ]
     },
     {
-      "name": "Australia",
-      "code": "AU",
-      "group": "D",
-      "fifaRank": 27,
-      "eloOverall": 1777,
-      "eloAttack": 1727.79,
-      "eloDefense": 1817.75,
-      "pGroupWinner": 0,
-      "pRunnerUp": 1,
-      "pRoundOf32": 1,
-      "pRoundOf16": 0.55858,
-      "pQuarterFinal": 0.14228,
-      "pSemiFinal": 0.05152,
-      "pFinal": 0.01628,
-      "pChampion": 0.00537,
-      "thirdPlaceScenarios": [],
-      "outcomeScenarios": {
-        "first": [],
-        "second": [
-          {
-            "points": 4,
-            "gd": 0,
-            "gf": 2,
-            "pct": 1
-          }
-        ],
-        "thirdQualified": [],
-        "thirdEliminated": [],
-        "fourth": []
-      },
-      "pooledScenarios": [
-        {
-          "points": 4,
-          "gd": 0,
-          "total": 1,
-          "byBucket": {
-            "second": 1
-          },
-          "showLabel": true
-        }
-      ],
-      "currentStanding": {
-        "points": 4,
-        "gd": 0,
-        "gf": 2,
-        "ga": 2,
-        "played": 3
-      },
-      "pointsNodes": [
-        {
-          "points": 4,
-          "total": 1,
-          "byGd": {
-            "0": 1
-          }
-        }
-      ],
-      "r32Opponents": [
-        {
-          "opponent": "Egypt",
-          "code": "EG",
-          "pct": 1
-        }
-      ]
-    },
-    {
       "name": "Austria",
       "code": "AT",
       "group": "J",
@@ -1374,11 +1235,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.19917,
-      "pQuarterFinal": 0.07527,
-      "pSemiFinal": 0.03685,
-      "pFinal": 0.01489,
-      "pChampion": 0.00527,
+      "pRoundOf16": 0.2012,
+      "pQuarterFinal": 0.07542,
+      "pSemiFinal": 0.03744,
+      "pFinal": 0.01549,
+      "pChampion": 0.00556,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1430,6 +1291,72 @@
       ]
     },
     {
+      "name": "Australia",
+      "code": "AU",
+      "group": "D",
+      "fifaRank": 27,
+      "eloOverall": 1777,
+      "eloAttack": 1727.79,
+      "eloDefense": 1817.75,
+      "pGroupWinner": 0,
+      "pRunnerUp": 1,
+      "pRoundOf32": 1,
+      "pRoundOf16": 0.56306,
+      "pQuarterFinal": 0.14218,
+      "pSemiFinal": 0.05198,
+      "pFinal": 0.01635,
+      "pChampion": 0.00518,
+      "thirdPlaceScenarios": [],
+      "outcomeScenarios": {
+        "first": [],
+        "second": [
+          {
+            "points": 4,
+            "gd": 0,
+            "gf": 2,
+            "pct": 1
+          }
+        ],
+        "thirdQualified": [],
+        "thirdEliminated": [],
+        "fourth": []
+      },
+      "pooledScenarios": [
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 1,
+          "byBucket": {
+            "second": 1
+          },
+          "showLabel": true
+        }
+      ],
+      "currentStanding": {
+        "points": 4,
+        "gd": 0,
+        "gf": 2,
+        "ga": 2,
+        "played": 3
+      },
+      "pointsNodes": [
+        {
+          "points": 4,
+          "total": 1,
+          "byGd": {
+            "0": 1
+          }
+        }
+      ],
+      "r32Opponents": [
+        {
+          "opponent": "Egypt",
+          "code": "EG",
+          "pct": 1
+        }
+      ]
+    },
+    {
       "name": "Egypt",
       "code": "EG",
       "group": "G",
@@ -1440,11 +1367,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.44142,
-      "pQuarterFinal": 0.09338,
-      "pSemiFinal": 0.02854,
-      "pFinal": 0.00751,
-      "pChampion": 0.0023,
+      "pRoundOf16": 0.43694,
+      "pQuarterFinal": 0.09272,
+      "pSemiFinal": 0.02793,
+      "pFinal": 0.00743,
+      "pChampion": 0.00206,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1506,11 +1433,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.21535,
-      "pQuarterFinal": 0.0632,
-      "pSemiFinal": 0.01657,
-      "pFinal": 0.00369,
-      "pChampion": 0.00096,
+      "pRoundOf16": 0.21823,
+      "pQuarterFinal": 0.05743,
+      "pSemiFinal": 0.01507,
+      "pFinal": 0.00375,
+      "pChampion": 0.001,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1579,11 +1506,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.28829,
-      "pQuarterFinal": 0.07599,
-      "pSemiFinal": 0.01008,
+      "pRoundOf16": 0.28546,
+      "pQuarterFinal": 0.07759,
+      "pSemiFinal": 0.01011,
       "pFinal": 0.00223,
-      "pChampion": 0.00039,
+      "pChampion": 0.00054,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -1652,11 +1579,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 1,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.11088,
-      "pQuarterFinal": 0.04075,
-      "pSemiFinal": 0.00955,
-      "pFinal": 0.00174,
-      "pChampion": 0.00026,
+      "pRoundOf16": 0.11009,
+      "pQuarterFinal": 0.03989,
+      "pSemiFinal": 0.00902,
+      "pFinal": 0.00168,
+      "pChampion": 0.00035,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -1718,11 +1645,11 @@
       "pGroupWinner": 0,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
-      "pRoundOf16": 0.16054,
-      "pQuarterFinal": 0.03433,
-      "pSemiFinal": 0.00557,
-      "pFinal": 0.00095,
-      "pChampion": 0.00019,
+      "pRoundOf16": 0.16105,
+      "pQuarterFinal": 0.03376,
+      "pSemiFinal": 0.00503,
+      "pFinal": 0.00072,
+      "pChampion": 0.00013,
       "thirdPlaceScenarios": [
         {
           "points": 4,
@@ -2467,6 +2394,79 @@
         {
           "opponent": "Norway",
           "code": "NO",
+          "pct": 1
+        }
+      ]
+    },
+    {
+      "name": "Ecuador",
+      "code": "EC",
+      "group": "E",
+      "fifaRank": 23,
+      "eloOverall": 1938,
+      "eloAttack": 1843.87,
+      "eloDefense": 1978.75,
+      "pGroupWinner": 0,
+      "pRunnerUp": 0,
+      "pRoundOf32": 1,
+      "pRoundOf16": 0,
+      "pQuarterFinal": 0,
+      "pSemiFinal": 0,
+      "pFinal": 0,
+      "pChampion": 0,
+      "thirdPlaceScenarios": [
+        {
+          "points": 4,
+          "gd": 0,
+          "gf": 2,
+          "pct": 1
+        }
+      ],
+      "outcomeScenarios": {
+        "first": [],
+        "second": [],
+        "thirdQualified": [
+          {
+            "points": 4,
+            "gd": 0,
+            "gf": 2,
+            "pct": 1
+          }
+        ],
+        "thirdEliminated": [],
+        "fourth": []
+      },
+      "pooledScenarios": [
+        {
+          "points": 4,
+          "gd": 0,
+          "total": 1,
+          "byBucket": {
+            "thirdQualified": 1
+          },
+          "showLabel": true
+        }
+      ],
+      "currentStanding": {
+        "points": 4,
+        "gd": 0,
+        "gf": 2,
+        "ga": 2,
+        "played": 3
+      },
+      "pointsNodes": [
+        {
+          "points": 4,
+          "total": 1,
+          "byGd": {
+            "0": 1
+          }
+        }
+      ],
+      "r32Opponents": [
+        {
+          "opponent": "Mexico",
+          "code": "MX",
           "pct": 1
         }
       ]
