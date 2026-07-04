@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-07-04T07:04:29.211Z",
-  "resultsApplied": 86,
+  "generatedAt": "2026-07-04T07:13:28.092Z",
+  "resultsApplied": 88,
   "model": "dual-Elo Negative Binomial (Phase 3/4) - see elo-negbin-revised.md",
   "negBinConstants": {
-    "alpha": 0.24,
-    "gamma": 0.44,
-    "sigma": 585.42,
+    "alpha": 0.23,
+    "gamma": 0.45,
+    "sigma": 606.25,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 86 matches, generated 2026-07-04T07:04:12.520Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 88 matches, generated 2026-07-04T07:13:10.911Z)",
   "methodology": {
-    "ratingSource": "Ratings are each team's CURRENT in-tournament ELOa (attack) / ELOd (defense), from elo_current_split.json (Phase 2), already reflecting every played result via a match-count-aware confidence ramp (see updateEloSplit.js). Unlike scenario.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (params: {\"alpha\":0.24,\"gamma\":0.44,\"sigma\":585.42,\"r\":12}, source: negbin_calibration.json (fitted against 86 matches, generated 2026-07-04T07:04:12.520Z)) - not decided via win-probability first, then forced-fit Poisson goals after. See groupStageNegBin.js and elo-negbin-revised.md Section 4.",
+    "ratingSource": "Ratings are each team's CURRENT in-tournament ELOa (attack) / ELOd (defense), from elo_current_split.json (Phase 2), already reflecting every played result via a match-count-aware confidence ramp (see updateEloSplit.js). Unlike scenario.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (params: {\"alpha\":0.23,\"gamma\":0.45,\"sigma\":606.25,\"r\":12}, source: negbin_calibration.json (fitted against 88 matches, generated 2026-07-04T07:13:10.911Z)) - not decided via win-probability first, then forced-fit Poisson goals after. See groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "worldRank": "Each team's worldRank (shown in group tables) is its rank (1-48) by chance of winning the tournament (pChampion in predictions_negbin.json) - i.e. the rank matches the same model used for the odds table, not raw rating.",
     "groupOrdering": "modal (most frequent) full 1st-4th ordering across 20,000 group simulations per group, using the NegBin engine (groupStageNegBin.js)",
     "groupModalStats": "each team in groups[letter].order also carries points/gd/gf (and played, always 3) - taken from the single most common JOINT final table among the 20,000-simulation runs that produced this group's modal ordering, same approach as the existing engine's scenario.json (see that file's methodology.groupModalStats for full detail) - just using NegBin-sampled goals instead of Poisson.",
@@ -18,7 +18,7 @@
     "bracketStructure": "official FIFA Round of 32 structure (Matches 73-88) per the 2026 tournament regulations; the 8 \"3rd-placed\" slots are filled the same Annex-C-approximation way as the existing engine (assignThirdPlaceSlots, shared code, not duplicated).",
     "knockouts": "chalk bracket - at each match, the team with the higher TOTAL win probability (win + penalty-shootout-weighted draw share) under the NegBin joint scoreline distribution advances - see mostLikelyNegBin.js's chalkWinnerNegBin. This computes the full win probability via the joint distribution, NOT a single sampled scoreline (that's what runSimulationNegBin.js's Monte Carlo does instead, for the aggregate probability table).",
     "nextMatchPrediction": "Predicted scorelines for upcoming group fixtures are the single highest-probability (h,a) pair under the NegBin joint distribution for that fixture (negBinModalScore) - a genuine structural difference from the existing engine's scenario.json, which decides the win/draw/loss outcome FIRST (via a separate win-probability calculation) then force-fits a Poisson scoreline consistent with that pre-decided outcome. Here, goals are the primary modelled event throughout - there is no separate \"decide outcome, then fit a score\" step.",
-    "liveResults": "86 completed group-stage result(s) as of 2026-06-20 are applied directly (not simulated) - these matches' actual goals (not simulated ones) are used in the modal group table and the ELOa/ELOd ratings feeding everything else.",
+    "liveResults": "88 completed group-stage result(s) as of 2026-06-20 are applied directly (not simulated) - these matches' actual goals (not simulated ones) are used in the modal group table and the ELOa/ELOd ratings feeding everything else.",
     "climateAdjustment": "group-stage matches include a small Elo-equivalent adjustment (+/-25 points, see scripts/sim/venues.js) based on each team's acclimatisation to that group's representative host-city altitude/heat profile - same adjustment, same values as the existing engine. Not applied to knockout matches (venue depends on bracket outcome).",
     "note": "This is a single representative scenario, not a probability distribution. See predictions.html (toggle to NegBin) for per-team stage probabilities across the full Monte Carlo run.",
     "comparisonNote": "This file (scenario_negbin.json) is the dual-Elo Negative Binomial engine's counterpart to scenario.json (the original Poisson + single-Elo engine) - see elo-negbin-revised.md for the full methodology comparison between the two. Both are kept available via a toggle; neither has been retired."
@@ -47,7 +47,7 @@
           "name": "South Africa",
           "code": "ZA",
           "elo": 1511,
-          "worldRank": 19,
+          "worldRank": 17,
           "fifaRank": 60,
           "positionProbabilities": [
             0,
@@ -64,7 +64,7 @@
           "name": "South Korea",
           "code": "KR",
           "elo": 1786,
-          "worldRank": 20,
+          "worldRank": 18,
           "fifaRank": 25,
           "positionProbabilities": [
             0,
@@ -81,7 +81,7 @@
           "name": "Czechia",
           "code": "CZ",
           "elo": 1712,
-          "worldRank": 21,
+          "worldRank": 19,
           "fifaRank": 41,
           "positionProbabilities": [
             0,
@@ -105,7 +105,7 @@
           "name": "Switzerland",
           "code": "CH",
           "elo": 1891,
-          "worldRank": 12,
+          "worldRank": 14,
           "fifaRank": 19,
           "positionProbabilities": [
             1,
@@ -139,7 +139,7 @@
           "name": "Bosnia-Herzegovina",
           "code": "BA",
           "elo": 1616,
-          "worldRank": 22,
+          "worldRank": 20,
           "fifaRank": 65,
           "positionProbabilities": [
             0,
@@ -156,7 +156,7 @@
           "name": "Qatar",
           "code": "QA",
           "elo": 1421,
-          "worldRank": 23,
+          "worldRank": 21,
           "fifaRank": 55,
           "positionProbabilities": [
             0,
@@ -180,7 +180,7 @@
           "name": "Brazil",
           "code": "BR",
           "elo": 1991,
-          "worldRank": 5,
+          "worldRank": 6,
           "fifaRank": 6,
           "positionProbabilities": [
             1,
@@ -197,7 +197,7 @@
           "name": "Morocco",
           "code": "MA",
           "elo": 1827,
-          "worldRank": 14,
+          "worldRank": 13,
           "fifaRank": 8,
           "positionProbabilities": [
             0,
@@ -214,7 +214,7 @@
           "name": "Scotland",
           "code": "SQ",
           "elo": 1782,
-          "worldRank": 25,
+          "worldRank": 23,
           "fifaRank": 43,
           "positionProbabilities": [
             0,
@@ -231,7 +231,7 @@
           "name": "Haiti",
           "code": "HT",
           "elo": 1548,
-          "worldRank": 24,
+          "worldRank": 22,
           "fifaRank": 83,
           "positionProbabilities": [
             0,
@@ -255,7 +255,7 @@
           "name": "USA",
           "code": "US",
           "elo": 1780,
-          "worldRank": 6,
+          "worldRank": 7,
           "fifaRank": 16,
           "positionProbabilities": [
             1,
@@ -272,7 +272,7 @@
           "name": "Australia",
           "code": "AU",
           "elo": 1777,
-          "worldRank": 27,
+          "worldRank": 25,
           "fifaRank": 27,
           "positionProbabilities": [
             0,
@@ -289,7 +289,7 @@
           "name": "Paraguay",
           "code": "PY",
           "elo": 1780,
-          "worldRank": 26,
+          "worldRank": 24,
           "fifaRank": 40,
           "positionProbabilities": [
             0,
@@ -306,7 +306,7 @@
           "name": "Turkiye",
           "code": "TR",
           "elo": 1911,
-          "worldRank": 28,
+          "worldRank": 26,
           "fifaRank": 22,
           "positionProbabilities": [
             0,
@@ -330,7 +330,7 @@
           "name": "Germany",
           "code": "DE",
           "elo": 1932,
-          "worldRank": 29,
+          "worldRank": 27,
           "fifaRank": 10,
           "positionProbabilities": [
             1,
@@ -347,7 +347,7 @@
           "name": "Ivory Coast",
           "code": "CI",
           "elo": 1695,
-          "worldRank": 31,
+          "worldRank": 29,
           "fifaRank": 34,
           "positionProbabilities": [
             0,
@@ -364,7 +364,7 @@
           "name": "Ecuador",
           "code": "EC",
           "elo": 1938,
-          "worldRank": 32,
+          "worldRank": 30,
           "fifaRank": 23,
           "positionProbabilities": [
             0,
@@ -381,7 +381,7 @@
           "name": "Curacao",
           "code": "CW",
           "elo": 1434,
-          "worldRank": 30,
+          "worldRank": 28,
           "fifaRank": 82,
           "positionProbabilities": [
             0,
@@ -405,7 +405,7 @@
           "name": "Netherlands",
           "code": "NL",
           "elo": 1948,
-          "worldRank": 33,
+          "worldRank": 31,
           "fifaRank": 7,
           "positionProbabilities": [
             1,
@@ -422,7 +422,7 @@
           "name": "Japan",
           "code": "JP",
           "elo": 1906,
-          "worldRank": 34,
+          "worldRank": 32,
           "fifaRank": 18,
           "positionProbabilities": [
             0,
@@ -456,7 +456,7 @@
           "name": "Tunisia",
           "code": "TN",
           "elo": 1628,
-          "worldRank": 35,
+          "worldRank": 33,
           "fifaRank": 44,
           "positionProbabilities": [
             0,
@@ -480,7 +480,7 @@
           "name": "Belgium",
           "code": "BE",
           "elo": 1894,
-          "worldRank": 13,
+          "worldRank": 12,
           "fifaRank": 9,
           "positionProbabilities": [
             1,
@@ -514,7 +514,7 @@
           "name": "Iran",
           "code": "IR",
           "elo": 1772,
-          "worldRank": 36,
+          "worldRank": 34,
           "fifaRank": 21,
           "positionProbabilities": [
             0,
@@ -531,7 +531,7 @@
           "name": "New Zealand",
           "code": "NZ",
           "elo": 1562,
-          "worldRank": 37,
+          "worldRank": 35,
           "fifaRank": 85,
           "positionProbabilities": [
             0,
@@ -572,7 +572,7 @@
           "name": "Cape Verde",
           "code": "CV",
           "elo": 1578,
-          "worldRank": 17,
+          "worldRank": 36,
           "fifaRank": 69,
           "positionProbabilities": [
             0,
@@ -589,7 +589,7 @@
           "name": "Uruguay",
           "code": "UY",
           "elo": 1892,
-          "worldRank": 39,
+          "worldRank": 38,
           "fifaRank": 17,
           "positionProbabilities": [
             0,
@@ -606,7 +606,7 @@
           "name": "Saudi Arabia",
           "code": "SA",
           "elo": 1576,
-          "worldRank": 38,
+          "worldRank": 37,
           "fifaRank": 61,
           "positionProbabilities": [
             0,
@@ -664,7 +664,7 @@
           "name": "Senegal",
           "code": "SN",
           "elo": 1860,
-          "worldRank": 40,
+          "worldRank": 39,
           "fifaRank": 14,
           "positionProbabilities": [
             0,
@@ -681,7 +681,7 @@
           "name": "Iraq",
           "code": "IQ",
           "elo": 1607,
-          "worldRank": 41,
+          "worldRank": 40,
           "fifaRank": 57,
           "positionProbabilities": [
             0,
@@ -722,7 +722,7 @@
           "name": "Austria",
           "code": "AT",
           "elo": 1830,
-          "worldRank": 43,
+          "worldRank": 42,
           "fifaRank": 24,
           "positionProbabilities": [
             0,
@@ -739,7 +739,7 @@
           "name": "Algeria",
           "code": "DZ",
           "elo": 1772,
-          "worldRank": 42,
+          "worldRank": 41,
           "fifaRank": 28,
           "positionProbabilities": [
             0,
@@ -756,7 +756,7 @@
           "name": "Jordan",
           "code": "JO",
           "elo": 1680,
-          "worldRank": 44,
+          "worldRank": 43,
           "fifaRank": 63,
           "positionProbabilities": [
             0,
@@ -780,7 +780,7 @@
           "name": "Colombia",
           "code": "CO",
           "elo": 1982,
-          "worldRank": 7,
+          "worldRank": 5,
           "fifaRank": 13,
           "positionProbabilities": [
             1,
@@ -814,7 +814,7 @@
           "name": "Congo DR",
           "code": "CD",
           "elo": 1652,
-          "worldRank": 45,
+          "worldRank": 44,
           "fifaRank": 46,
           "positionProbabilities": [
             0,
@@ -831,7 +831,7 @@
           "name": "Uzbekistan",
           "code": "UZ",
           "elo": 1714,
-          "worldRank": 46,
+          "worldRank": 45,
           "fifaRank": 50,
           "positionProbabilities": [
             0,
@@ -872,7 +872,7 @@
           "name": "Croatia",
           "code": "HR",
           "elo": 1912,
-          "worldRank": 47,
+          "worldRank": 46,
           "fifaRank": 11,
           "positionProbabilities": [
             0,
@@ -889,7 +889,7 @@
           "name": "Ghana",
           "code": "GH",
           "elo": 1510,
-          "worldRank": 18,
+          "worldRank": 47,
           "fifaRank": 74,
           "positionProbabilities": [
             0,
@@ -931,7 +931,7 @@
       "code": "EC",
       "group": "E",
       "elo": 1938,
-      "worldRank": 32,
+      "worldRank": 30,
       "fifaRank": 23,
       "positionProbabilities": [
         0,
@@ -1018,7 +1018,7 @@
       "code": "SN",
       "group": "I",
       "elo": 1860,
-      "worldRank": 40,
+      "worldRank": 39,
       "fifaRank": 14,
       "positionProbabilities": [
         0,
@@ -1105,7 +1105,7 @@
       "code": "PY",
       "group": "D",
       "elo": 1780,
-      "worldRank": 26,
+      "worldRank": 24,
       "fifaRank": 40,
       "positionProbabilities": [
         0,
@@ -1192,7 +1192,7 @@
       "code": "DZ",
       "group": "J",
       "elo": 1772,
-      "worldRank": 42,
+      "worldRank": 41,
       "fifaRank": 28,
       "positionProbabilities": [
         0,
@@ -1366,7 +1366,7 @@
       "code": "CD",
       "group": "K",
       "elo": 1652,
-      "worldRank": 45,
+      "worldRank": 44,
       "fifaRank": 46,
       "positionProbabilities": [
         0,
@@ -1453,7 +1453,7 @@
       "code": "BA",
       "group": "B",
       "elo": 1616,
-      "worldRank": 22,
+      "worldRank": 20,
       "fifaRank": 65,
       "positionProbabilities": [
         0,
@@ -1540,7 +1540,7 @@
       "code": "GH",
       "group": "L",
       "elo": 1510,
-      "worldRank": 18,
+      "worldRank": 47,
       "fifaRank": 74,
       "positionProbabilities": [
         0,
@@ -1615,7 +1615,7 @@
       "pRoundOf32": 1,
       "qualifies": true,
       "matchId": "M87",
-      "pWin": 0.8547371560609766,
+      "pWin": 1,
       "opponent": {
         "name": "Colombia",
         "code": "CO",
@@ -1627,7 +1627,7 @@
       "code": "UY",
       "group": "H",
       "elo": 1892,
-      "worldRank": 39,
+      "worldRank": 38,
       "fifaRank": 17,
       "positionProbabilities": [
         0,
@@ -1697,7 +1697,7 @@
       "code": "KR",
       "group": "A",
       "elo": 1786,
-      "worldRank": 20,
+      "worldRank": 18,
       "fifaRank": 25,
       "positionProbabilities": [
         0,
@@ -1767,7 +1767,7 @@
       "code": "SQ",
       "group": "C",
       "elo": 1782,
-      "worldRank": 25,
+      "worldRank": 23,
       "fifaRank": 43,
       "positionProbabilities": [
         0,
@@ -1837,7 +1837,7 @@
       "code": "IR",
       "group": "G",
       "elo": 1772,
-      "worldRank": 36,
+      "worldRank": 34,
       "fifaRank": 21,
       "positionProbabilities": [
         0,
@@ -2218,7 +2218,7 @@
         "code": "AR",
         "elo": 2115
       },
-      "pWin": 0.9026816203140143
+      "pWin": 1
     },
     {
       "id": "M87",
@@ -2237,7 +2237,7 @@
         "code": "CO",
         "elo": 1982
       },
-      "pWin": 0.8547371560609766
+      "pWin": 1
     },
     {
       "id": "M88",
@@ -2277,7 +2277,7 @@
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.7620469345880315
+      "pWin": 0.7538657939407458
     },
     {
       "id": "M90",
@@ -2296,7 +2296,7 @@
         "code": "MA",
         "elo": 1827
       },
-      "pWin": 0.548824613865701
+      "pWin": 0.5453848684065714
     },
     {
       "id": "M91",
@@ -2315,7 +2315,7 @@
         "code": "BR",
         "elo": 1991
       },
-      "pWin": 0.585442659012084
+      "pWin": 0.5822631829710473
     },
     {
       "id": "M92",
@@ -2334,7 +2334,7 @@
         "code": "EN",
         "elo": 2024
       },
-      "pWin": 0.5813674897971117
+      "pWin": 0.57708270559557
     },
     {
       "id": "M93",
@@ -2353,7 +2353,7 @@
         "code": "ES",
         "elo": 2157
       },
-      "pWin": 0.6784502564989041
+      "pWin": 0.672420935344139
     },
     {
       "id": "M94",
@@ -2372,7 +2372,7 @@
         "code": "BE",
         "elo": 1894
       },
-      "pWin": 0.5768577723108449
+      "pWin": 0.5722671975427873
     },
     {
       "id": "M95",
@@ -2391,7 +2391,7 @@
         "code": "AR",
         "elo": 2115
       },
-      "pWin": 0.8504669802324829
+      "pWin": 0.8232122712107569
     },
     {
       "id": "M96",
@@ -2410,7 +2410,7 @@
         "code": "CO",
         "elo": 1982
       },
-      "pWin": 0.5967275600584752
+      "pWin": 0.5956866354446424
     }
   ],
   "qf": [
@@ -2431,7 +2431,7 @@
         "code": "FR",
         "elo": 2063
       },
-      "pWin": 0.7076906544571528
+      "pWin": 0.7007175125259046
     },
     {
       "id": "M98",
@@ -2450,7 +2450,7 @@
         "code": "ES",
         "elo": 2157
       },
-      "pWin": 0.7745954170574425
+      "pWin": 0.7659107919876817
     },
     {
       "id": "M99",
@@ -2469,7 +2469,7 @@
         "code": "EN",
         "elo": 2024
       },
-      "pWin": 0.5395295310523425
+      "pWin": 0.5381075962111335
     },
     {
       "id": "M100",
@@ -2488,7 +2488,7 @@
         "code": "AR",
         "elo": 2115
       },
-      "pWin": 0.6499458549833107
+      "pWin": 0.6179150226312444
     }
   ],
   "sf": [
@@ -2509,7 +2509,7 @@
         "code": "ES",
         "elo": 2157
       },
-      "pWin": 0.6027745029368456
+      "pWin": 0.5990287034927443
     },
     {
       "id": "M102",
@@ -2528,7 +2528,7 @@
         "code": "AR",
         "elo": 2115
       },
-      "pWin": 0.599689138215187
+      "pWin": 0.57175400994672
     }
   ],
   "final": {
@@ -2548,7 +2548,7 @@
       "code": "ES",
       "elo": 2157
     },
-    "pWin": 0.545655893546477
+    "pWin": 0.5679010276344344
   },
   "thirdPlacePlayoff": {
     "id": "M103",
@@ -2567,7 +2567,7 @@
       "code": "FR",
       "elo": 2063
     },
-    "pWin": 0.5483009371651609
+    "pWin": 0.5465251739234271
   },
   "champion": {
     "name": "Spain",
