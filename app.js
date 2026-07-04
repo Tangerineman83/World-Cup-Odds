@@ -285,7 +285,7 @@
     // 90-minute score, with a '(pens)' suffix whenever penalties decided it
     // regardless of which score line is shown.
     let scoreLine = hasResult ? `${played.homeGoals}–${played.awayGoals}` : '';
-    if (decidedBy === 'aet') scoreLine = `${played.aetHomeGoals}–${played.aetAwayGoals}`;
+    if (decidedBy === 'aet') scoreLine = `${played.aetHomeGoals}–${played.aetAwayGoals} (AET)`;
     if (decidedBy === 'penalties') scoreLine += ' (pens)';
 
     const scoreOrPct = hasResult
