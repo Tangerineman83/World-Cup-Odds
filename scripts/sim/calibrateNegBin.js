@@ -452,7 +452,14 @@ function main() {
   // genuine evidence the in-tournament sample doesn't yet show strong
   // overdispersion, not as "r should be unbounded").
   const pinnedParams = Object.entries(bounds)
-    .filter(([key, [lo, hi]]) => Math.abs(fitted[key] - lo) < 1e-6 || Math.abs(fitted[key] - hi) < 1e-6)
+    .filter(([key, [lo, hi]]) => {
+      // Use 2% of range as tolerance — the grid search steps at discrete
+      // intervals so a parameter can settle just shy of the bound without
+      // landing exactly on it (e.g. kappa=237 with bound=250). A value
+      // within 2% of either bound is treated as effectively pinned.
+      const tol = (hi - lo) * 0.02;
+      return fitted[key] <= lo + tol || fitted[key] >= hi - tol;
+    })
     .map(([key]) => key);
   if (pinnedParams.length > 0) {
     console.log(`\n  WARNING: ${pinnedParams.join(', ')} landed exactly on a search bound.`);
