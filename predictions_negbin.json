@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-08T05:57:39.168Z",
+  "generatedAt": "2026-07-08T06:54:17.518Z",
   "numSimulations": 100000,
   "model": "dual-Elo Negative Binomial (Phase 3) - see elo-negbin-revised.md",
   "negBinConstants": {
@@ -8,7 +8,7 @@
     "sigma": 591.67,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 96 matches, generated 2026-07-08T05:57:25.257Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 96 matches, generated 2026-07-08T06:54:03.725Z)",
   "methodology": {
     "ratingSource": "eloOverall/eloAttack/eloDefense are each team's CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "knockoutModel": "Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren't a goals-from-form event either model claims to predict).",
@@ -28,9 +28,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.75401,
-      "pFinal": 0.48812,
-      "pChampion": 0.31642,
+      "pSemiFinal": 0.75333,
+      "pFinal": 0.48737,
+      "pChampion": 0.31681,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -94,9 +94,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.68107,
-      "pFinal": 0.40628,
-      "pChampion": 0.20121,
+      "pSemiFinal": 0.68322,
+      "pFinal": 0.40939,
+      "pChampion": 0.20202,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -160,9 +160,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.68003,
-      "pFinal": 0.31961,
-      "pChampion": 0.17834,
+      "pSemiFinal": 0.68147,
+      "pFinal": 0.32014,
+      "pChampion": 0.17987,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -226,9 +226,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.59857,
-      "pFinal": 0.30156,
-      "pChampion": 0.13395,
+      "pSemiFinal": 0.59913,
+      "pFinal": 0.29885,
+      "pChampion": 0.13145,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -292,9 +292,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.40143,
-      "pFinal": 0.1642,
-      "pChampion": 0.05576,
+      "pSemiFinal": 0.40087,
+      "pFinal": 0.16233,
+      "pChampion": 0.05556,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -358,9 +358,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.31893,
-      "pFinal": 0.12796,
-      "pChampion": 0.04129,
+      "pSemiFinal": 0.31678,
+      "pFinal": 0.12943,
+      "pChampion": 0.04054,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -424,9 +424,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.31997,
-      "pFinal": 0.09796,
-      "pChampion": 0.03681,
+      "pSemiFinal": 0.31853,
+      "pFinal": 0.09743,
+      "pChampion": 0.03694,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -490,9 +490,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.24599,
-      "pFinal": 0.09431,
-      "pChampion": 0.03622,
+      "pSemiFinal": 0.24667,
+      "pFinal": 0.09506,
+      "pChampion": 0.03681,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
