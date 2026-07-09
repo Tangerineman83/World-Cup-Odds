@@ -51,15 +51,12 @@
     <section class="bracket-section">
       <div class="bracket-section-head">
         <h2>Knockout rounds</h2>
-        <div class="ko-view-toggle" id="ko-view-toggle">
-          <button class="ko-toggle-btn active" data-view="bracket" id="btn-bracket">Bracket</button>
-          <button class="ko-toggle-btn" data-view="sankey" id="btn-sankey">Flow diagram</button>
-        </div>
+        <button id="reset-picks" class="clear-btn" hidden>Reset picks</button>
         <button id="clear-selection" class="clear-btn" hidden>Clear</button>
       </div>
 
       <div id="ko-view-bracket">
-        <p class="bracket-note">The bracket shows the most likely single outcome at each match — not the overall tournament favourite. A team can lead the tournament odds table by winning across many different simulated paths, while a different team is favoured in that specific head-to-head. <a class="bracket-note-link" href="#odds-table-wrap">Tournament odds ↑</a></p>
+        <p class="bracket-note">The bracket shows the most likely single outcome at each match — not the overall tournament favourite. A team can lead the tournament odds table by winning across many different simulated paths, while a different team is favoured in that specific head-to-head. <strong>Tap any quarter-final, semi-final or final card</strong> to see the full range of simulated outcomes and set your own prediction — the rest of the bracket updates to follow it. <a class="bracket-note-link" href="#odds-table-wrap">Tournament odds ↑</a></p>
         <div class="bracket-wrap" id="bracket-wrap">
           <svg class="bracket-lines" id="bracket-lines" aria-hidden="true"></svg>
           <div class="bracket" id="bracket">
@@ -67,15 +64,6 @@
           </div>
         </div>
         <p class="bracket-scroll-hint" id="scroll-hint">Slide to see more →</p>
-      </div>
-
-      <div id="ko-view-sankey" hidden>
-        <div class="master-sankey-wrap">
-          <svg id="master-sankey-svg"
-               class="master-sankey-svg"
-               aria-label="Tournament flow diagram showing all teams' paths to the title">
-          </svg>
-        </div>
       </div>
     </section>
 
@@ -104,10 +92,7 @@
     <div class="modal modal-wide" id="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-modal-title">
       <button class="modal-close" id="scenario-modal-close" aria-label="Close">&times;</button>
       <h2 id="scenario-modal-title" class="modal-title"></h2>
-      <div class="team-detail-gauge" id="scenario-modal-gauge"></div>
-      <div class="team-detail-flow-wrap">
-        <svg id="scenario-modal-flow" class="team-detail-flow" viewBox="0 0 900 360" preserveAspectRatio="xMidYMid meet"></svg>
-      </div>
+      <div id="predictor-body" class="predictor-body"></div>
     </div>
   </div>
 

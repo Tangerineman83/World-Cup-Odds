@@ -11,39 +11,34 @@
   const scenarioModalBackdrop = document.getElementById('scenario-modal-backdrop');
   const scenarioModal = document.getElementById('scenario-modal');
   const scenarioModalClose = document.getElementById('scenario-modal-close');
-  const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
-  const scenarioModalFlow = document.getElementById('scenario-modal-flow');
   const scenarioModalTitle = document.getElementById('scenario-modal-title');
-  const koViewBracket = document.getElementById('ko-view-bracket');
-  const koViewSankey = document.getElementById('ko-view-sankey');
-  const masterSankeySvg = document.getElementById('master-sankey-svg');
-  const koToggleBtns = document.querySelectorAll('.ko-toggle-btn');
+  const predictorBody = document.getElementById('predictor-body');
+  const resetPicksBtn = document.getElementById('reset-picks');
   let data = null;           // scenario_negbin.json
   let predictionsByName = null;  // predictions_negbin.json teams map
   let allResults = [];       // results.json
+  let splitRatings = null;   // elo_current_split.json ratings (attack/defense/overall)
   let selectedTeam = null;
-  let scenarioFlowCol = null;
-  let scenarioFlowKey = null;
-  let cachedRounds = null;
+  let cachedVisualOrders = null;
   let cachedRankByName = null;
-  let masterSankeyRendered = false;
 
-  const { flagImgHtml, fmtPct, renderGauge, renderFlow, renderKnockoutFlow, renderMasterSankey } = window.ScenarioFlow;
+  const { flagImgHtml, fmtPct } = window.ScenarioFlow;
 
-  // ── KO view toggle ────────────────────────────────────────────────────────
-  koToggleBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const view = btn.dataset.view;
-      koToggleBtns.forEach(b => b.classList.toggle('active', b === btn));
-      koViewBracket.hidden = view !== 'bracket';
-      koViewSankey.hidden  = view !== 'sankey';
-      // Render master Sankey lazily on first switch to that view
-      if (view === 'sankey' && !masterSankeyRendered && data && predictionsByName) {
-        renderMasterSankey(masterSankeySvg, data, [...predictionsByName.values()]);
-        masterSankeyRendered = true;
-      }
-    });
-  });
+  // ── Match predictor state ─────────────────────────────────────────────────
+  // userPicks: matchId -> { homeName, awayName, bucketIdx }
+  // homeName/awayName record which pairing the pick was made for, so a pick
+  // is silently invalidated if an upstream change means different teams now
+  // contest that match.
+  const userPicks = new Map();
+  let openPredictorMatchId = null;
+
+  // Constants duplicated from the Node simulation - keep in sync:
+  //   KO_GOALS_MULTIPLIER      scripts/sim/knockoutNegBin.js
+  //   penalty tilt formula     scripts/sim/knockoutNegBin.js (0.5 ± clamp(eloDiff/4000, ±0.05))
+  // alpha/sigma/r arrive at runtime via scenario_negbin.json's negBinConstants,
+  // so those never need manual syncing.
+  const KO_GOALS_MULTIPLIER = 0.90;
+  const GD_MAX = 5; // distribution buckets clamp at ±5 goal difference
 
   // ── Utility ───────────────────────────────────────────────────────────────
 
@@ -149,43 +144,279 @@
 
   // ── Modal: team knockout pathway Sankey ───────────────────────────────────
 
-  function openKnockoutModal(teamName) {
-    if (!teamName || !predictionsByName) return;
-    const team = predictionsByName.get(teamName);
-    if (!team) return;
+  // ── Match predictor: NegBin goal-difference distributions ────────────────
+  //
+  // Mirrors the Node simulation maths (groupStageNegBin.js expectedGoals +
+  // NegBin PMF, knockoutNegBin.js KO alpha reduction and penalty tilt) so the
+  // browser can compute the outcome distribution for ANY pairing - including
+  // hypothetical SF/final pairings created by the user's own picks - without
+  // any precomputed data. Ratings come from elo_current_split.json.
 
-    scenarioFlowCol = null;
-    scenarioFlowKey = null;
-    scenarioModalTitle.innerHTML = teamButton({ name: team.name, code: team.code });
+  function logGammaFn(x) {
+    const g = 7, c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+      771.32342877765313, -176.61502916214059, 12.507343278686905,
+      -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGammaFn(1 - x);
+    x -= 1; let a = c[0]; const t = x + g + 0.5;
+    for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+  function negBinPMF(k, mu, r) {
+    const p = r / (r + mu);
+    return Math.exp(logGammaFn(k + r) - logGammaFn(r) - logGammaFn(k + 1)
+      + r * Math.log(p) + k * Math.log(1 - p));
+  }
 
-    // Render knockout gauge (shows champion probability prominently)
-    const pChamp = team.pChampion || 0;
-    const pFinal = team.pFinal || 0;
-    const pSF = team.pSemiFinal || 0;
-    scenarioModalGauge.innerHTML = `
-      <div class="gauge-headline">
-        <span class="gauge-pct">${fmtPct(pChamp)}</span>
-        <span class="gauge-label">&nbsp;chance of winning the tournament</span>
+  // Returns the outcome distribution for a knockout pairing as an ordered
+  // bucket array, home-favouring outcomes first (left of the axis):
+  //   [home by 5+, ..., home by 1, draw→home pens, draw→away pens,
+  //    away by 1, ..., away by 5+]
+  // Each bucket: { key, label, gd, pensWinner|null, p }.
+  function computeGdDistribution(homeName, awayName) {
+    const params = data.negBinConstants;
+    const hR = splitRatings[homeName], aR = splitRatings[awayName];
+    if (!params || !hR || !aR) return null;
+    const koAlpha = params.alpha + Math.log(KO_GOALS_MULTIPLIER);
+    const clamp = (v, lim) => Math.max(-lim, Math.min(lim, v));
+    const muH = Math.exp(koAlpha + clamp((hR.attack - aR.defense) / params.sigma, 1.5));
+    const muA = Math.exp(koAlpha + clamp((aR.attack - hR.defense) / params.sigma, 1.5));
+    const r = params.r;
+
+    const gdP = {}; // gd (clamped to ±GD_MAX) -> prob
+    let total = 0;
+    for (let h = 0; h <= 9; h++) {
+      const ph = negBinPMF(h, muH, r);
+      for (let a = 0; a <= 9; a++) {
+        const j = ph * negBinPMF(a, muA, r);
+        const gd = Math.max(-GD_MAX, Math.min(GD_MAX, h - a));
+        gdP[gd] = (gdP[gd] || 0) + j;
+        total += j;
+      }
+    }
+    for (const k of Object.keys(gdP)) gdP[k] /= total;
+
+    // Penalty tilt for the drawn bucket - same formula as knockoutNegBin.js
+    const eloDiff = (hR.overall ?? 1800) - (aR.overall ?? 1800);
+    const tilt = 0.5 + Math.max(-0.05, Math.min(0.05, eloDiff / 4000));
+
+    const buckets = [];
+    for (let gd = GD_MAX; gd >= 1; gd--) {
+      buckets.push({ key: `h${gd}`, label: gd === GD_MAX ? `+${gd}+` : `+${gd}`,
+        gd, pensWinner: null, p: gdP[gd] || 0 });
+    }
+    const pDraw = gdP[0] || 0;
+    buckets.push({ key: 'ph', label: 'pens', gd: 0, pensWinner: 'home', p: pDraw * tilt });
+    buckets.push({ key: 'pa', label: 'pens', gd: 0, pensWinner: 'away', p: pDraw * (1 - tilt) });
+    for (let gd = 1; gd <= GD_MAX; gd++) {
+      buckets.push({ key: `a${gd}`, label: gd === GD_MAX ? `+${gd}+` : `+${gd}`,
+        gd: -gd, pensWinner: null, p: gdP[-gd] || 0 });
+    }
+    return buckets;
+  }
+
+  function modalBucketIdx(buckets) {
+    let best = 0;
+    for (let i = 1; i < buckets.length; i++) if (buckets[i].p > buckets[best].p) best = i;
+    return best;
+  }
+
+  // ── Effective knockout bracket (actual > user pick > most likely) ────────
+  //
+  // The interactive rounds are QF (M97-M100), SF (M101, M102) and the final
+  // (M104). QF participants are fixed (R16 is complete); SF and final
+  // participants are derived from whoever the effective winner of each feeder
+  // is. Precedence per match: actual played result, then a user pick made for
+  // this exact pairing, then the most likely outcome computed live.
+  const INTERACTIVE_PAIRS = [
+    ['M101', ['M97', 'M98']],
+    ['M102', ['M99', 'M100']],
+    ['M104', ['M101', 'M102']],
+  ];
+
+  function actualWinnerName(m) {
+    // Mirrors scripts/sim/knockoutResult.js resolveKnockoutWinner precedence
+    if (m.homeGoals > m.awayGoals) return m.home;
+    if (m.awayGoals > m.homeGoals) return m.away;
+    if (m.aetHomeGoals != null && m.aetAwayGoals != null && m.aetHomeGoals !== m.aetAwayGoals) {
+      return m.aetHomeGoals > m.aetAwayGoals ? m.home : m.away;
+    }
+    if (m.penaltyWinner === 'home') return m.home;
+    if (m.penaltyWinner === 'away') return m.away;
+    return null;
+  }
+
+  // Resolve one interactive match given its participants. Returns
+  // { home, away, winner, pWin, userPick, locked } where home/away/winner are
+  // team objects ({ name, code }).
+  function resolveInteractive(matchId, homeTeam, awayTeam) {
+    const played = allResults.find(r => r.id === matchId && r.homeGoals != null);
+    if (played) {
+      const wName = actualWinnerName(played);
+      const winner = wName === homeTeam.name ? homeTeam : awayTeam;
+      return { id: matchId, home: homeTeam, away: awayTeam, winner, pWin: 1.0, userPick: null, locked: true };
+    }
+
+    const pick = userPicks.get(matchId);
+    const pickValid = pick && pick.homeName === homeTeam.name && pick.awayName === awayTeam.name;
+    if (pick && !pickValid) userPicks.delete(matchId); // stale - participants changed
+
+    const buckets = computeGdDistribution(homeTeam.name, awayTeam.name);
+    if (!buckets) {
+      return { id: matchId, home: homeTeam, away: awayTeam, winner: homeTeam, pWin: null, userPick: null, locked: false };
+    }
+
+    const idx = pickValid ? pick.bucketIdx : modalBucketIdx(buckets);
+    const b = buckets[idx];
+    const homeWins = b.gd > 0 || (b.gd === 0 && b.pensWinner === 'home');
+    const winner = homeWins ? homeTeam : awayTeam;
+    // pWin shown for unpicked matches = live overall progression prob of winner
+    let pWin = null;
+    if (!pickValid) {
+      let pHome = 0;
+      for (const bb of buckets) {
+        if (bb.gd > 0 || (bb.gd === 0 && bb.pensWinner === 'home')) pHome += bb.p;
+      }
+      pWin = homeWins ? pHome : 1 - pHome;
+    }
+    return {
+      id: matchId, home: homeTeam, away: awayTeam, winner, pWin,
+      userPick: pickValid ? { bucket: b } : null, locked: false,
+    };
+  }
+
+  // Builds the effective qf/sf/final match objects from picks + results.
+  function effectiveKnockout() {
+    const teamRef = (t) => ({ name: t.name, code: t.code });
+    const byId = new Map();
+
+    for (const m of (data.qf || [])) {
+      byId.set(m.id, resolveInteractive(m.id, teamRef(m.home), teamRef(m.away)));
+    }
+    for (const [matchId, [fromA, fromB]] of INTERACTIVE_PAIRS) {
+      const home = byId.get(fromA).winner;
+      const away = byId.get(fromB).winner;
+      byId.set(matchId, resolveInteractive(matchId, home, away));
+    }
+    return byId;
+  }
+
+  // ── Predictor modal ───────────────────────────────────────────────────────
+
+  const ROUND_LABEL = { qf: 'Quarter-final', sf: 'Semi-final', final: 'Final' };
+
+  function openPredictor(matchId, roundKey) {
+    const eff = effectiveKnockout();
+    const m = eff.get(matchId);
+    if (!m) return;
+    openPredictorMatchId = matchId;
+
+    scenarioModalTitle.innerHTML =
+      `${teamButton(m.home)}<span class="predictor-vs">v</span>${teamButton(m.away)}` +
+      `<span class="predictor-round">${ROUND_LABEL[roundKey] || ''}</span>`;
+
+    renderPredictorBody(m);
+    scenarioModalBackdrop.hidden = false;
+  }
+
+  function renderPredictorBody(m) {
+    const buckets = computeGdDistribution(m.home.name, m.away.name);
+    if (!buckets) { predictorBody.innerHTML = '<p class="predictor-note">Distribution unavailable.</p>'; return; }
+
+    const played = allResults.find(r => r.id === m.id && r.homeGoals != null);
+    let selIdx;
+    if (played) {
+      // Locked: mark the actual outcome's bucket
+      let gd = played.homeGoals - played.awayGoals;
+      if (gd === 0 && played.aetHomeGoals != null) gd = played.aetHomeGoals - played.aetAwayGoals;
+      gd = Math.max(-GD_MAX, Math.min(GD_MAX, gd));
+      if (gd !== 0) {
+        selIdx = buckets.findIndex(b => b.gd === gd);
+      } else {
+        selIdx = buckets.findIndex(b => b.gd === 0 && b.pensWinner === played.penaltyWinner);
+      }
+      if (selIdx < 0) selIdx = modalBucketIdx(buckets);
+    } else {
+      const pick = userPicks.get(m.id);
+      selIdx = (pick && pick.homeName === m.home.name && pick.awayName === m.away.name)
+        ? pick.bucketIdx : modalBucketIdx(buckets);
+    }
+
+    const maxP = Math.max(...buckets.map(b => b.p), 0.001);
+    const barsHtml = buckets.map((b, i) => {
+      const hPct = Math.max(2, (b.p / maxP) * 100);
+      const side = b.gd > 0 || (b.gd === 0 && b.pensWinner === 'home') ? 'home' : 'away';
+      const sel = i === selIdx ? ' predictor-bar-selected' : '';
+      return `
+        <div class="predictor-col${sel}" data-bucket="${i}">
+          <div class="predictor-bar-pct">${(b.p * 100).toFixed(0)}%</div>
+          <div class="predictor-bar-track"><div class="predictor-bar predictor-bar-${side}" style="height:${hPct}%"></div></div>
+          <div class="predictor-bar-label">${b.label}</div>
+        </div>`;
+    }).join('');
+
+    const winnerNote = (idx) => {
+      const b = buckets[idx];
+      const wName = (b.gd > 0 || (b.gd === 0 && b.pensWinner === 'home')) ? m.home.name : m.away.name;
+      const how = b.gd === 0 ? 'on penalties' : `by ${Math.abs(b.gd)}${Math.abs(b.gd) === GD_MAX ? '+' : ''}`;
+      return `${wName} wins ${how}`;
+    };
+
+    predictorBody.innerHTML = `
+      <div class="predictor-axis-teams">
+        <span class="predictor-axis-home">← ${m.home.name} wins</span>
+        <span class="predictor-axis-away">${m.away.name} wins →</span>
       </div>
-      <div class="ko-stage-probs">
-        <span><span class="ko-pip" style="background:#818cf8"></span>Last 32: ${fmtPct(team.pRoundOf32)}</span>
-        <span><span class="ko-pip" style="background:#60a5fa"></span>Last 16: ${fmtPct(team.pRoundOf16)}</span>
-        <span><span class="ko-pip" style="background:#34d399"></span>QF: ${fmtPct(team.pQuarterFinal)}</span>
-        <span><span class="ko-pip" style="background:#fbbf24"></span>SF: ${fmtPct(pSF)}</span>
-        <span><span class="ko-pip" style="background:#f97316"></span>Final: ${fmtPct(pFinal)}</span>
-      </div>
+      <div class="predictor-chart">${barsHtml}</div>
+      ${played ? `
+        <p class="predictor-locked-note">Final result — this match has been played and can't be adjusted.</p>
+      ` : `
+        <input type="range" class="predictor-slider" id="predictor-slider"
+               min="0" max="${buckets.length - 1}" step="1" value="${selIdx}"
+               aria-label="Select predicted goal difference">
+        <p class="predictor-selection" id="predictor-selection">${winnerNote(selIdx)}</p>
+        <p class="predictor-note">Slide (or tap a bar) to set your own prediction — the rest of the bracket updates to match. Default is the most likely outcome.</p>
+      `}
     `;
 
-    // Render knockout Sankey
-    const predsList = predictionsByName ? [...predictionsByName.values()] : [];
-    renderKnockoutFlow(scenarioModalFlow, team, data, predsList);
-    scenarioModalBackdrop.hidden = false;
+    if (!played) {
+      const slider = document.getElementById('predictor-slider');
+      const selectionEl = document.getElementById('predictor-selection');
+      const applyPick = (idx) => {
+        userPicks.set(m.id, { homeName: m.home.name, awayName: m.away.name, bucketIdx: idx });
+        selectionEl.textContent = winnerNote(idx);
+        predictorBody.querySelectorAll('.predictor-col').forEach((el, i) =>
+          el.classList.toggle('predictor-bar-selected', i === idx));
+        slider.value = idx;
+        updateResetVisibility();
+        renderBracket();
+        scheduleRedraw();
+      };
+      slider.addEventListener('input', () => applyPick(parseInt(slider.value, 10)));
+      predictorBody.querySelectorAll('.predictor-col').forEach((el) => {
+        el.addEventListener('click', () => applyPick(parseInt(el.dataset.bucket, 10)));
+      });
+    }
   }
 
   function closeScenarioModal() {
     scenarioModalBackdrop.hidden = true;
-    scenarioFlowCol = null;
-    scenarioFlowKey = null;
+    openPredictorMatchId = null;
+  }
+
+  function updateResetVisibility() {
+    resetPicksBtn.hidden = userPicks.size === 0;
+  }
+
+  function resetAllPicks() {
+    userPicks.clear();
+    updateResetVisibility();
+    if (openPredictorMatchId) {
+      const eff = effectiveKnockout();
+      const m = eff.get(openPredictorMatchId);
+      if (m) renderPredictorBody(m);
+    }
+    renderBracket();
+    scheduleRedraw();
   }
 
   // ── Bracket rendering ─────────────────────────────────────────────────────
@@ -233,23 +464,24 @@
   }
 
   function getRounds() {
-    if (cachedRounds) return cachedRounds;
-    const pairsByRound = { sf: SF_PAIRS, qf: QF_PAIRS, r16: R16_PAIRS, final: [FINAL_PAIR_KEY] };
-    const [r32Order, r16Order, qfOrder, sfOrder, finalOrder] =
-      computeVisualOrders(FINAL_PAIR_KEY[0], pairsByRound);
+    if (!cachedVisualOrders) {
+      const pairsByRound = { sf: SF_PAIRS, qf: QF_PAIRS, r16: R16_PAIRS, final: [FINAL_PAIR_KEY] };
+      cachedVisualOrders = computeVisualOrders(FINAL_PAIR_KEY[0], pairsByRound);
+    }
+    const [r32Order, r16Order, qfOrder, sfOrder] = cachedVisualOrders;
     const byId = (matches) => new Map((matches || []).map((m) => [m.id, m]));
     const r32ById = byId(data.r32);
     const r16ById = byId(data.r16);
-    const qfById  = byId(data.qf);
-    const sfById  = byId(data.sf);
-    cachedRounds = [
+    // QF onward: effective bracket (actual result > user pick > most likely),
+    // recomputed on every render so user picks propagate through SF and final.
+    const eff = effectiveKnockout();
+    return [
       { key: 'r32',   label: 'Round of 32',    matches: r32Order.map(id => r32ById.get(id)).filter(Boolean), span: 1 },
       { key: 'r16',   label: 'Round of 16',    matches: r16Order.map(id => r16ById.get(id)).filter(Boolean), span: 2 },
-      { key: 'qf',    label: 'Quarter-finals', matches: qfOrder.map(id => qfById.get(id)).filter(Boolean),   span: 4 },
-      { key: 'sf',    label: 'Semi-finals',    matches: sfOrder.map(id => sfById.get(id)).filter(Boolean),   span: 8 },
-      { key: 'final', label: 'Final',          matches: [data.final],                                         span: 16 },
+      { key: 'qf',    label: 'Quarter-finals', matches: qfOrder.map(id => eff.get(id)).filter(Boolean),      span: 4 },
+      { key: 'sf',    label: 'Semi-finals',    matches: sfOrder.map(id => eff.get(id)).filter(Boolean),      span: 8 },
+      { key: 'final', label: 'Final',          matches: [eff.get('M104')].filter(Boolean),                    span: 16 },
     ];
-    return cachedRounds;
   }
 
   function matchHtml(m, roundKey) {
@@ -288,11 +520,19 @@
     if (decidedBy === 'aet') scoreLine = `${played.aetHomeGoals}–${played.aetAwayGoals} (AET)`;
     if (decidedBy === 'penalties') scoreLine += ' (pens)';
 
-    const scoreOrPct = hasResult
-      ? `<span class="win-pct">${scoreLine}</span>`
-      : (m.pWin != null ? `<span class="win-pct">${(m.pWin * 100).toFixed(0)}%</span>` : '');
+    let scoreOrPct;
+    if (hasResult) {
+      scoreOrPct = `<span class="win-pct">${scoreLine}</span>`;
+    } else if (m.userPick) {
+      const b = m.userPick.bucket;
+      const pickTxt = b.gd === 0 ? 'pens' : `+${Math.abs(b.gd)}${Math.abs(b.gd) === GD_MAX ? '+' : ''}`;
+      scoreOrPct = `<span class="win-pct win-pick">${pickTxt} · pick</span>`;
+    } else {
+      scoreOrPct = m.pWin != null ? `<span class="win-pct">${(m.pWin * 100).toFixed(0)}%</span>` : '';
+    }
+    const pickable = ['qf', 'sf', 'final'].includes(roundKey);
     return `
-      <div class="match" data-match-id="${m.id}" data-round="${roundKey}">
+      <div class="match${pickable ? ' match-pickable' : ''}${m.userPick ? ' match-picked' : ''}" data-match-id="${m.id}" data-round="${roundKey}">
         <div class="match-team ${homeWon ? 'match-winner' : 'match-loser'}" data-team="${m.home ? m.home.name : ''}">
           ${teamButton(m.home)}
           ${homeWon ? scoreOrPct : ''}
@@ -459,12 +699,19 @@
   // ── Click handling ────────────────────────────────────────────────────────
 
   function onTeamClick(e) {
+    // Interactive rounds: tapping anywhere on a QF/SF/final match card opens
+    // the outcome predictor for that match.
+    const matchEl = e.target.closest('.match-pickable');
+    if (matchEl && matchEl.closest('.bracket-wrap')) {
+      openPredictor(matchEl.dataset.matchId, matchEl.dataset.round);
+      return;
+    }
+
+    // Elsewhere: team taps toggle the path highlight (no modal).
     const target = e.target.closest('[data-team]');
     if (!target || !target.dataset.team) return;
     const teamName = target.dataset.team;
-    if (!teamName) return;
 
-    // If inside bracket or result grids: toggle highlight + open modal
     if (target.closest('.bracket-wrap') || target.closest('.r32-results-grid') ||
         target.closest('.group-results-grid')) {
       selectedTeam = selectedTeam === teamName ? null : teamName;
@@ -475,14 +722,8 @@
           const el = bracket.querySelector(`.match[data-match-id="${path[0].matchId}"]`);
           if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         }
-        openKnockoutModal(selectedTeam);
-      } else {
-        closeScenarioModal();
       }
-      return;
     }
-    // Otherwise just open modal
-    openKnockoutModal(teamName);
   }
 
   // ── Meta ──────────────────────────────────────────────────────────────────
@@ -502,6 +743,15 @@
       if (!res.ok) return;
       const json = await res.json();
       allResults = json.results || [];
+    } catch (_) {}
+  }
+
+  async function loadSplitRatings() {
+    try {
+      const res = await fetch('elo_current_split.json?_=' + Date.now());
+      if (!res.ok) return;
+      const json = await res.json();
+      splitRatings = json.ratings || null;
     } catch (_) {}
   }
 
@@ -530,10 +780,11 @@
       return;
     }
 
-    cachedRounds = null;
+    cachedVisualOrders = null;
     cachedRankByName = null;
 
-    await Promise.all([loadResults(), loadPredictions()]);
+    await Promise.all([loadResults(), loadPredictions(), loadSplitRatings()]);
+    updateResetVisibility();
 
     renderMeta();
     renderGroupResults();
@@ -555,6 +806,7 @@
 
     document.body.addEventListener('click', onTeamClick);
     clearBtn.addEventListener('click', () => { selectedTeam = null; applyHighlight(); });
+    resetPicksBtn.addEventListener('click', resetAllPicks);
     scenarioModalClose.addEventListener('click', closeScenarioModal);
     scenarioModalBackdrop.addEventListener('click', e => {
       if (e.target === scenarioModalBackdrop) closeScenarioModal();

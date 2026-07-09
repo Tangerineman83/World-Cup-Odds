@@ -7,7 +7,6 @@
   const scenarioModalTitle = document.getElementById('scenario-modal-title');
   const scenarioModalClose = document.getElementById('scenario-modal-close');
   const scenarioModalGauge = document.getElementById('scenario-modal-gauge');
-  const scenarioModalFlow = document.getElementById('scenario-modal-flow');
 
   let currentData = null;
   let scenarioData = null;
@@ -18,7 +17,7 @@
   let selectedFlowCol = null;
   let selectedFlowKey = null;
 
-  const { fmtPct, flagImgHtml, renderKnockoutFlow } = window.ScenarioFlow;
+  const { fmtPct, flagImgHtml } = window.ScenarioFlow;
 
   function pctStyle(p, colorVar) {
     if (p == null) return '';
@@ -200,7 +199,6 @@
       </div>
     `;
 
-    renderKnockoutFlow(scenarioModalFlow, team, scenarioData, currentData?.teams || []);
     scenarioModalBackdrop.hidden = false;
   }
 
