@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-07-11T18:20:30.708Z",
+  "generatedAt": "2026-07-11T23:54:02.794Z",
   "numSimulations": 100000,
   "model": "dual-Elo Negative Binomial (Phase 3) - see elo-negbin-revised.md",
   "negBinConstants": {
-    "alpha": 0.23,
-    "gamma": 0.4,
+    "alpha": 0.22,
+    "gamma": 0.41,
     "sigma": 581.25,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 98 matches, generated 2026-07-11T18:20:17.217Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 99 matches, generated 2026-07-11T23:53:50.329Z)",
   "methodology": {
     "ratingSource": "eloOverall/eloAttack/eloDefense are each team's CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "knockoutModel": "Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren't a goals-from-form event either model claims to predict).",
-    "liveResults": "98 completed group-stage result(s) as of 2026-06-20 are applied directly (not simulated) in every simulation run."
+    "liveResults": "99 completed group-stage result(s) as of 2026-06-20 are applied directly (not simulated) in every simulation run."
   },
   "teams": [
     {
@@ -29,8 +29,8 @@
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
-      "pFinal": 0.58835,
-      "pChampion": 0.3816,
+      "pFinal": 0.58816,
+      "pChampion": 0.37424,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -95,8 +95,8 @@
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
-      "pFinal": 0.41165,
-      "pChampion": 0.23326,
+      "pFinal": 0.41184,
+      "pChampion": 0.2286,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -148,87 +148,21 @@
       ]
     },
     {
-      "name": "Argentina",
-      "code": "AR",
-      "group": "J",
-      "fifaRank": 3,
-      "eloOverall": 2115,
-      "eloAttack": 2082.61,
-      "eloDefense": 2105.89,
-      "pGroupWinner": 1,
-      "pRunnerUp": 0,
-      "pRoundOf32": 1,
-      "pRoundOf16": 1,
-      "pQuarterFinal": 1,
-      "pSemiFinal": 0.68514,
-      "pFinal": 0.40945,
-      "pChampion": 0.18206,
-      "thirdPlaceScenarios": [],
-      "outcomeScenarios": {
-        "first": [
-          {
-            "points": 9,
-            "gd": 7,
-            "gf": 8,
-            "pct": 1
-          }
-        ],
-        "second": [],
-        "thirdQualified": [],
-        "thirdEliminated": [],
-        "fourth": []
-      },
-      "pooledScenarios": [
-        {
-          "points": 9,
-          "gd": 7,
-          "total": 1,
-          "byBucket": {
-            "first": 1
-          },
-          "showLabel": true
-        }
-      ],
-      "currentStanding": {
-        "points": 9,
-        "gd": 7,
-        "gf": 8,
-        "ga": 1,
-        "played": 3
-      },
-      "pointsNodes": [
-        {
-          "points": 9,
-          "total": 1,
-          "byGd": {
-            "7": 1
-          }
-        }
-      ],
-      "r32Opponents": [
-        {
-          "opponent": "Cape Verde",
-          "code": "CV",
-          "pct": 1
-        }
-      ]
-    },
-    {
       "name": "England",
       "code": "EN",
       "group": "L",
       "fifaRank": 4,
       "eloOverall": 2024,
-      "eloAttack": 2036.4,
-      "eloDefense": 2038.27,
+      "eloAttack": 2010.74,
+      "eloDefense": 2039.25,
       "pGroupWinner": 1,
       "pRunnerUp": 0,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.6035,
-      "pFinal": 0.30372,
-      "pChampion": 0.12049,
+      "pSemiFinal": 1,
+      "pFinal": 0.49359,
+      "pChampion": 0.18927,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -280,67 +214,67 @@
       ]
     },
     {
-      "name": "Norway",
-      "code": "NO",
-      "group": "I",
-      "fifaRank": 31,
-      "eloOverall": 1914,
-      "eloAttack": 1978.07,
-      "eloDefense": 1895.62,
-      "pGroupWinner": 0,
-      "pRunnerUp": 1,
+      "name": "Argentina",
+      "code": "AR",
+      "group": "J",
+      "fifaRank": 3,
+      "eloOverall": 2115,
+      "eloAttack": 2082.61,
+      "eloDefense": 2105.89,
+      "pGroupWinner": 1,
+      "pRunnerUp": 0,
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.3965,
-      "pFinal": 0.15979,
-      "pChampion": 0.0468,
+      "pSemiFinal": 0.68011,
+      "pFinal": 0.38527,
+      "pChampion": 0.17404,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
-        "first": [],
-        "second": [
+        "first": [
           {
-            "points": 6,
-            "gd": 1,
+            "points": 9,
+            "gd": 7,
             "gf": 8,
             "pct": 1
           }
         ],
+        "second": [],
         "thirdQualified": [],
         "thirdEliminated": [],
         "fourth": []
       },
       "pooledScenarios": [
         {
-          "points": 6,
-          "gd": 1,
+          "points": 9,
+          "gd": 7,
           "total": 1,
           "byBucket": {
-            "second": 1
+            "first": 1
           },
           "showLabel": true
         }
       ],
       "currentStanding": {
-        "points": 6,
-        "gd": 1,
+        "points": 9,
+        "gd": 7,
         "gf": 8,
-        "ga": 7,
+        "ga": 1,
         "played": 3
       },
       "pointsNodes": [
         {
-          "points": 6,
+          "points": 9,
           "total": 1,
           "byGd": {
-            "1": 1
+            "7": 1
           }
         }
       ],
       "r32Opponents": [
         {
-          "opponent": "Ivory Coast",
-          "code": "CI",
+          "opponent": "Cape Verde",
+          "code": "CV",
           "pct": 1
         }
       ]
@@ -358,9 +292,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.31486,
-      "pFinal": 0.12704,
-      "pChampion": 0.03579,
+      "pSemiFinal": 0.31989,
+      "pFinal": 0.12114,
+      "pChampion": 0.03385,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -2479,6 +2413,72 @@
         }
       ],
       "r32Opponents": []
+    },
+    {
+      "name": "Norway",
+      "code": "NO",
+      "group": "I",
+      "fifaRank": 31,
+      "eloOverall": 1914,
+      "eloAttack": 1977.08,
+      "eloDefense": 1921.28,
+      "pGroupWinner": 0,
+      "pRunnerUp": 1,
+      "pRoundOf32": 1,
+      "pRoundOf16": 1,
+      "pQuarterFinal": 1,
+      "pSemiFinal": 0,
+      "pFinal": 0,
+      "pChampion": 0,
+      "thirdPlaceScenarios": [],
+      "outcomeScenarios": {
+        "first": [],
+        "second": [
+          {
+            "points": 6,
+            "gd": 1,
+            "gf": 8,
+            "pct": 1
+          }
+        ],
+        "thirdQualified": [],
+        "thirdEliminated": [],
+        "fourth": []
+      },
+      "pooledScenarios": [
+        {
+          "points": 6,
+          "gd": 1,
+          "total": 1,
+          "byBucket": {
+            "second": 1
+          },
+          "showLabel": true
+        }
+      ],
+      "currentStanding": {
+        "points": 6,
+        "gd": 1,
+        "gf": 8,
+        "ga": 7,
+        "played": 3
+      },
+      "pointsNodes": [
+        {
+          "points": 6,
+          "total": 1,
+          "byGd": {
+            "1": 1
+          }
+        }
+      ],
+      "r32Opponents": [
+        {
+          "opponent": "Ivory Coast",
+          "code": "CI",
+          "pct": 1
+        }
+      ]
     },
     {
       "name": "Algeria",
