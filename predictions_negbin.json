@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-10T21:00:51.251Z",
+  "generatedAt": "2026-07-11T06:49:37.557Z",
   "numSimulations": 100000,
   "model": "dual-Elo Negative Binomial (Phase 3) - see elo-negbin-revised.md",
   "negBinConstants": {
@@ -8,7 +8,7 @@
     "sigma": 581.25,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 98 matches, generated 2026-07-10T21:00:41.412Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 98 matches, generated 2026-07-11T06:49:24.138Z)",
   "methodology": {
     "ratingSource": "eloOverall/eloAttack/eloDefense are each team's CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "knockoutModel": "Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren't a goals-from-form event either model claims to predict).",
@@ -29,8 +29,8 @@
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
-      "pFinal": 0.58961,
-      "pChampion": 0.38166,
+      "pFinal": 0.58704,
+      "pChampion": 0.38231,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -95,8 +95,8 @@
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
-      "pFinal": 0.41039,
-      "pChampion": 0.23239,
+      "pFinal": 0.41296,
+      "pChampion": 0.23259,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -160,9 +160,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.68371,
-      "pFinal": 0.40527,
-      "pChampion": 0.18187,
+      "pSemiFinal": 0.68298,
+      "pFinal": 0.40899,
+      "pChampion": 0.18438,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -226,9 +226,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.59946,
-      "pFinal": 0.30461,
-      "pChampion": 0.12034,
+      "pSemiFinal": 0.59924,
+      "pFinal": 0.3012,
+      "pChampion": 0.11841,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -292,9 +292,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.40054,
-      "pFinal": 0.16278,
-      "pChampion": 0.04833,
+      "pSemiFinal": 0.40076,
+      "pFinal": 0.1611,
+      "pChampion": 0.04754,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [],
@@ -358,9 +358,9 @@
       "pRoundOf32": 1,
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
-      "pSemiFinal": 0.31629,
-      "pFinal": 0.12734,
-      "pChampion": 0.03541,
+      "pSemiFinal": 0.31702,
+      "pFinal": 0.12871,
+      "pChampion": 0.03477,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
