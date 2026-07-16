@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T18:27:28.586Z",
+  "generatedAt": "2026-07-16T06:53:18.326Z",
   "numSimulations": 100000,
   "model": "dual-Elo Negative Binomial (Phase 3) - see elo-negbin-revised.md",
   "negBinConstants": {
@@ -8,7 +8,7 @@
     "sigma": 577.08,
     "r": 12
   },
-  "negBinConstantsSource": "negbin_calibration.json (fitted against 101 matches, generated 2026-07-15T18:27:16.641Z)",
+  "negBinConstantsSource": "negbin_calibration.json (fitted against 101 matches, generated 2026-07-16T06:53:05.308Z)",
   "methodology": {
     "ratingSource": "eloOverall/eloAttack/eloDefense are each team's CURRENT in-tournament ratings from elo_current_split.json (Phase 2), already reflecting every played result. Unlike predictions.json's scalar engine, goals here are sampled DIRECTLY from a Negative Binomial distribution parameterized by the ELOa/ELOd gap (not decided via win-probability first, then forced-fit goals after) - see groupStageNegBin.js and elo-negbin-revised.md Section 4.",
     "knockoutModel": "Knockout matches are also resolved via direct NegBin scoreline sampling (knockoutNegBin.js), not a separate win-probability calculation - draws go to a penalty shootout resolved the same ~50/50-plus-small-Elo-tilt way as the existing engine (penalties aren't a goals-from-form event either model claims to predict).",
@@ -30,7 +30,7 @@
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
       "pFinal": 1,
-      "pChampion": 0.63087,
+      "pChampion": 0.63211,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -95,8 +95,8 @@
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
-      "pFinal": 0.55101,
-      "pChampion": 0.2149,
+      "pFinal": 0.54901,
+      "pChampion": 0.21405,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
@@ -161,8 +161,8 @@
       "pRoundOf16": 1,
       "pQuarterFinal": 1,
       "pSemiFinal": 1,
-      "pFinal": 0.44899,
-      "pChampion": 0.15423,
+      "pFinal": 0.45099,
+      "pChampion": 0.15384,
       "thirdPlaceScenarios": [],
       "outcomeScenarios": {
         "first": [
